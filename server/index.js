@@ -1,57 +1,142 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const { handlePaperclipEvent } = require('../adapter/paperclipAdapter');
+const {
+  EventValidationError,
+  processIncomingEvents
+} = require('./eventsPipeline');
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+function createWorldState() {
+  return {
+    agents: {},
+    zones: {},
+    runs: {}
+  };
+}
 
-/**
- * Simple in‑memory world state. In a real application you may persist this to a database.
- */
-const worldState = {
-  agents: {},
-  zones: {},
-  runs: {}
-};
+function sendError(res, statusCode, message, details) {
+  const body = { error: message };
+  if (Array.isArray(details) && details.length > 0) {
+    body.details = details;
+  }
+  res.status(statusCode).json(body);
+}
 
-/**
- * Broadcast the current world state to all connected clients.
- */
-function broadcastState() {
-  const payload = JSON.stringify({ type: 'state', data: worldState });
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(payload);
+function createServer(options = {}) {
+  const processIncomingEventsFn =
+    typeof options.processIncomingEvents === 'function'
+      ? options.processIncomingEvents
+      : processIncomingEvents;
+  const app = express();
+  const server = http.createServer(app);
+  const wss = new WebSocket.Server({ server });
+  const worldState = createWorldState();
+
+  /**
+   * Broadcast the current world state to all connected clients.
+   */
+  function broadcastState() {
+    const payload = JSON.stringify({ type: 'state', data: worldState });
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    });
+  }
+
+  app.use(express.json());
+  app.post('/events', (req, res) => {
+    try {
+      const appliedEvents = processIncomingEventsFn(req.body, worldState);
+      broadcastState();
+      res.status(200).json({
+        status: 'ok',
+        processed: appliedEvents.length,
+        events: appliedEvents.map(event => ({
+          eventType: event.eventType,
+          agentId: event.agentId,
+          taskId: event.taskId,
+          runId: event.runId,
+          timestamp: event.timestamp
+        }))
+      });
+    } catch (err) {
+      if (err instanceof EventValidationError) {
+        sendError(res, err.statusCode, err.message, err.details);
+        return;
+      }
+
+      throw err;
     }
+  });
+
+  app.get('/state', (req, res) => {
+    res.status(200).json({ status: 'ok', data: worldState });
+  });
+
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
+  // WebSocket connection for the front‑end
+  wss.on('connection', ws => {
+    // Send current state to new client
+    ws.send(JSON.stringify({ type: 'state', data: worldState }));
+  });
+
+  app.use((err, req, res, next) => {
+    if (
+      err instanceof SyntaxError &&
+      err.status === 400 &&
+      Object.prototype.hasOwnProperty.call(err, 'body')
+    ) {
+      sendError(res, 400, 'Malformed JSON body.', [
+        {
+          code: 'MALFORMED_JSON',
+          error: 'Malformed JSON body.'
+        }
+      ]);
+      return;
+    }
+
+    next(err);
+  });
+
+  app.use((err, req, res, next) => {
+    console.error(err);
+    sendError(res, 500, err.message || 'Internal server error.');
+  });
+
+  return {
+    app,
+    server,
+    wss,
+    worldState,
+    broadcastState
+  };
+}
+
+function startServer(port = process.env.PORT || 3000, options = {}) {
+  const runtime = createServer(options);
+  const listenPort = Number(port);
+
+  return new Promise(resolve => {
+    runtime.server.listen(listenPort, () => {
+      resolve({
+        ...runtime,
+        port: runtime.server.address().port
+      });
+    });
   });
 }
 
-// Example endpoint for receiving events from Paperclip via HTTP POST.
-// In production you might use gRPC, AMQP, Kafka or direct integration.
-app.use(express.json());
-app.post('/events', (req, res) => {
-  try {
-    const event = req.body;
-    // Normalize and apply the event to the world state
-    handlePaperclipEvent(event, worldState);
-    // Notify front‑end clients
-    broadcastState();
-    res.status(200).json({ status: 'ok' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+if (require.main === module) {
+  startServer().then(({ port }) => {
+    console.log(`Agent World server running on http://localhost:${port}`);
+  });
+}
 
-// WebSocket connection for the front‑end
-wss.on('connection', ws => {
-  // Send current state to new client
-  ws.send(JSON.stringify({ type: 'state', data: worldState }));
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Agent World server running on http://localhost:${PORT}`);
-});
+module.exports = {
+  createServer,
+  startServer
+};

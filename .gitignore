@@ -13,3 +13,10 @@ assets/pixymoon/*
 # Mac and editor junk
 .DS_Store
 .vscode/
+
+# Paperclip Files
+MEMORY.md
+memory
+docs
+SOUL.md
+USER.md

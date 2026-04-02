@@ -18,9 +18,9 @@ This repository is organised into several packages:
 3. Install dependencies and start the server:
 
 ```bash
-cd server
+cd <repo-root>
 npm install
-node index.js
+node server/index.js
 ```
 
 4. Open another terminal and start the frontend development server:
@@ -32,6 +32,20 @@ npm start
 ```
 
 The React app will connect to `ws://localhost:3000` by default and render your agent world.
+
+## Event API and tests
+
+- Event ingestion contract: `server/EVENTS.md`
+- T0 functional scope: `docs/T0-functional-scope.md`
+- T0 non-functional requirements: `docs/T0-nonfunctional-requirements.md`
+- T0 temporary backlog: `docs/T0-temp-backlog.md`
+- Quality gate plan: `test/TEST_PLAN.md`
+- Install dependencies and run regression guards:
+
+```bash
+npm install
+npm run test:smoke
+```
 
 ## PixyMoon assets
 
