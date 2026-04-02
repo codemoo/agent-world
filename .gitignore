@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# PixyMoon assets – these files are not checked into git.
+assets/pixymoon/*
+!assets/pixymoon/**/.gitkeep
+!assets/pixymoon/.gitkeep
+!assets/pixymoon/README.md
+
+# Mac and editor junk
+.DS_Store
+.vscode/
