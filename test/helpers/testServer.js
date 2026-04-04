@@ -1,19 +1,65 @@
 const { startServer } = require('../../server/index');
+const WebSocket = require('ws');
+
+const DEFAULT_TEST_API_TOKEN = 'test-token';
+const runtimeAuthRegistry = new Map();
+
+function resolveHttpBaseFromWsUrl(wsUrl) {
+  const parsed = new URL(wsUrl);
+  parsed.protocol = parsed.protocol === 'wss:' ? 'https:' : 'http:';
+  return `${parsed.protocol}//${parsed.host}`;
+}
+
+function resolveAuthConfig(baseUrl) {
+  return runtimeAuthRegistry.get(baseUrl) || { authEnabled: false, apiToken: null };
+}
+
+function buildHeaders(baseUrl, baseHeaders = {}, options = {}) {
+  const headers = { ...baseHeaders, ...(options.headers || {}) };
+  const authConfig = resolveAuthConfig(baseUrl);
+
+  if (options.auth === false) {
+    delete headers.authorization;
+    delete headers.Authorization;
+    return headers;
+  }
+
+  const token =
+    typeof options.auth === 'string' ? options.auth : authConfig.apiToken;
+  if (authConfig.authEnabled && token) {
+    headers.authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 async function startTestServer(options = {}) {
-  const runtime = await startServer(0, options);
+  const security = {
+    enabled: true,
+    apiToken: DEFAULT_TEST_API_TOKEN,
+    ...(options.security || {})
+  };
+  const runtime = await startServer(0, { ...options, security });
   const baseUrl = `http://127.0.0.1:${runtime.port}`;
   const wsUrl = `ws://127.0.0.1:${runtime.port}`;
+  runtimeAuthRegistry.set(baseUrl, {
+    authEnabled: security.enabled !== false,
+    apiToken: security.apiToken || null
+  });
   return {
     ...runtime,
     baseUrl,
-    wsUrl
+    wsUrl,
+    authToken: security.apiToken || null
   };
 }
 
 function stopTestServer(runtime) {
   if (!runtime) {
     return Promise.resolve();
+  }
+  runtimeAuthRegistry.delete(runtime.baseUrl);
+  if (typeof runtime.stopBackgroundWorkers === 'function') {
+    runtime.stopBackgroundWorkers();
   }
 
   return new Promise((resolve, reject) => {
@@ -34,10 +80,15 @@ function stopTestServer(runtime) {
   });
 }
 
-async function postJson(baseUrl, path, body) {
+async function postJson(baseUrl, path, body, options = {}) {
+  const headers = buildHeaders(
+    baseUrl,
+    { 'content-type': 'application/json' },
+    options
+  );
   const response = await fetch(`${baseUrl}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(body)
   });
 
@@ -45,15 +96,58 @@ async function postJson(baseUrl, path, body) {
   return { response, json };
 }
 
-async function getJson(baseUrl, path) {
-  const response = await fetch(`${baseUrl}${path}`);
+async function getJson(baseUrl, path, options = {}) {
+  const headers = buildHeaders(baseUrl, {}, options);
+  const response = await fetch(`${baseUrl}${path}`, { headers });
   const json = await response.json();
   return { response, json };
 }
 
-function openWebSocket(url) {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(url);
+async function issueWsTicket(baseUrl, options = {}) {
+  const headers = buildHeaders(
+    baseUrl,
+    { 'content-type': 'application/json' },
+    options
+  );
+  const response = await fetch(`${baseUrl}/auth/ws-ticket`, {
+    method: 'POST',
+    headers,
+    body: '{}'
+  });
+  const json = await response.json();
+  return { response, json };
+}
+
+function openWebSocket(url, options = {}) {
+  return new Promise(async (resolve, reject) => {
+    const wsUrl = new URL(url);
+    try {
+      if (typeof options.ticket === 'string' && options.ticket.trim().length > 0) {
+        wsUrl.searchParams.set('ticket', options.ticket.trim());
+      } else if (options.auth !== false) {
+        const baseUrl = resolveHttpBaseFromWsUrl(url);
+        const ticketResult = await issueWsTicket(baseUrl, options);
+        if (!ticketResult.response.ok) {
+          throw new Error(`WS ticket issue failed (${ticketResult.response.status})`);
+        }
+
+        const ticket =
+          typeof ticketResult.json?.ticket === 'string'
+            ? ticketResult.json.ticket.trim()
+            : '';
+        if (!ticket) {
+          throw new Error('WS ticket response did not include ticket.');
+        }
+        wsUrl.searchParams.set('ticket', ticket);
+      }
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const socket = new WebSocket(wsUrl.toString(), {
+      headers: options.headers || {}
+    });
     const timer = setTimeout(() => {
       reject(new Error('WebSocket open timeout'));
     }, 3000);
@@ -64,7 +158,11 @@ function openWebSocket(url) {
     });
     socket.addEventListener('error', error => {
       clearTimeout(timer);
-      reject(error);
+      const message =
+        error?.message ||
+        error?.error?.message ||
+        String(error && error.type ? error.type : error);
+      reject(new Error(message));
     });
   });
 }
@@ -124,6 +222,7 @@ function waitForWebSocketMessage(
 
 module.exports = {
   getJson,
+  issueWsTicket,
   openWebSocket,
   postJson,
   startTestServer,

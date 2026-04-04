@@ -4,9 +4,69 @@
     <meta charset="UTF-8" />
     <title>Agent World</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 10%, #325f31, #0f1a0f 60%);
+        color: #f2f7ff;
+      }
+
+      #app-shell {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #connection-status {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 2;
+        border-radius: 999px;
+        padding: 6px 12px;
+        border: 1px solid #c7d2fe;
+        font-size: 12px;
+        letter-spacing: 0.2px;
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      #connection-status[data-state='live'] {
+        border-color: #7dd3fc;
+        color: #bae6fd;
+      }
+
+      #connection-status[data-state='reconnecting'] {
+        border-color: #fcd34d;
+        color: #fef3c7;
+      }
+
+      #connection-status[data-state='error'] {
+        border-color: #fca5a5;
+        color: #fee2e2;
+      }
+
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="app-shell">
+      <div id="connection-status" data-state="connecting">Connecting...</div>
+      <div id="root"></div>
+    </div>
     <script src="main.js" type="module"></script>
   </body>
 </html>

@@ -5,15 +5,20 @@
   "type": "commonjs",
   "scripts": {
     "test": "npm run test:all",
-    "test:unit": "node --test test/paperclipAdapter.test.js test/eventsPipeline.test.js",
+    "test:unit": "node --test test/paperclipAdapter.test.js test/eventsPipeline.test.js test/paperclipSync.test.js test/frontendConnectionConfig.test.js test/avatarRuntime.test.js test/ensurePlaywrightChromium.test.js test/wsTicketStore.test.js",
     "test:request": "node --test test/eventsApi.request.test.js",
-    "test:integration": "node --test test/eventsApi.integration.test.js",
-    "test:e2e": "node --test test/eventsApi.e2e.test.js",
+    "test:integration": "node --test test/eventsApi.integration.test.js test/frontendRuntime.integration.test.js",
+    "test:e2e:browser:bootstrap": "node test/helpers/ensurePlaywrightChromium.cjs",
+    "test:e2e:browser": "node test/helpers/runPlaywrightBrowserTest.cjs",
+    "test:e2e": "node --test test/eventsApi.e2e.test.js test/frontendSmoke.e2e.test.js && npm run test:e2e:browser",
     "test:smoke": "npm run test:unit && npm run test:request && npm run test:integration && npm run test:e2e",
     "test:all": "npm run test:smoke"
   },
   "dependencies": {
     "express": "^4.19.2",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0"
   }
 }

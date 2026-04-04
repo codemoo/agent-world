@@ -7,6 +7,7 @@ const {
   startTestServer,
   stopTestServer
 } = require('./helpers/testServer');
+const { createWsTicketStore } = require('../server/wsTicketStore');
 
 let runtime;
 
@@ -41,12 +42,216 @@ test('/events 성공 응답은 고정 계약(status/processed/events)을 따른�
   });
 });
 
+test('/events는 인증 토큰이 없으면 401을 반환한다', async () => {
+  const { response, json } = await postJson(
+    runtime.baseUrl,
+    '/events',
+    {
+      event_type: 'run_started',
+      agent_id: 'agent-no-auth',
+      run_id: 'run-no-auth'
+    },
+    { auth: false }
+  );
+
+  assert.equal(response.status, 401);
+  assert.equal(json.error, 'Authentication required.');
+  assert.equal(json.details[0].code, 'AUTH_REQUIRED');
+});
+
+test('/state는 인증 토큰이 잘못되면 403을 반환한다', async () => {
+  const { response, json } = await getJson(runtime.baseUrl, '/state', {
+    auth: 'wrong-token'
+  });
+
+  assert.equal(response.status, 403);
+  assert.equal(json.error, 'Forbidden.');
+  assert.equal(json.details[0].code, 'INVALID_TOKEN');
+});
+
+test('api token 설정값에 공백이 있어도 trim 후 인증한다', async () => {
+  const trimmedRuntime = await startTestServer({
+    security: {
+      apiToken: 'trimmed-token   '
+    }
+  });
+
+  try {
+    const { response } = await getJson(trimmedRuntime.baseUrl, '/state', {
+      auth: 'trimmed-token'
+    });
+    assert.equal(response.status, 200);
+  } finally {
+    await stopTestServer(trimmedRuntime);
+  }
+});
+
+test('공백만 있는 api token 설정은 서버 시작을 거부한다', async () => {
+  await assert.rejects(
+    () =>
+      startTestServer({
+        security: {
+          apiToken: '   '
+        }
+      }),
+    /AGENT_WORLD_API_TOKEN is required/
+  );
+});
+
+test('/auth/ws-ticket는 인증 토큰이 없으면 401을 반환한다', async () => {
+  const { response, json } = await postJson(
+    runtime.baseUrl,
+    '/auth/ws-ticket',
+    {},
+    { auth: false }
+  );
+
+  assert.equal(response.status, 401);
+  assert.equal(json.error, 'Authentication required.');
+  assert.equal(json.details[0].code, 'AUTH_REQUIRED');
+});
+
+test('/auth/ws-ticket는 인증 토큰이 유효하면 201과 단기 티켓을 반환한다', async () => {
+  const { response, json } = await postJson(
+    runtime.baseUrl,
+    '/auth/ws-ticket',
+    {}
+  );
+
+  assert.equal(response.status, 201);
+  assert.equal(json.status, 'ok');
+  assert.equal(typeof json.ticket, 'string');
+  assert.equal(json.ticket.length > 10, true);
+  assert.equal(typeof json.ttlMs, 'number');
+  assert.equal(typeof json.expiresAt, 'string');
+});
+
+test('CORS preflight는 허용 Origin만 승인한다', async () => {
+  const corsRuntime = await startTestServer({
+    security: {
+      corsAllowedOrigins: ['https://allowed.example']
+    }
+  });
+
+  try {
+    const allowedResponse = await fetch(`${corsRuntime.baseUrl}/auth/ws-ticket`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://allowed.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization,content-type'
+      }
+    });
+    assert.equal(allowedResponse.status, 204);
+    assert.equal(
+      allowedResponse.headers.get('access-control-allow-origin'),
+      'https://allowed.example'
+    );
+    assert.match(allowedResponse.headers.get('vary') || '', /Origin/);
+
+    const deniedResponse = await fetch(`${corsRuntime.baseUrl}/auth/ws-ticket`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://denied.example',
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization,content-type'
+      }
+    });
+    const deniedJson = await deniedResponse.json();
+    assert.equal(deniedResponse.status, 403);
+    assert.equal(deniedJson.error, 'Forbidden.');
+    assert.equal(deniedJson.details[0].code, 'CORS_ORIGIN_FORBIDDEN');
+  } finally {
+    await stopTestServer(corsRuntime);
+  }
+});
+
+test('/auth/ws-ticket는 티켓 충돌 고갈 시 503 + 안정 코드를 반환한다', async () => {
+  const collisionRuntime = await startTestServer({
+    createWsTicketStore: wsOptions =>
+      createWsTicketStore({
+        ...wsOptions,
+        now: () => 1000,
+        randomBytes: () => Buffer.alloc(24, 9)
+      })
+  });
+
+  try {
+    const first = await postJson(collisionRuntime.baseUrl, '/auth/ws-ticket', {});
+    assert.equal(first.response.status, 201);
+
+    const second = await postJson(collisionRuntime.baseUrl, '/auth/ws-ticket', {});
+    assert.equal(second.response.status, 503);
+    assert.equal(second.json.error, 'WS ticket issuance failed.');
+    assert.equal(
+      second.json.details[0].code,
+      'WS_TICKET_COLLISION_LIMIT_EXCEEDED'
+    );
+  } finally {
+    await stopTestServer(collisionRuntime);
+  }
+});
+
 test('요청 바디가 빈 배열이면 400으로 거부한다', async () => {
   const { response, json } = await postJson(runtime.baseUrl, '/events', []);
 
   assert.equal(response.status, 400);
   assert.equal(json.error, 'Event array must not be empty.');
   assert.equal(json.details[0].index, 0);
+});
+
+test('/events는 배치 상한을 초과하면 413으로 거부한다', async () => {
+  const limitedRuntime = await startTestServer({
+    security: { maxEventBatchSize: 1 }
+  });
+
+  try {
+    const { response, json } = await postJson(limitedRuntime.baseUrl, '/events', [
+      {
+        event_type: 'run_started',
+        agent_id: 'agent-batch-1',
+        run_id: 'run-batch-1'
+      },
+      {
+        event_type: 'run_started',
+        agent_id: 'agent-batch-2',
+        run_id: 'run-batch-2'
+      }
+    ]);
+
+    assert.equal(response.status, 413);
+    assert.equal(json.error, 'Event batch exceeds the configured limit.');
+    assert.equal(json.details[0].code, 'EVENT_BATCH_LIMIT_EXCEEDED');
+  } finally {
+    await stopTestServer(limitedRuntime);
+  }
+});
+
+test('rate limit 초과 시 429를 반환한다', async () => {
+  const limitedRuntime = await startTestServer({
+    security: {
+      rateLimitWindowMs: 60_000,
+      maxRequestsPerWindow: 2
+    }
+  });
+
+  try {
+    const first = await getJson(limitedRuntime.baseUrl, '/state');
+    const second = await getJson(limitedRuntime.baseUrl, '/state');
+    const third = await getJson(limitedRuntime.baseUrl, '/state');
+
+    assert.equal(first.response.status, 200);
+    assert.equal(second.response.status, 200);
+    assert.equal(third.response.status, 429);
+    assert.equal(third.json.error, 'Too many requests.');
+    assert.equal(third.json.details[0].code, 'RATE_LIMITED');
+    assert.equal(
+      Number(third.response.headers.get('retry-after')) > 0,
+      true
+    );
+  } finally {
+    await stopTestServer(limitedRuntime);
+  }
 });
 
 test('run_started/run_completed에서 run_id 누락 시 400으로 거부한다', async () => {
@@ -104,4 +309,121 @@ test('잘못된 JSON body는 { error, details } 포맷으로 반환한다', asyn
   assert.equal(Array.isArray(json.details), true);
   assert.equal(json.details[0].code, 'MALFORMED_JSON');
   assert.equal(json.details[0].error, 'Malformed JSON body.');
+});
+
+test('Paperclip 수동 동기화 API는 비활성 상태에서 503을 반환한다', async () => {
+  const { response, json } = await postJson(runtime.baseUrl, '/sync/paperclip', {});
+
+  assert.equal(response.status, 503);
+  assert.match(json.error, /Paperclip polling is disabled/);
+});
+
+test('Paperclip 수동 동기화 API는 inbox-lite를 이벤트로 정규화해 반영한다', async () => {
+  const syncRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'task-sync-1',
+            identifier: 'MOO-999',
+            title: '동기화 테스트 태스크',
+            status: 'in_progress',
+            assigneeAgentId: 'agent-sync-1',
+            updatedAt: '2026-04-02T10:00:00.000Z'
+          }
+        ]
+      })
+    }
+  });
+
+  try {
+    const syncResult = await postJson(
+      syncRuntime.baseUrl,
+      '/sync/paperclip',
+      {}
+    );
+    assert.equal(syncResult.response.status, 200);
+    assert.equal(syncResult.json.fetched, 1);
+    assert.equal(syncResult.json.emitted, 1);
+
+    const stateResult = await getJson(syncRuntime.baseUrl, '/state');
+    assert.equal(
+      stateResult.json.data.agents['agent-sync-1'].tasks[0].id,
+      'task-sync-1'
+    );
+    assert.equal(stateResult.json.data.avatars['agent-sync-1'].state, 'working');
+    assert.equal(
+      stateResult.json.data.avatars['agent-sync-1'].bubbleText,
+      '동기화 테스트 태스크'
+    );
+  } finally {
+    await stopTestServer(syncRuntime);
+  }
+});
+
+test('Paperclip 동기화에서 blocked 상태는 task_paused로 반영되어 아바타가 idle로 복귀한다', async () => {
+  const responses = [
+    [
+      {
+        id: 'task-sync-blocked',
+        identifier: 'MOO-1000',
+        title: '외부 확인 대기',
+        status: 'in_progress',
+        assigneeAgentId: 'agent-sync-blocked',
+        updatedAt: '2026-04-02T10:05:00.000Z'
+      }
+    ],
+    [
+      {
+        id: 'task-sync-blocked',
+        identifier: 'MOO-1000',
+        title: '외부 확인 대기',
+        status: 'blocked',
+        assigneeAgentId: 'agent-sync-blocked',
+        updatedAt: '2026-04-02T10:06:00.000Z'
+      }
+    ]
+  ];
+
+  const syncRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => responses.shift() || []
+      })
+    }
+  });
+
+  try {
+    const firstSync = await postJson(syncRuntime.baseUrl, '/sync/paperclip', {});
+    assert.equal(firstSync.response.status, 200);
+    assert.equal(firstSync.json.emitted, 1);
+
+    const blockedSync = await postJson(syncRuntime.baseUrl, '/sync/paperclip', {});
+    assert.equal(blockedSync.response.status, 200);
+    assert.equal(blockedSync.json.emitted, 1);
+
+    const stateResult = await getJson(syncRuntime.baseUrl, '/state');
+    const agent = stateResult.json.data.agents['agent-sync-blocked'];
+    const avatar = stateResult.json.data.avatars['agent-sync-blocked'];
+
+    assert.equal(agent.tasks[0].status, 'blocked');
+    assert.equal(agent.activity, 'idle');
+    assert.equal(avatar.state, 'idle');
+    assert.equal(avatar.moving, true);
+    assert.equal(avatar.bubbleText, '');
+  } finally {
+    await stopTestServer(syncRuntime);
+  }
 });

@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  WORLD_WIDTH,
+  WORLD_HEIGHT,
   normalizePaperclipEvent,
   validatePaperclipEvent,
   handlePaperclipEvent
@@ -85,6 +87,85 @@ test('task lifecycle 시나리오(생성->할당->도구호출->완료->run 완�
   const run = worldState.runs['run-1'];
   assert.equal(run.status, 'completed');
   assert.deepEqual(run.taskIds, ['task-1']);
+
+  assert.equal(worldState.world.width, WORLD_WIDTH);
+  assert.equal(worldState.world.height, WORLD_HEIGHT);
+  assert.equal(worldState.world.tiles.length, WORLD_HEIGHT);
+  assert.equal(worldState.world.tiles[0].length, WORLD_WIDTH);
+
+  const avatar = worldState.avatars['agent-1'];
+  assert.equal(Boolean(avatar), true);
+  assert.equal(avatar.agentId, 'agent-1');
+  assert.equal(avatar.state, 'idle');
+  assert.equal(avatar.moving, true);
+  assert.equal(avatar.bubbleText, '');
+});
+
+test('작업 시작 시 아바타가 정지하고 말풍선을 표시한다', () => {
+  const worldState = createWorldState();
+  const created = {
+    event_type: 'task_created',
+    agent_id: 'agent-bubble',
+    task_id: 'task-bubble',
+    timestamp: '2026-04-02T00:10:00.000Z',
+    payload: { label: '회귀 테스트 작성' }
+  };
+  handlePaperclipEvent(created, worldState);
+
+  const avatar = worldState.avatars['agent-bubble'];
+  assert.equal(avatar.state, 'working');
+  assert.equal(avatar.moving, false);
+  assert.equal(avatar.currentTaskId, 'task-bubble');
+  assert.equal(avatar.bubbleText, '회귀 테스트 작성');
+
+  const completed = {
+    event_type: 'task_completed',
+    agent_id: 'agent-bubble',
+    task_id: 'task-bubble',
+    timestamp: '2026-04-02T00:11:00.000Z'
+  };
+  handlePaperclipEvent(completed, worldState);
+
+  assert.equal(avatar.state, 'idle');
+  assert.equal(avatar.moving, true);
+  assert.equal(avatar.bubbleText, '');
+});
+
+test('task_paused(blocked) 이벤트는 작업 상태를 비활성으로 전환한다', () => {
+  const worldState = createWorldState();
+
+  handlePaperclipEvent(
+    {
+      event_type: 'task_assigned',
+      agent_id: 'agent-blocked',
+      task_id: 'task-blocked',
+      timestamp: '2026-04-02T00:20:00.000Z',
+      payload: { label: '승인 대기 이슈' }
+    },
+    worldState
+  );
+
+  handlePaperclipEvent(
+    {
+      event_type: 'task_paused',
+      agent_id: 'agent-blocked',
+      task_id: 'task-blocked',
+      timestamp: '2026-04-02T00:21:00.000Z',
+      payload: { issue_status: 'blocked' }
+    },
+    worldState
+  );
+
+  const agent = worldState.agents['agent-blocked'];
+  const task = agent.tasks.find(item => item.id === 'task-blocked');
+  const avatar = worldState.avatars['agent-blocked'];
+
+  assert.equal(task.status, 'blocked');
+  assert.equal(agent.activity, 'idle');
+  assert.equal(agent.zone, 'blocked');
+  assert.equal(avatar.state, 'idle');
+  assert.equal(avatar.moving, true);
+  assert.equal(avatar.bubbleText, '');
 });
 
 test('task event에 task_id가 없으면 검증 에러를 낸다', () => {

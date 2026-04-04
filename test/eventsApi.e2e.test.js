@@ -21,6 +21,10 @@ test.after(async () => {
 
 test('E2E: WebSocket 클라이언트가 /events 반영 결과를 실시간 수신한다', async () => {
   const socket = await openWebSocket(runtime.wsUrl);
+  const parsedUrl = new URL(socket.url);
+  assert.equal(typeof parsedUrl.searchParams.get('ticket'), 'string');
+  assert.equal(parsedUrl.searchParams.get('ticket').length > 0, true);
+  assert.equal(parsedUrl.searchParams.get('token'), null);
 
   try {
     const pushedStatePromise = waitForWebSocketMessage(
@@ -50,4 +54,11 @@ test('E2E: WebSocket 클라이언트가 /events 반영 결과를 실시간 수�
   } finally {
     socket.close();
   }
+});
+
+test('E2E: WebSocket은 인증 토큰 없이 연결할 수 없다', async () => {
+  await assert.rejects(
+    () => openWebSocket(runtime.wsUrl, { auth: false }),
+    /401|Unauthorized|Unexpected server response/
+  );
 });

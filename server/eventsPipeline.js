@@ -50,6 +50,8 @@ function processIncomingEvents(input, worldState, options = {}) {
     typeof options.applyEvent === 'function'
       ? options.applyEvent
       : applyPaperclipEvent;
+  const afterEachApply =
+    typeof options.afterEachApply === 'function' ? options.afterEachApply : null;
   const rawEvents = normalizeEventBatch(input);
   const normalizedEvents = [];
   const errors = [];
@@ -73,6 +75,9 @@ function processIncomingEvents(input, worldState, options = {}) {
   try {
     normalizedEvents.forEach(event => {
       applyEvent(event, worldState);
+      if (afterEachApply) {
+        afterEachApply(worldState, event);
+      }
     });
   } catch (error) {
     replaceState(worldState, snapshot);
