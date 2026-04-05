@@ -1308,11 +1308,40 @@ export default class WorldMap {
     this.editor = null;
     this.editorState = null;
 
+    // Sky overlay mode: 'day' (no tint), 'night' (fixed night tint),
+    // 'clock' (follow real time). Persisted per browser.
+    const savedMode = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agent-world.sky-mode') : null;
+    this.skyMode = (savedMode === 'night' || savedMode === 'clock') ? savedMode : 'day';
+
     this.canvas.style.display = 'block';
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
     this.canvas.style.cursor = 'pointer';
     this.root.appendChild(this.canvas);
+
+    // Sky mode cycler — tiny button in the top-right that toggles
+    // day → night → live clock → day.
+    const skyBtn = document.createElement('button');
+    skyBtn.id = 'sky-mode-toggle';
+    skyBtn.title = 'Cycle sky mode (Day / Night / Live clock)';
+    const skyLabels = { day: '☀️ Day', night: '🌙 Night', clock: '🕐 Live' };
+    const cycle = { day: 'night', night: 'clock', clock: 'day' };
+    const refresh = () => { skyBtn.textContent = skyLabels[this.skyMode]; };
+    Object.assign(skyBtn.style, {
+      position: 'fixed', top: '12px', right: '232px', zIndex: 10,
+      padding: '6px 10px', borderRadius: '6px',
+      background: 'rgba(15,23,42,0.85)', border: '1px solid #94a3b8',
+      color: '#e2e8f0', fontSize: '12px', cursor: 'pointer',
+      fontFamily: 'inherit'
+    });
+    skyBtn.addEventListener('click', () => {
+      this.setSkyMode(cycle[this.skyMode]);
+      refresh();
+    });
+    refresh();
+    document.body.appendChild(skyBtn);
+    this.skyBtn = skyBtn;
 
     this.handleResize = this.handleResize.bind(this);
     this.handleClick = this.handleClick.bind(this);
@@ -1996,11 +2025,23 @@ export default class WorldMap {
     const displayName = avatar.displayName || avatar.id;
 
     // Activity label above the agent (always visible, Smallville style).
-    // Trim whitespace so blanks don't produce empty bubble boxes.
+    // If an ambient chat line is active, that takes priority over the
+    // static activity text — keeps the world feeling lively without
+    // stacking two bubbles on one agent.
     const rawBubble = (avatar.bubbleText || '').trim();
-    const activityText = rawBubble || (avatar.state === 'working' ? 'working...' : '');
+    const chatText = avatar.chat && avatar.chat.expiresAt > timestamp
+      ? avatar.chat.text : '';
+    const activityText = chatText || rawBubble ||
+      (avatar.state === 'working' ? 'working...' : '');
     if (activityText) {
-      this.drawActivityLabel(centerX, centerY - this.tileSize * 0.7 - 6, activityText, avatar.state === 'working');
+      this.drawActivityLabel(
+        centerX,
+        centerY - this.tileSize * 0.7 - 6,
+        activityText,
+        // Chat bubbles are styled like idle — the working amber only
+        // applies to actual task labels.
+        !chatText && avatar.state === 'working'
+      );
     }
 
     // Name label below the agent — outlined text (no background box), so
@@ -2337,16 +2378,17 @@ export default class WorldMap {
   }
 
   // Render a 💬 between any pair of agents within 2 tiles of each
-  // other. Gives a quick visual signal that they're close enough to
-  // "interact" without cluttering the canvas.
+  // other — but only if neither agent has an active chat bubble yet.
+  // When they do start exchanging dialogue, the emoji gives way to
+  // the actual bubble text so the canvas stays readable.
   drawAgentInteractions(timestamp) {
     const agents = Array.from(this.avatarRuntime.values());
     if (agents.length < 2) return;
     const ts = this.tileSize;
-    const NEAR = 2; // Chebyshev tiles
+    const NEAR = 2;
     const seen = new Set();
     const ctx = this.context;
-    const bob = Math.sin(timestamp / 400) * 1.5; // subtle bounce
+    const bob = Math.sin(timestamp / 400) * 1.5;
     ctx.font = `${Math.max(12, Math.floor(ts * 0.55))}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -2354,17 +2396,18 @@ export default class WorldMap {
       for (let j = i + 1; j < agents.length; j++) {
         const a = agents[i];
         const b = agents[j];
+        const aChat = a.chat && a.chat.expiresAt > timestamp;
+        const bChat = b.chat && b.chat.expiresAt > timestamp;
+        if (aChat || bChat) continue; // real dialogue already visible
         const dx = Math.abs(a.x - b.x);
         const dy = Math.abs(a.y - b.y);
         if (dx > NEAR || dy > NEAR) continue;
-        if (dx === 0 && dy === 0) continue; // stacked
+        if (dx === 0 && dy === 0) continue;
         const key = `${Math.min(a.x, b.x)},${Math.min(a.y, b.y)}-${Math.max(a.x, b.x)},${Math.max(a.y, b.y)}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        // Emoji position: midpoint between the two agents, a bit above.
         const mx = this.offsetX + ((a.x + b.x) / 2 + 0.5) * ts;
         const my = this.offsetY + ((a.y + b.y) / 2 + 0.5) * ts - ts * 1.0 + bob;
-        // Subtle white halo for legibility
         ctx.fillStyle = 'rgba(255,255,255,0.7)';
         ctx.beginPath();
         ctx.arc(mx, my, ts * 0.4, 0, Math.PI * 2);
@@ -2374,11 +2417,20 @@ export default class WorldMap {
     }
   }
 
-  // Day/night color tint based on the real clock. Keyframed around
-  // dawn/golden-hour/dusk/night so the world visibly breathes over
-  // the course of a day.
+  setSkyMode(mode) {
+    if (mode !== 'day' && mode !== 'night' && mode !== 'clock') return;
+    this.skyMode = mode;
+    try { localStorage.setItem('agent-world.sky-mode', mode); } catch (_) {}
+    this.render(performance.now());
+  }
+
+  // Day/night color tint. In 'clock' mode keyframes follow the real
+  // clock; 'night' pins the midnight tint; 'day' renders no overlay.
   drawSkyOverlay(now = new Date()) {
-    const h = now.getHours() + now.getMinutes() / 60;
+    if (this.skyMode === 'day') return;
+    const h = this.skyMode === 'night'
+      ? 0  // pin to the midnight keyframe
+      : now.getHours() + now.getMinutes() / 60;
     // RGBA keyframes at specific hours. Alpha=0 means "no tint".
     const KEYFRAMES = [
       [0,  [10, 15, 50, 0.45]],

@@ -1,4 +1,12 @@
+import { pickDialogue } from './agentDialogues.mjs';
+
 const BASE_MOVE_INTERVAL_MS = 380;
+
+// Ambient chat tuning
+const CHAT_PROXIMITY = 2;          // Chebyshev tiles — within = eligible
+const CHAT_LINE_DURATION_MS = 4500; // how long a line stays visible
+const CHAT_COOLDOWN_MS = 9000;      // per-agent cooldown between lines
+const CHAT_START_CHANCE = 0.35;     // chance to speak per eligible tick
 
 // Movement vectors — reduced idle probability (1 in 8 instead of 1 in 5)
 const MOVES = [
@@ -317,6 +325,42 @@ function pickStationForState(runtime, stations, rng, claimedStationIds, lastStat
   };
 }
 
+// Expire any chat lines past their TTL, then — with a small chance
+// per tick — let two nearby agents exchange a random one-liner from
+// the dialogue pool.
+function updateAgentChats(avatarRuntime, timestamp, rng) {
+  // 1) expire lines
+  avatarRuntime.forEach(runtime => {
+    if (runtime.chat && runtime.chat.expiresAt <= timestamp) {
+      runtime.chat = null;
+    }
+  });
+
+  // 2) find nearby pairs
+  const agents = Array.from(avatarRuntime.values());
+  if (agents.length < 2) return;
+  for (let i = 0; i < agents.length; i++) {
+    const a = agents[i];
+    if (a.chat) continue;
+    if (a.chatCooldownUntil && timestamp < a.chatCooldownUntil) continue;
+    for (let j = 0; j < agents.length; j++) {
+      if (i === j) continue;
+      const b = agents[j];
+      const dx = Math.abs(a.x - b.x);
+      const dy = Math.abs(a.y - b.y);
+      if (dx > CHAT_PROXIMITY || dy > CHAT_PROXIMITY) continue;
+      if (dx === 0 && dy === 0) continue; // stacked = ignore
+      // Gate by a chance so agents don't spam lines every frame.
+      if (rng() > CHAT_START_CHANCE) continue;
+      const bucket = Math.floor(timestamp / 2000);
+      const line = pickDialogue(a.id || String(i), bucket);
+      a.chat = { text: line, expiresAt: timestamp + CHAT_LINE_DURATION_MS };
+      a.chatCooldownUntil = timestamp + CHAT_COOLDOWN_MS;
+      break; // one partner per tick is enough
+    }
+  }
+}
+
 export function advanceAvatarRuntimeEntries(
   avatarRuntime,
   dimensions,
@@ -328,6 +372,11 @@ export function advanceAvatarRuntimeEntries(
 ) {
   const width = Number.isInteger(dimensions?.width) ? dimensions.width : 30;
   const height = Number.isInteger(dimensions?.height) ? dimensions.height : 30;
+
+  // Ambient chat: expire stale lines + let nearby agents greet each
+  // other. Runs before movement so the current-tick chat state is
+  // rendered alongside the resulting positions.
+  updateAgentChats(avatarRuntime, timestamp, rng);
 
   // Collect which stations are currently claimed (targeted or occupied) so
   // routing picks different ones for each agent.
