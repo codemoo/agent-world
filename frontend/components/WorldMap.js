@@ -2090,6 +2090,10 @@ export default class WorldMap {
       this.drawAvatar(avatar, timestamp);
     });
 
+    // Layer 4.5: Interaction markers — 💬 between agents that are within
+    // 2 tiles of each other. Visual hint that they're "meeting".
+    this.drawAgentInteractions(timestamp);
+
     // Layer 5: Roofs intentionally omitted — interiors are always visible so
     // agents can be seen working at stations. Walls are drawn as part of
     // drawBuildingInterior (Layer 2). If a non-location building has no
@@ -2103,6 +2107,9 @@ export default class WorldMap {
 
     // Layer 6: Location name signs above buildings
     this.drawLocationSigns(layout, timestamp);
+
+    // Layer 6.5: Day/night sky tint over the world
+    this.drawSkyOverlay();
 
     // Layer 7: UI overlays — time display and agent roster
     this.drawTimeDisplay(timestamp);
@@ -2300,6 +2307,101 @@ export default class WorldMap {
     }
   }
 
+  // Render a 💬 between any pair of agents within 2 tiles of each
+  // other. Gives a quick visual signal that they're close enough to
+  // "interact" without cluttering the canvas.
+  drawAgentInteractions(timestamp) {
+    const agents = Array.from(this.avatarRuntime.values());
+    if (agents.length < 2) return;
+    const ts = this.tileSize;
+    const NEAR = 2; // Chebyshev tiles
+    const seen = new Set();
+    const ctx = this.context;
+    const bob = Math.sin(timestamp / 400) * 1.5; // subtle bounce
+    ctx.font = `${Math.max(12, Math.floor(ts * 0.55))}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < agents.length; i++) {
+      for (let j = i + 1; j < agents.length; j++) {
+        const a = agents[i];
+        const b = agents[j];
+        const dx = Math.abs(a.x - b.x);
+        const dy = Math.abs(a.y - b.y);
+        if (dx > NEAR || dy > NEAR) continue;
+        if (dx === 0 && dy === 0) continue; // stacked
+        const key = `${Math.min(a.x, b.x)},${Math.min(a.y, b.y)}-${Math.max(a.x, b.x)},${Math.max(a.y, b.y)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        // Emoji position: midpoint between the two agents, a bit above.
+        const mx = this.offsetX + ((a.x + b.x) / 2 + 0.5) * ts;
+        const my = this.offsetY + ((a.y + b.y) / 2 + 0.5) * ts - ts * 1.0 + bob;
+        // Subtle white halo for legibility
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.beginPath();
+        ctx.arc(mx, my, ts * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText('💬', mx, my + 1);
+      }
+    }
+  }
+
+  // Day/night color tint based on the real clock. Keyframed around
+  // dawn/golden-hour/dusk/night so the world visibly breathes over
+  // the course of a day.
+  drawSkyOverlay(now = new Date()) {
+    const h = now.getHours() + now.getMinutes() / 60;
+    // RGBA keyframes at specific hours. Alpha=0 means "no tint".
+    const KEYFRAMES = [
+      [0,  [10, 15, 50, 0.45]],
+      [5,  [40, 25, 70, 0.38]],
+      [6,  [255, 140, 80, 0.22]],
+      [7,  [255, 200, 150, 0.08]],
+      [9,  [0, 0, 0, 0]],
+      [16, [0, 0, 0, 0]],
+      [17, [255, 180, 100, 0.10]],
+      [18, [255, 100, 50, 0.22]],
+      [19, [150, 40, 90, 0.34]],
+      [20, [40, 25, 80, 0.40]],
+      [22, [10, 15, 55, 0.45]],
+      [24, [10, 15, 50, 0.45]]
+    ];
+    // Find the segment containing the current hour
+    let prev = KEYFRAMES[0], next = KEYFRAMES[KEYFRAMES.length - 1];
+    for (let i = 0; i < KEYFRAMES.length - 1; i++) {
+      if (h >= KEYFRAMES[i][0] && h <= KEYFRAMES[i + 1][0]) {
+        prev = KEYFRAMES[i];
+        next = KEYFRAMES[i + 1];
+        break;
+      }
+    }
+    const span = next[0] - prev[0] || 1;
+    const t = (h - prev[0]) / span;
+    const lerp = (a, b) => a + (b - a) * t;
+    const [r, g, b, a] = prev[1].map((v, i) => lerp(v, next[1][i]));
+    if (a <= 0.002) return; // daytime — skip
+
+    const ctx = this.context;
+    const canvasWidth = Number.parseInt(this.canvas.style.width || '0', 10) || 0;
+    const canvasHeight = Number.parseInt(this.canvas.style.height || '0', 10) || 0;
+    ctx.fillStyle = `rgba(${r|0}, ${g|0}, ${b|0}, ${a})`;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Scatter a few stars at deep-night tints.
+    if (a > 0.33 && r < 60) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      // Deterministic "star field" based on minute so it doesn't
+      // jitter every frame.
+      const seed = now.getHours() * 60 + now.getMinutes();
+      for (let i = 0; i < 40; i++) {
+        const hash = ((seed + i * 2654435761) >>> 0);
+        const sx = (hash % 1000) / 1000 * canvasWidth;
+        const sy = ((hash >>> 10) % 1000) / 1000 * (canvasHeight * 0.5);
+        const size = ((hash >>> 20) % 3) + 1;
+        ctx.fillRect(sx, sy, size, size);
+      }
+    }
+  }
+
   drawTimeDisplay(timestamp) {
     const context = this.context;
     // Real current time display
@@ -2402,8 +2504,15 @@ export default class WorldMap {
     const canvasWidth = Number.parseInt(this.canvas.style.width || '0', 10) || 0;
     const canvasHeight = Number.parseInt(this.canvas.style.height || '0', 10) || 0;
 
-    const panelW = Math.min(260, canvasWidth * 0.35);
-    const panelH = 160;
+    // Look up the full server-side agent (tasks, tools, zone).
+    const serverAgent = this.state?.agents?.[agent.id] || null;
+    const recentTasks = serverAgent && Array.isArray(serverAgent.tasks)
+      ? [...serverAgent.tasks].sort((a, b) => String(b.updatedAt || '').localeCompare(a.updatedAt || '')).slice(0, 3)
+      : [];
+
+    const panelW = Math.min(300, canvasWidth * 0.38);
+    const taskLinesCount = recentTasks.length;
+    const panelH = 170 + (taskLinesCount > 0 ? 24 + taskLinesCount * 16 : 0);
     const panelX = 12;
     const panelY = canvasHeight - panelH - 12;
 
@@ -2453,10 +2562,45 @@ export default class WorldMap {
       context.fillText(line, panelX + 12, panelY + 88 + i * 14);
     });
 
+    // Tool + zone row
+    let rowY = panelY + 88 + activityLines.length * 14 + 6;
+    if (serverAgent) {
+      context.fillStyle = 'rgba(148, 163, 184, 0.8)';
+      context.font = '9px Menlo, monospace';
+      const tool = serverAgent.lastTool || '—';
+      const zone = serverAgent.zone || 'idle';
+      context.fillText(`Tool: ${tool}   Zone: ${zone}`, panelX + 12, rowY);
+      rowY += 14;
+    }
+
+    // Recent tasks
+    if (recentTasks.length > 0) {
+      context.fillStyle = 'rgba(148, 163, 184, 0.8)';
+      context.font = '10px Menlo, monospace';
+      context.fillText('Recent tasks:', panelX + 12, rowY + 8);
+      rowY += 20;
+      for (const task of recentTasks) {
+        const status = task.status || '';
+        const color =
+          status === 'completed' ? '#34d399' :
+          status === 'in_progress' || status === 'assigned' ? '#fbbf24' :
+          status === 'blocked' || status === 'paused' ? '#f87171' : '#94a3b8';
+        context.fillStyle = color;
+        context.beginPath();
+        context.arc(panelX + 16, rowY, 3, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = COLORS.panelText;
+        context.font = '10px Menlo, monospace';
+        const label = (task.label || task.id || '').slice(0, 30);
+        context.fillText(label, panelX + 24, rowY + 3);
+        rowY += 16;
+      }
+    }
+
     // Position
     context.fillStyle = 'rgba(148, 163, 184, 0.6)';
     context.font = '9px Menlo, monospace';
-    context.fillText(`Position: (${agent.x}, ${agent.y})`, panelX + 12, panelY + panelH - 16);
+    context.fillText(`Position: (${agent.x}, ${agent.y})`, panelX + 12, panelY + panelH - 8);
 
     // Highlight selected agent on map
     const ax = this.offsetX + agent.x * this.tileSize + this.tileSize / 2;
