@@ -92,7 +92,7 @@ async function loadSheets() {
     state.sheets = data.sheets || [];
     applyFilter();
   } catch (error) {
-    toast(`시트 목록 로드 실패: ${error.message}`, true);
+    toast(`Failed to load sheet list: ${error.message}`, true);
   }
 }
 
@@ -137,7 +137,7 @@ async function selectSheet(sheetId) {
     state.sheet = data.sheet;
     renderSheetDetails();
   } catch (error) {
-    toast(`시트 로드 실패: ${error.message}`, true);
+    toast(`Failed to load sheet: ${error.message}`, true);
   }
 }
 
@@ -422,9 +422,9 @@ window.addEventListener('mouseup', async event => {
     renderPropEditor();
     el.propCount.textContent = state.sheet.props.length;
     drawOverlay();
-    toast('Prop 추가됨');
+    toast('Prop added');
   } catch (error) {
-    toast(`Prop 추가 실패: ${error.message}`, true);
+    toast(`Failed to add prop: ${error.message}`, true);
     drawOverlay();
   }
 });
@@ -458,9 +458,9 @@ el.saveSheet.addEventListener('click', async () => {
     state.sheet = sheet;
     refreshSheetListEntry();
     drawOverlay();
-    toast('시트 저장됨');
+    toast('Sheet saved');
   } catch (error) {
-    toast(`시트 저장 실패: ${error.message}`, true);
+    toast(`Failed to save sheet: ${error.message}`, true);
   }
 });
 
@@ -468,7 +468,7 @@ el.autoSlice.addEventListener('click', async () => {
   if (!state.sheet) return;
   if (
     state.sheet.props.length > 0 &&
-    !confirm('기존 props를 그리드로 덮어씁니다. 계속?')
+    !confirm('This will overwrite existing props with a fresh grid. Continue?')
   ) {
     return;
   }
@@ -494,9 +494,9 @@ el.autoSlice.addEventListener('click', async () => {
     renderPropsList();
     renderPropEditor();
     drawOverlay();
-    toast(`${sheet.props.length}개 prop 생성됨`);
+    toast(`Created ${sheet.props.length} props`);
   } catch (error) {
-    toast(`자동 분할 실패: ${error.message}`, true);
+    toast(`Auto-slice failed: ${error.message}`, true);
   }
 });
 
@@ -520,15 +520,15 @@ el.savePropBtn.addEventListener('click', async () => {
     renderPropsList();
     renderPropEditor();
     drawOverlay();
-    toast('Prop 저장됨');
+    toast('Prop saved');
   } catch (error) {
-    toast(`Prop 저장 실패: ${error.message}`, true);
+    toast(`Failed to save prop: ${error.message}`, true);
   }
 });
 
 el.deletePropBtn.addEventListener('click', async () => {
   if (!state.sheet || !state.selectedPropId) return;
-  if (!confirm('이 prop을 삭제하시겠습니까?')) return;
+  if (!confirm('Delete this prop?')) return;
   try {
     await api(
       'DELETE',
@@ -549,9 +549,9 @@ el.deletePropBtn.addEventListener('click', async () => {
     renderPropsList();
     renderPropEditor();
     drawOverlay();
-    toast('Prop 삭제됨');
+    toast('Prop deleted');
   } catch (error) {
-    toast(`Prop 삭제 실패: ${error.message}`, true);
+    toast(`Failed to delete prop: ${error.message}`, true);
   }
 });
 

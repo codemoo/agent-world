@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Agent World — 애셋 관리</title>
+    <title>Agent World — Assets</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       :root {
@@ -207,15 +207,15 @@
   </head>
   <body>
     <header>
-      <h1>애셋 관리</h1>
+      <h1>Assets</h1>
       <div class="links">
-        <a href="/">← 월드 보기</a>
+        <a href="/">← Back to world</a>
       </div>
     </header>
     <div id="layout">
       <aside id="sheetList">
         <div class="filter">
-          <input type="search" id="sheetFilter" placeholder="파일명으로 필터..." />
+          <input type="search" id="sheetFilter" placeholder="Filter by filename…" />
         </div>
         <ul id="sheetListItems"></ul>
       </aside>
@@ -232,28 +232,28 @@
         </div>
       </main>
       <aside id="details">
-        <div class="info" id="emptyDetails">시트를 선택하세요.</div>
+        <div class="info" id="emptyDetails">Select a sheet.</div>
         <div id="sheetDetails" hidden>
           <h2 id="sheetName"></h2>
           <div class="info" id="sheetDims"></div>
 
-          <label>설명
+          <label>Description
             <textarea id="sheetDescription"></textarea>
           </label>
-          <label>카테고리
+          <label>Category
             <select id="sheetCategory">
-              <option value="tileset_object">타일셋 (오브젝트)</option>
-              <option value="tileset_autotile">타일셋 (오토타일)</option>
-              <option value="character_sheet">캐릭터 시트</option>
-              <option value="icons">아이콘</option>
-              <option value="unknown">미분류</option>
+              <option value="tileset_object">Tileset (objects)</option>
+              <option value="tileset_autotile">Tileset (autotiles)</option>
+              <option value="character_sheet">Character sheet</option>
+              <option value="icons">Icons</option>
+              <option value="unknown">Uncategorized</option>
             </select>
           </label>
-          <label>메모
+          <label>Notes
             <textarea id="sheetNotes" rows="2"></textarea>
           </label>
 
-          <h3>그리드 설정</h3>
+          <h3>Grid settings</h3>
           <div class="row">
             <label>Cols <input type="number" id="gridCols" min="1" max="512" /></label>
             <label>Rows <input type="number" id="gridRows" min="1" max="512" /></label>
@@ -263,24 +263,24 @@
             <label>CellH <input type="number" id="gridCellH" min="1" max="4096" /></label>
           </div>
           <div class="btnRow">
-            <button id="saveSheet" class="primary">저장</button>
-            <button id="autoSlice">그리드로 자동 분할</button>
+            <button id="saveSheet" class="primary">Save</button>
+            <button id="autoSlice">Auto-slice by grid</button>
           </div>
 
-          <h3>그룹 (<span id="groupCount">0</span>)</h3>
-          <div class="info">캐릭터 시트는 각 캐릭터 블록이 하나의 그룹(12프레임 = 3프레임×4방향). 그룹을 클릭하면 멤버 props가 캔버스에 강조됨.</div>
+          <h3>Groups (<span id="groupCount">0</span>)</h3>
+          <div class="info">For character sheets each block is one group (12 frames = 3 frames × 4 directions). Clicking a group highlights member props on the canvas.</div>
           <div id="groupsList"></div>
 
           <h3>Props (<span id="propCount">0</span>)</h3>
-          <div class="info">캔버스에서 드래그해 새 prop을 만들거나, 아래 목록에서 선택해 편집.</div>
+          <div class="info">Drag on the canvas to create a new prop, or pick one below to edit.</div>
           <div id="propsList"></div>
 
-          <h3>선택된 Prop</h3>
+          <h3>Selected Prop</h3>
           <div id="propEditor">
-            <div class="info" id="noPropSelected">선택된 prop이 없습니다.</div>
+            <div class="info" id="noPropSelected">No prop selected.</div>
             <div id="propFields" hidden>
-              <label>이름 <input type="text" id="propName" /></label>
-              <label>설명 <textarea id="propDescription" rows="2"></textarea></label>
+              <label>Name <input type="text" id="propName" /></label>
+              <label>Description <textarea id="propDescription" rows="2"></textarea></label>
               <div class="row">
                 <label>X <input type="number" id="propX" min="0" /></label>
                 <label>Y <input type="number" id="propY" min="0" /></label>
@@ -290,8 +290,8 @@
                 <label>H <input type="number" id="propH" min="1" /></label>
               </div>
               <div class="btnRow">
-                <button id="savePropBtn" class="primary">Prop 저장</button>
-                <button id="deletePropBtn" class="danger">삭제</button>
+                <button id="savePropBtn" class="primary">Save prop</button>
+                <button id="deletePropBtn" class="danger">Delete</button>
               </div>
             </div>
           </div>

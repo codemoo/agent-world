@@ -57,7 +57,7 @@ The server serves both the frontend and the API on the same port
 
 ### Try the editor
 
-1. Click **편집 모드 (E)** in the top-right (or press `E`).
+1. Click **Edit (E)** in the top-right (or press `E`).
 2. Pick a category tab (trees / indoor stations / outdoor stations),
    click a sprite thumbnail, then click on the map to place it.
 3. Click an existing item to select it. Drag to move. Use `↔` / `↕` to

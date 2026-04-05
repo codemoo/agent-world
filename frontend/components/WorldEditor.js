@@ -146,7 +146,7 @@ export default class WorldEditor {
         fontFamily: 'inherit'
       },
       onclick: () => this.toggle()
-    }, '✏️ 편집 (E)');
+    }, '✏️ Edit (E)');
     document.body.appendChild(this.toggleButton);
 
     this.panel = h('div', {
@@ -217,7 +217,7 @@ export default class WorldEditor {
       if (e.key === 'Escape') {
         if (this.pendingAdd) {
           this.pendingAdd = null;
-          this._setStatus('배치 취소');
+          this._setStatus('Cancelled placement');
         } else if (this.selection) {
           this.selection = null;
         }
@@ -259,7 +259,7 @@ export default class WorldEditor {
       this.dragging = null;
       if (moved) {
         this._pushHistory();
-        this._setStatus('이동');
+        this._setStatus('Moved');
       }
       this._render();
     };
@@ -354,7 +354,7 @@ export default class WorldEditor {
       this.worldMap.setEditorMode(this.isEditMode, this);
     }
     if (wasOff && !this.layout) {
-      this._render();  // show "로딩 중..." immediately
+      this._render();  // show "Loading..." immediately
       await this._fetchLayout();
     }
     this._render();
@@ -381,11 +381,11 @@ export default class WorldEditor {
         indoor: this.layout.indoorStations.length,
         outdoor: this.layout.outdoorStations.length
       });
-      this._setStatus('로드 완료');
+      this._setStatus('Loaded');
     } catch (err) {
       console.error('[WorldEditor] fetch failed', url, err);
       this.loadError = err.message || String(err);
-      this._setStatus(`로드 실패: ${this.loadError}`);
+      this._setStatus(`Load failed: ${this.loadError}`);
     }
   }
 
@@ -403,12 +403,12 @@ export default class WorldEditor {
       if (!res.ok) throw new Error(body.details?.[0]?.message || `HTTP ${res.status}`);
       this.originalLayout = deepClone(body.data);
       this.layout = deepClone(body.data);
-      this._setStatus('✓ 저장됨');
+      this._setStatus('✓ Saved');
       this._render();
       this._syncCanvas();
     } catch (err) {
       console.error('[WorldEditor] save failed', err);
-      this._setStatus(`저장 실패: ${err.message}`);
+      this._setStatus(`Save failed: ${err.message}`);
     }
   }
 
@@ -417,7 +417,7 @@ export default class WorldEditor {
     this.layout = deepClone(this.originalLayout);
     this.selection = null;
     this._resetHistory();
-    this._setStatus('되돌림');
+    this._setStatus('Reverted');
     this._render();
     this._syncCanvas();
   }
@@ -447,7 +447,7 @@ export default class WorldEditor {
   }
 
   _undo() {
-    if (this.historyIndex <= 0) { this._setStatus('되돌릴 내용 없음'); return; }
+    if (this.historyIndex <= 0) { this._setStatus('Nothing to undo'); return; }
     this.historyIndex--;
     this.layout = deepClone(this.history[this.historyIndex]);
     this.selection = null;
@@ -457,7 +457,7 @@ export default class WorldEditor {
   }
 
   _redo() {
-    if (this.historyIndex >= this.history.length - 1) { this._setStatus('다시 실행 내용 없음'); return; }
+    if (this.historyIndex >= this.history.length - 1) { this._setStatus('Nothing to redo'); return; }
     this.historyIndex++;
     this.layout = deepClone(this.history[this.historyIndex]);
     this.selection = null;
@@ -494,7 +494,7 @@ export default class WorldEditor {
     }
     this.selection = null;
     this._pushHistory();
-    this._setStatus('삭제');
+    this._setStatus('Deleted');
     this._render();
     this._syncCanvas();
   }
@@ -508,7 +508,7 @@ export default class WorldEditor {
     if (!obj.flipX) delete obj.flipX;
     if (!obj.flipY) delete obj.flipY;
     this._pushHistory();
-    this._setStatus(`반전 ${axis === 'x' ? '좌↔우' : '상↕하'}`);
+    this._setStatus(`Flipped ${axis === 'x' ? 'H ↔' : 'V ↕'}`);
     this._render();
     this._syncCanvas();
   }
@@ -555,7 +555,7 @@ export default class WorldEditor {
     const W = worldState?.world?.width || 30;
     const H = worldState?.world?.height || 30;
     if (tx < 0 || ty < 0 || tx >= W || ty >= H) {
-      this._setStatus('월드 범위 밖에는 배치할 수 없어요');
+      this._setStatus('Out of world bounds');
       this._render();
       return;
     }
@@ -574,11 +574,11 @@ export default class WorldEditor {
       let loc;
       if (locationId) {
         loc = locs.find(l => l.id === locationId);
-        if (!loc) { this._setStatus('건물을 찾을 수 없음'); this._render(); return; }
+        if (!loc) { this._setStatus('Building not found'); this._render(); return; }
       } else {
         loc = locs.find(l => tx >= l.x && tx < l.x + l.w && ty >= l.y && ty < l.y + l.h);
         if (!loc) {
-          this._setStatus('실내 스테이션은 건물 내부에만 배치 가능');
+          this._setStatus('Indoor stations must go inside a building');
           this._render();
           return;
         }
@@ -593,7 +593,7 @@ export default class WorldEditor {
     }
     this.pendingAdd = null;
     this._pushHistory();
-    this._setStatus('추가됨');
+    this._setStatus('Added');
     this._render();
     this._syncCanvas();
   }
@@ -667,20 +667,20 @@ export default class WorldEditor {
     });
     this.floater.appendChild(h('button', {
       style: btnStyle(obj.flipX ? '#f97316' : '#94a3b8'),
-      onclick: () => this._flipSelected('x'), title: '좌우 반전 (F)'
+      onclick: () => this._flipSelected('x'), title: 'Flip horizontal (F)'
     }, '↔'));
     this.floater.appendChild(h('button', {
       style: btnStyle(obj.flipY ? '#f97316' : '#94a3b8'),
-      onclick: () => this._flipSelected('y'), title: '상하 반전 (Shift+F)'
+      onclick: () => this._flipSelected('y'), title: 'Flip vertical (Shift+F)'
     }, '↕'));
     this.floater.appendChild(h('button', {
       style: btnStyle('#ef4444'),
-      onclick: () => this._deleteSelected(), title: '삭제 (Del)'
+      onclick: () => this._deleteSelected(), title: 'Delete (Del)'
     }, '🗑'));
     this.floater.appendChild(h('button', {
       style: btnStyle('#94a3b8'),
       onclick: () => { this.selection = null; this._render(); this._syncCanvas(); },
-      title: '선택 해제 (Esc)'
+      title: 'Deselect (Esc)'
     }, '✕'));
   }
 
@@ -704,7 +704,7 @@ export default class WorldEditor {
         this.panel.appendChild(h('div', {
           style: { padding: '20px', color: '#fca5a5', lineHeight: '1.6' }
         }, [
-          h('strong', {}, '로드 실패'),
+          h('strong', {}, 'Load failed'),
           h('br'),
           h('pre', { style: { whiteSpace: 'pre-wrap', marginTop: '8px', fontSize: '11px' } }, this.loadError),
           h('br'),
@@ -714,10 +714,10 @@ export default class WorldEditor {
               this.loadError = null; this._render();
               await this._fetchLayout(); this._render(); this._syncCanvas();
             }
-          }, '다시 시도')
+          }, 'Retry')
         ]));
       } else {
-        this.panel.appendChild(h('div', { style: { padding: '20px' } }, '로딩 중...'));
+        this.panel.appendChild(h('div', { style: { padding: '20px' } }, 'Loading...'));
       }
       return;
     }
@@ -740,7 +740,7 @@ export default class WorldEditor {
         display: 'flex', justifyContent: 'space-between'
       }
     }, [
-      h('span', {}, this.statusText || '클릭: 선택 · 드래그: 이동 · Del: 삭제 · Ctrl+Z: Undo'),
+      h('span', {}, this.statusText || 'Click: select · Drag: move · Del: delete · Ctrl+Z: undo'),
       h('span', { style: { color: '#64748b' } }, `v${EDITOR_VERSION}`)
     ]);
     this.panel.appendChild(this.statusEl);
@@ -758,9 +758,9 @@ export default class WorldEditor {
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px' } }, [
         h('button', {
           style: this._btn('#f97316', { padding: '3px 8px' }),
-          onclick: () => this.toggle(), title: '편집 모드 종료 (E)'
+          onclick: () => this.toggle(), title: 'Close editor (E)'
         }, '✕'),
-        h('strong', { style: { fontSize: '13px' } }, '월드 에디터')
+        h('strong', { style: { fontSize: '13px' } }, 'World Editor')
       ]),
       h('div', { style: { display: 'flex', gap: '4px' } }, [
         h('button', {
@@ -774,11 +774,11 @@ export default class WorldEditor {
         h('button', {
           style: this._btn('#6b7280'),
           onclick: () => this._revert(), title: 'Revert all changes'
-        }, '되돌리기'),
+        }, 'Revert'),
         h('button', {
           style: this._btn('#22c55e'),
           onclick: () => this._saveLayout(), title: 'Ctrl+S'
-        }, this._isDirty() ? '저장 *' : '저장')
+        }, this._isDirty() ? 'Save *' : 'Save')
       ])
     ]);
   }
@@ -786,9 +786,9 @@ export default class WorldEditor {
   _renderTabs() {
     const tabs = h('div', { style: { display: 'flex', borderBottom: '1px solid #334155' } });
     const specs = [
-      ['trees', '나무', this.layout.trees.length],
-      ['indoor', '실내', this.layout.indoorStations.length],
-      ['outdoor', '야외', this.layout.outdoorStations.length]
+      ['trees', 'Trees', this.layout.trees.length],
+      ['indoor', 'Indoor', this.layout.indoorStations.length],
+      ['outdoor', 'Outdoor', this.layout.outdoorStations.length]
     ];
     for (const [tab, label, count] of specs) {
       tabs.appendChild(h('button', {
@@ -815,13 +815,13 @@ export default class WorldEditor {
       style: { padding: '6px 10px', display: 'flex', gap: '6px',
         alignItems: 'center', fontSize: '10px', color: '#94a3b8' }
     });
-    headerRow.appendChild(h('span', { style: { flex: '1' } }, '+ 새 항목 (클릭해서 배치)'));
+    headerRow.appendChild(h('span', { style: { flex: '1' } }, '+ New item (click a thumbnail, then click the map)'));
 
     let locSelect = null;
     if (this.activeTab === 'indoor') {
       const locs = this.worldMap?.state?.world?.locations || [];
       locSelect = h('select', { style: this._input({ fontSize: '10px' }) },
-        [h('option', { value: '' }, '건물 자동 감지'),
+        [h('option', { value: '' }, 'Auto-detect building'),
          ...locs.map(l => h('option', { value: l.id }, l.id))]);
       headerRow.appendChild(locSelect);
     }
@@ -852,7 +852,7 @@ export default class WorldEditor {
         onclick: () => {
           this.pendingAdd = { kind, type };
           if (kind === 'indoor' && locSelect?.value) this.pendingAdd.locationId = locSelect.value;
-          this._setStatus(`${type} — 맵 클릭해서 배치 (Esc 취소)`);
+          this._setStatus(`${type} — click the map to place (Esc to cancel)`);
           this._render();
           this._syncCanvas();
         }
@@ -931,7 +931,7 @@ export default class WorldEditor {
     }
 
     if (items.length === 0) {
-      container.appendChild(h('div', { style: { padding: '16px', color: '#64748b', textAlign: 'center' } }, '비어있음'));
+      container.appendChild(h('div', { style: { padding: '16px', color: '#64748b', textAlign: 'center' } }, 'Empty'));
       return container;
     }
     for (const item of items) {
@@ -978,15 +978,15 @@ export default class WorldEditor {
       h('span', { style: { fontSize: '11px', color: '#fbbf24', fontWeight: 'bold', flex: '1' } }, `${kind}: ${obj.type}`),
       h('button', {
         style: this._btn(obj.flipX ? '#f97316' : '#94a3b8', { padding: '2px 8px' }),
-        onclick: () => this._flipSelected('x'), title: 'F — 좌우 반전'
+        onclick: () => this._flipSelected('x'), title: 'F — flip horizontal'
       }, '↔'),
       h('button', {
         style: this._btn(obj.flipY ? '#f97316' : '#94a3b8', { padding: '2px 8px' }),
-        onclick: () => this._flipSelected('y'), title: 'Shift+F — 상하 반전'
+        onclick: () => this._flipSelected('y'), title: 'Shift+F — flip vertical'
       }, '↕'),
       h('button', {
         style: this._btn('#ef4444', { padding: '2px 8px' }),
-        onclick: () => this._deleteSelected(), title: 'Del — 삭제'
+        onclick: () => this._deleteSelected(), title: 'Del — delete'
       }, '🗑')
     ]);
     inspector.appendChild(quickRow);
@@ -1022,7 +1022,7 @@ export default class WorldEditor {
         const taken = this._takenIds(kind);
         taken.delete(obj.id);
         if (taken.has(newId)) {
-          this._setStatus(`❌ 중복 id: ${newId}`);
+          this._setStatus(`❌ duplicate id: ${newId}`);
           idInput.value = obj.id;
           return;
         }

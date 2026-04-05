@@ -2170,7 +2170,7 @@ export default class WorldMap {
       ctx.fillStyle = 'rgba(251,191,36,0.95)';
       ctx.font = '13px Menlo, monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`배치: ${pendingAdd.type} — 클릭해서 배치, Esc 취소`, this.offsetX + 8, this.offsetY - 14);
+      ctx.fillText(`Placing: ${pendingAdd.type} — click to drop, Esc to cancel`, this.offsetX + 8, this.offsetY - 14);
     }
   }
 
