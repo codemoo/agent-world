@@ -7,6 +7,8 @@ living RPG-style world — characters walk between buildings, station
 themselves at desks / fishing spots / mining quarries, and carry the
 labels of whatever task they are currently working on.
 
+![Agent World live demo](demo/demo-world.gif)
+
 Inspired by **Park et al., "Generative Agents: Interactive Simulacra of
 Human Behavior"** ([paper](https://arxiv.org/abs/2304.03442) ·
 [original repo](https://github.com/joonspk-research/generative_agents)).
@@ -57,12 +59,22 @@ The server serves both the frontend and the API on the same port
 
 ### Try the editor
 
+![World editor demo](demo/demo-editor.gif)
+
 1. Click **Edit (E)** in the top-right (or press `E`).
 2. Pick a category tab (trees / indoor stations / outdoor stations),
    click a sprite thumbnail, then click on the map to place it.
 3. Click an existing item to select it. Drag to move. Use `↔` / `↕` to
    flip, `🗑` to delete, arrow keys to nudge.
 4. `Ctrl+Z` / `Ctrl+Shift+Z` undo/redo. `Ctrl+S` saves to disk.
+
+### Assets manager
+
+![Assets manager demo](demo/demo-assets.gif)
+
+Visit `/assets-manager` (link in the top-right of the main page) to
+browse the sprite sheets, tweak grid settings, and curate the per-cell
+props + groups that feed the world editor's palette.
 
 ---
 
