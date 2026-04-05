@@ -1977,8 +1977,22 @@ export default class WorldMap {
 
     // When seated, nudge the sprite down + slightly smaller so the agent
     // visually settles into the chair / bed they're paused at.
-    const seatShiftY = avatar.seated ? this.tileSize * 0.18 : 0;
+    const baseSeatShift = avatar.seated ? this.tileSize * 0.18 : 0;
     const seatScale = avatar.seated ? 0.88 : 1;
+    // Gentle breathing wobble while seated — 2s period, ±1px amplitude.
+    // Per-agent phase offset so groups don't bob in sync.
+    let breathShift = 0;
+    if (avatar.seated) {
+      const phase = (hashString(avatar.id || '') & 0xffff) / 0xffff * Math.PI * 2;
+      breathShift = Math.sin(timestamp / 1100 + phase) * 1.1;
+    }
+    // Talking but not seated: small lean-forward bob as they speak.
+    let talkShift = 0;
+    if (avatar.talking && !avatar.seated) {
+      const phase = (hashString((avatar.id || '') + 't') & 0xffff) / 0xffff * Math.PI * 2;
+      talkShift = Math.sin(timestamp / 600 + phase) * 0.6;
+    }
+    const seatShiftY = baseSeatShift + breathShift + talkShift;
 
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(
@@ -2165,10 +2179,6 @@ export default class WorldMap {
     this.avatarRuntime.forEach(avatar => {
       this.drawAvatar(avatar, timestamp);
     });
-
-    // Layer 4.5: Interaction markers — 💬 between agents that are within
-    // 2 tiles of each other. Visual hint that they're "meeting".
-    this.drawAgentInteractions(timestamp);
 
     // Layer 5: Roofs intentionally omitted — interiors are always visible so
     // agents can be seen working at stations. Walls are drawn as part of
@@ -2466,45 +2476,6 @@ export default class WorldMap {
   }
 
   // Render a 💬 between any pair of agents within 2 tiles of each
-  // other — but only if neither agent has an active chat bubble yet.
-  // When they do start exchanging dialogue, the emoji gives way to
-  // the actual bubble text so the canvas stays readable.
-  drawAgentInteractions(timestamp) {
-    const agents = Array.from(this.avatarRuntime.values());
-    if (agents.length < 2) return;
-    const ts = this.tileSize;
-    const NEAR = 2;
-    const seen = new Set();
-    const ctx = this.context;
-    const bob = Math.sin(timestamp / 400) * 1.5;
-    ctx.font = `${Math.max(12, Math.floor(ts * 0.55))}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    for (let i = 0; i < agents.length; i++) {
-      for (let j = i + 1; j < agents.length; j++) {
-        const a = agents[i];
-        const b = agents[j];
-        const aChat = a.chat && a.chat.expiresAt > timestamp;
-        const bChat = b.chat && b.chat.expiresAt > timestamp;
-        if (aChat || bChat) continue; // real dialogue already visible
-        const dx = Math.abs(a.x - b.x);
-        const dy = Math.abs(a.y - b.y);
-        if (dx > NEAR || dy > NEAR) continue;
-        if (dx === 0 && dy === 0) continue;
-        const key = `${Math.min(a.x, b.x)},${Math.min(a.y, b.y)}-${Math.max(a.x, b.x)},${Math.max(a.y, b.y)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const mx = this.offsetX + ((a.x + b.x) / 2 + 0.5) * ts;
-        const my = this.offsetY + ((a.y + b.y) / 2 + 0.5) * ts - ts * 1.0 + bob;
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        ctx.beginPath();
-        ctx.arc(mx, my, ts * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillText('💬', mx, my + 1);
-      }
-    }
-  }
-
   setSkyMode(mode) {
     if (mode !== 'day' && mode !== 'night' && mode !== 'clock') return;
     this.skyMode = mode;
