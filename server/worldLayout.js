@@ -22,7 +22,10 @@ const fs = require('fs');
 const path = require('path');
 
 const LAYOUT_VERSION = 1;
-const DEFAULT_LAYOUT_PATH = path.join(__dirname, '..', 'world-layout.json');
+// Lives under data/ so the repo root stays clean. Each clone seeds its
+// own copy on first server start and the file is gitignored — users keep
+// their local edits without polluting git history.
+const DEFAULT_LAYOUT_PATH = path.join(__dirname, '..', 'data', 'world-layout.json');
 
 function isRecord(v) {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -141,6 +144,9 @@ function loadLayout(filePath = DEFAULT_LAYOUT_PATH) {
 function saveLayout(layout, filePath = DEFAULT_LAYOUT_PATH) {
   validateLayout(layout);
   const normalized = normalizeLayout(layout);
+  // Ensure parent dir exists so the first seed write doesn't fail on a
+  // fresh clone.
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = `${filePath}.tmp.${process.pid}.${Date.now()}`;
   fs.writeFileSync(tmp, JSON.stringify(normalized, null, 2), 'utf8');
   fs.renameSync(tmp, filePath);

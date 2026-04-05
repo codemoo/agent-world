@@ -22,6 +22,11 @@ output.log
 test-results/
 playwright-report/
 
+# Per-install world layout — auto-seeded on first server start from
+# adapter/paperclipAdapter.js + adapter/treeGenerator.js defaults. Users
+# keep their local edits; the repo doesn't ship a baseline.
+data/world-layout.json
+
 # Paperclip Files
 MEMORY.md
 memory

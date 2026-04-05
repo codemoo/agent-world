@@ -30,7 +30,7 @@ Human Behavior"** ([paper](https://arxiv.org/abs/2304.03442) ·
   on the same tile.
 - **Built-in world editor** — in-browser panel (toggle with `E`) to
   place, move, flip or delete trees and stations. Edits are persisted
-  to `world-layout.json` via a REST API and reflected live.
+  to `data/world-layout.json` via a REST API and reflected live.
 - **Asset manager UI** — `/assets-manager` to browse the sprite sheets
   and curate per-cell props + groups.
 - **Mobile friendly** — responsive tile sizing, full-width slide-over
@@ -82,7 +82,7 @@ props + groups that feed the world editor's palette.
 
 | Package | Purpose |
 | --- | --- |
-| `server/` | Express + `ws` server. Hosts the API, serves the frontend, persists `world-layout.json`, polls Paperclip, exposes the asset manager. |
+| `server/` | Express + `ws` server. Hosts the API, serves the frontend, persists `data/world-layout.json`, polls Paperclip, exposes the asset manager. |
 | `adapter/` | Translates external agent events (Paperclip today) into the internal world model. Owns the building / station / outdoor-spot definitions. |
 | `frontend/` | Browser canvas client. Renders tiles, buildings, avatars, speech bubbles, and hosts the world editor. |
 | `test/` | Node test-runner + Playwright suites for the event API, avatar runtime, editor round-trips, and frontend smoke. |
@@ -170,10 +170,11 @@ Event ingestion contract: [`server/EVENTS.md`](server/EVENTS.md).
 
 ## World layout editor
 
-The editor stores its state in `world-layout.json` at the repo root.
-On first boot the server seeds the file from the in-code defaults
-(`adapter/paperclipAdapter.js`, `adapter/treeGenerator.js`). After
-that the JSON is the source of truth.
+The editor stores its state in `data/world-layout.json`. The file is
+**gitignored** — on first server start the file is auto-seeded from the
+in-code defaults (`adapter/paperclipAdapter.js`,
+`adapter/treeGenerator.js`), and from then on it is the source of truth
+for that particular install. Each clone keeps its own edits.
 
 - `GET  /api/world/layout` — returns the current layout
 - `PUT  /api/world/layout` — replaces it (validated server-side)
