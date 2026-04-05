@@ -1953,12 +1953,15 @@ export default class WorldMap {
     if (!sheet) return false;
 
     const direction = avatar.direction || 'down';
-    const walkPhase = avatar.moving
-      ? Math.floor(timestamp / WALK_FRAME_INTERVAL_MS) % 2
-      : null;
+    // Suppress walk frames when the agent is seated (arrived at a
+    // station) or talking (chat-paused). Both render the idle frame.
+    const isStill = avatar.seated || avatar.talking || !avatar.moving;
+    const walkPhase = isStill
+      ? null
+      : Math.floor(timestamp / WALK_FRAME_INTERVAL_MS) % 2;
 
     const dirRow = { down: 0, left: 1, right: 2, up: 3 }[direction] || 0;
-    const frameCol = avatar.moving ? (walkPhase === 0 ? 0 : 2) : 1;
+    const frameCol = isStill ? 1 : (walkPhase === 0 ? 0 : 2);
 
     const baseCol = (charInSheet % 4) * 3;
     const baseRow = Math.floor(charInSheet / 4) * 4;
@@ -1972,14 +1975,19 @@ export default class WorldMap {
     const centerX = this.offsetX + avatar.x * this.tileSize + this.tileSize / 2;
     const centerY = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
 
+    // When seated, nudge the sprite down + slightly smaller so the agent
+    // visually settles into the chair / bed they're paused at.
+    const seatShiftY = avatar.seated ? this.tileSize * 0.18 : 0;
+    const seatScale = avatar.seated ? 0.88 : 1;
+
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(
       sheet,
       sx, sy, cellW, cellH,
-      Math.floor(centerX - this.tileSize * 0.48),
-      Math.floor(centerY - this.tileSize * 0.62),
-      Math.ceil(this.tileSize * 0.96),
-      Math.ceil(this.tileSize * 1.24)
+      Math.floor(centerX - this.tileSize * 0.48 * seatScale),
+      Math.floor(centerY - this.tileSize * 0.62 * seatScale + seatShiftY),
+      Math.ceil(this.tileSize * 0.96 * seatScale),
+      Math.ceil(this.tileSize * 1.24 * seatScale)
     );
 
     return true;
