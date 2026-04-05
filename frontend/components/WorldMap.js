@@ -2032,24 +2032,37 @@ export default class WorldMap {
     // --- Generative Agents-style labels ---
     const displayName = avatar.displayName || avatar.id;
 
-    // Activity label above the agent (always visible, Smallville style).
-    // If an ambient chat line is active, that takes priority over the
-    // static activity text — keeps the world feeling lively without
-    // stacking two bubbles on one agent.
+    // Two independent bubbles so conversations read clearly:
+    //   • chat bubble   → white/navy speech style, close to the head
+    //   • activity bubble → cream/brown, stacked above (muted if chat
+    //                        is active)
     const rawBubble = (avatar.bubbleText || '').trim();
     const chatText = avatar.chat && avatar.chat.expiresAt > timestamp
       ? avatar.chat.text : '';
-    const activityText = chatText || rawBubble ||
+    const activityText = rawBubble ||
       (avatar.state === 'working' ? 'working...' : '');
+    const chatBubbleY = centerY - this.tileSize * 0.7 - 6;
+    // When a chat bubble is showing we lift the activity bubble above
+    // it and mute its appearance so focus stays on the conversation.
     if (activityText) {
-      this.drawActivityLabel(
-        centerX,
-        centerY - this.tileSize * 0.7 - 6,
-        activityText,
-        // Chat bubbles are styled like idle — the working amber only
-        // applies to actual task labels.
-        !chatText && avatar.state === 'working'
-      );
+      if (chatText) {
+        const chatHeight = Math.max(9, Math.floor(this.tileSize * 0.34)) + 14;
+        this.drawActivityLabel(
+          centerX,
+          chatBubbleY - chatHeight - 6,
+          activityText,
+          avatar.state === 'working',
+          { muted: true }
+        );
+      } else {
+        this.drawActivityLabel(
+          centerX, chatBubbleY, activityText,
+          avatar.state === 'working'
+        );
+      }
+    }
+    if (chatText) {
+      this.drawChatLabel(centerX, chatBubbleY, chatText);
     }
 
     // Name label below the agent — outlined text (no background box), so
@@ -2259,12 +2272,13 @@ export default class WorldMap {
     }
   }
 
-  drawActivityLabel(centerX, bottomY, text, isWorking) {
+  drawActivityLabel(centerX, bottomY, text, isWorking, options = null) {
     const context = this.context;
     // Defensive: skip blank/whitespace-only text so we never draw an
     // empty brown pill.
     const safeText = typeof text === 'string' ? text.trim() : '';
     if (!safeText) return;
+    const muted = Boolean(options && options.muted);
     const fontSize = Math.max(9, Math.floor(this.tileSize * 0.34));
     context.font = `${isWorking ? '600 ' : ''}${fontSize}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
     context.textAlign = 'center';
@@ -2281,6 +2295,8 @@ export default class WorldMap {
     const left = centerX - bubbleW / 2;
     const radius = Math.min(6, bubbleH / 2);
     const bodyFill = isWorking ? COLORS.bubbleBgWorking : COLORS.bubbleBg;
+
+    if (muted) context.globalAlpha = 0.55;
 
     // Drop shadow (slightly offset). beginPath() is required because
     // drawRoundedRect doesn't start a new path — without it, the path
@@ -2318,6 +2334,70 @@ export default class WorldMap {
 
     // Text
     context.fillStyle = COLORS.bubbleText;
+    context.fillText(displayText, centerX, top + bubbleH - padY - 1);
+
+    if (muted) context.globalAlpha = 1;
+  }
+
+  // Chat speech bubble — distinct from the activity label so viewers can
+  // tell what an agent is SAYING vs what they're DOING. White body,
+  // navy border, bigger font, longer tail pointing at the speaker.
+  drawChatLabel(centerX, bottomY, text) {
+    const context = this.context;
+    const safeText = typeof text === 'string' ? text.trim() : '';
+    if (!safeText) return;
+    const fontSize = Math.max(10, Math.floor(this.tileSize * 0.38));
+    context.font = `600 ${fontSize}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
+
+    const displayText = safeText.length > 32 ? safeText.slice(0, 30) + '…' : safeText;
+    const textWidth = context.measureText(displayText).width;
+    const padX = 10;
+    const padY = 6;
+    const bubbleW = textWidth + padX * 2;
+    const bubbleH = fontSize + padY * 2;
+    const tailH = 6;
+    const top = bottomY - bubbleH - tailH;
+    const left = centerX - bubbleW / 2;
+    const radius = Math.min(9, bubbleH / 2);
+    const bodyFill = '#fafdff';
+    const borderColor = '#1e40af';
+
+    // Shadow
+    context.fillStyle = 'rgba(20, 25, 40, 0.32)';
+    context.beginPath();
+    drawRoundedRect(context, left + 2, top + 3, bubbleW, bubbleH, radius);
+    context.fill();
+
+    // Tail triangle pointing down-center
+    const tailY = top + bubbleH;
+    context.fillStyle = bodyFill;
+    context.beginPath();
+    context.moveTo(centerX - 6, tailY - 1);
+    context.lineTo(centerX - 1, tailY + tailH);
+    context.lineTo(centerX + 6, tailY - 1);
+    context.closePath();
+    context.fill();
+    context.strokeStyle = borderColor;
+    context.lineWidth = 1.8;
+    context.stroke();
+
+    // Bubble body
+    context.fillStyle = bodyFill;
+    context.beginPath();
+    drawRoundedRect(context, left, top, bubbleW, bubbleH, radius);
+    context.fill();
+    context.strokeStyle = borderColor;
+    context.lineWidth = 1.8;
+    context.stroke();
+
+    // Seam cover between bubble & tail
+    context.fillStyle = bodyFill;
+    context.fillRect(centerX - 5, tailY - 1.5, 11, 2);
+
+    // Text
+    context.fillStyle = '#0f172a';
     context.fillText(displayText, centerX, top + bubbleH - padY - 1);
   }
 

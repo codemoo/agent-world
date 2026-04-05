@@ -1,75 +1,70 @@
-// Ambient chat lines agents randomly exchange when they pass close to
-// each other on the map. Pure flavour — no logic behind them. Mix of
-// greetings, dev-team banter, task updates, and casual asides.
+// Ambient chat lines agents exchange when they meet on the map.
+// Lines are grouped by category so conversations can follow a
+// coherent shape (greeting → reply → optional topic → reply) instead
+// of two random one-liners stuck next to each other.
 
-export const DIALOGUE_LINES = [
-  // Greetings
-  'Morning!',
+export const GREETINGS = [
   'Hey!',
+  'Morning!',
+  'Hi there!',
   "What's up?",
   "How's it going?",
-  'Hi there!',
   'Good to see you.',
-
-  // Work status
-  "How's the deploy?",
-  'Tests are green.',
-  'CI is flaky today.',
-  'Merge conflict again…',
-  'Let me rebase real quick.',
-  'Just shipped it.',
-  'Almost there.',
-  'Stuck on a bug.',
-  'Found the root cause!',
-  'The pipeline is clear.',
-  'Rollback in progress.',
-  'Traffic looks stable.',
-  'Cache is hot.',
-
-  // Collaboration
-  'Need any help?',
-  'Got a sec?',
-  'Can you review mine?',
-  'On it.',
-  'Pair on this?',
-  'Take the lead here.',
-  "I'll grab that ticket.",
-  'Thanks!',
-  'No problem.',
-  "Let's sync later.",
-  'Will ping you after.',
-
-  // Breaks & casual
-  'Coffee?',
-  'Taking a break.',
-  'Walking to the lounge.',
-  'Lunch?',
-  "I'll grab some water.",
-  'Back in five.',
-  'Need fresh air.',
-
-  // Reactions
-  'Nice work!',
-  'Clever fix.',
-  'Hmm, interesting…',
-  'That was tricky.',
-  'Big release coming.',
-  'The CEO is happy.',
-  "Let's refactor that later.",
-  'Good catch.',
-  'Ship it!',
-  "That's a rabbit hole.",
-  'Looks good to me.',
-
-  // Meetings
-  'Standup in 5.',
-  'Demo ready.',
-  'Retro at 4pm.',
-  'Room booked.',
-  'Joining the call.'
+  'Oh, hi!'
 ];
 
-// FNV-1a-ish quick hash for deterministic picks when we want them.
+export const GREETING_REPLIES = [
+  'Hey! Good to see you.',
+  'Morning!',
+  'Hi!',
+  'Going alright — you?',
+  'All good here.',
+  'Not bad, thanks.',
+  "Hey, how've you been?"
+];
+
+export const WORK_OPENERS = [
+  "How's the deploy?",
+  'Pipeline green?',
+  'Did you see the PR?',
+  'Need any help?',
+  'Got a sec for a review?',
+  "How's the task going?",
+  'Any blockers?',
+  "What's on your plate?"
+];
+
+export const WORK_REPLIES = [
+  'Shipping it shortly.',
+  'Tests are green.',
+  'Stuck on one edge case.',
+  'Yeah, merging soon.',
+  'Almost there.',
+  "I'll take a look after this.",
+  'Nothing urgent — thanks!',
+  'Will ping you later.'
+];
+
+export const CASUAL_OPENERS = [
+  'Coffee?',
+  'Lunch?',
+  'Break time?',
+  "Walkin' to the lounge.",
+  'Need fresh air.',
+  'Thinking of taking five.',
+  'Heading to the plaza.'
+];
+
+export const CASUAL_REPLIES = [
+  'Sure, I could use one.',
+  'Give me five minutes.',
+  'Go ahead, I’ll catch up.',
+  'Same, need a reset.',
+  'In a bit — finishing this.',
+  "I'll join you."
+];
+
+// FNV-1a-ish quick hash for deterministic picks.
 function hashToInt(str) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
@@ -79,8 +74,36 @@ function hashToInt(str) {
   return h >>> 0;
 }
 
-// Pick a dialogue line. `seed` (any string) gives a bit of per-agent
-// variety without making it fully predictable — we mix in a time bucket.
+function pick(pool, rng) {
+  return pool[Math.floor(rng() * pool.length)];
+}
+
+// Returns a scripted array of lines (2 or 4 items) representing an
+// alternating A/B conversation. rng drives both length and content.
+//   2-turn: greeting → reply
+//   4-turn: greeting → reply → topic → reply
+// 40% of conversations go long, split between work-topic + casual-topic.
+export function buildConversation(rng = Math.random) {
+  const isLong = rng() < 0.4;
+  const lines = [pick(GREETINGS, rng), pick(GREETING_REPLIES, rng)];
+  if (isLong) {
+    if (rng() < 0.55) {
+      lines.push(pick(WORK_OPENERS, rng), pick(WORK_REPLIES, rng));
+    } else {
+      lines.push(pick(CASUAL_OPENERS, rng), pick(CASUAL_REPLIES, rng));
+    }
+  }
+  return lines;
+}
+
+// Back-compat: seeded single-line picker (unused by the new logic but
+// kept in case other callers still want a deterministic one-liner).
+export const DIALOGUE_LINES = [
+  ...GREETINGS, ...GREETING_REPLIES,
+  ...WORK_OPENERS, ...WORK_REPLIES,
+  ...CASUAL_OPENERS, ...CASUAL_REPLIES
+];
+
 export function pickDialogue(seed = '', timeBucket = 0) {
   const h = hashToInt(`${seed}:${timeBucket}`);
   return DIALOGUE_LINES[h % DIALOGUE_LINES.length];

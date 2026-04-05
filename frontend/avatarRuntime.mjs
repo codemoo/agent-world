@@ -1,16 +1,17 @@
-import { pickDialogue } from './agentDialogues.mjs';
+import { buildConversation } from './agentDialogues.mjs';
 
 const BASE_MOVE_INTERVAL_MS = 380;
 
-// Ambient chat tuning — conversations have a fixed shape: TURNS
-// alternating lines, each shown for TURN_MS. Both participants pause
-// movement and turn to face each other for the full duration.
+// Ambient chat tuning — conversations are scripted by buildConversation:
+// 2 turns (short greeting exchange) or 4 turns (greeting → reply → topic
+// → reply). Both participants pause movement and turn to face each
+// other for the full duration.
 const CHAT_PROXIMITY = 2;           // Chebyshev tiles
-const CHAT_TURN_MS = 3500;          // seconds per line
-const CHAT_TURNS = 3;               // lines per conversation
-const CHAT_TAIL_MS = 500;           // linger on last speaker after final line
-const CHAT_COOLDOWN_MS = 6000;      // per-agent cooldown after a conversation
-const CHAT_START_CHANCE = 0.25;     // chance per eligible tick to start chat
+const CHAT_TURN_MS = 3500;          // milliseconds per line
+const CHAT_TAIL_MS = 600;           // linger on last speaker after final line
+const CHAT_COOLDOWN_MS = 6000;      // per-agent cooldown after any conversation
+const CHAT_PAIR_COOLDOWN_MS = 45000; // same pair can't re-chat for 45s
+const CHAT_START_CHANCE = 0.3;      // chance per eligible tick to start chat
 
 // Movement vectors — reduced idle probability (1 in 8 instead of 1 in 5)
 const MOVES = [
@@ -337,22 +338,20 @@ function faceDirection(dx, dy) {
 
 // Pair two agents into a scripted conversation: alternating lines, both
 // paused + facing each other for the full duration.
-function startConversation(a, b, timestamp) {
-  const endAt = timestamp + CHAT_TURN_MS * CHAT_TURNS + CHAT_TAIL_MS;
+function startConversation(a, b, timestamp, rng) {
+  const lines = buildConversation(rng);
+  const turns = lines.length; // 2 or 4
+  const endAt = timestamp + CHAT_TURN_MS * turns + CHAT_TAIL_MS;
   a.chatPauseUntil = endAt;
   b.chatPauseUntil = endAt;
   a.chatPartnerId = b.id || null;
   b.chatPartnerId = a.id || null;
   a.chatQueue = [];
   b.chatQueue = [];
-  for (let i = 0; i < CHAT_TURNS; i++) {
+  for (let i = 0; i < turns; i++) {
     const speaker = i % 2 === 0 ? a : b;
-    const line = pickDialogue(
-      (speaker.id || '') + ':' + i,
-      Math.floor(timestamp / 1000)
-    );
     speaker.chatQueue.push({
-      text: line,
+      text: lines[i],
       showAt: timestamp + i * CHAT_TURN_MS,
       expireAt: timestamp + (i + 1) * CHAT_TURN_MS
     });
@@ -365,6 +364,12 @@ function startConversation(a, b, timestamp) {
   // Abandon in-flight paths so they don't resume stepping mid-chat.
   a.path = null; a.pathIndex = 0;
   b.path = null; b.pathIndex = 0;
+  // Per-pair cooldown so the same duo doesn't re-chat immediately.
+  const until = endAt + CHAT_PAIR_COOLDOWN_MS;
+  if (!a.chatRecentPartners) a.chatRecentPartners = {};
+  if (!b.chatRecentPartners) b.chatRecentPartners = {};
+  if (b.id) a.chatRecentPartners[b.id] = until;
+  if (a.id) b.chatRecentPartners[a.id] = until;
 }
 
 // Step 1: expire finished conversations + surface the currently-active
@@ -409,7 +414,10 @@ function updateAgentChats(avatarRuntime, timestamp, rng) {
       if (dx > CHAT_PROXIMITY || dy > CHAT_PROXIMITY) continue;
       if (dx === 0 && dy === 0) continue;
       if (rng() > CHAT_START_CHANCE) continue;
-      startConversation(a, b, timestamp);
+      // Per-pair cooldown
+      const aRecent = a.chatRecentPartners && b.id ? a.chatRecentPartners[b.id] : 0;
+      if (aRecent && timestamp < aRecent) continue;
+      startConversation(a, b, timestamp, rng);
       break;
     }
   }
