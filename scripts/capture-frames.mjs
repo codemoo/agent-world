@@ -33,27 +33,30 @@ const SCENARIOS = {
     console.log('Settling world (3s)…');
     await page.waitForTimeout(3000);
     return {
-      durationMs: 10000,
+      durationMs: 11000,
       onCapture: async () => {
         await page.keyboard.press('e');
         await page.waitForTimeout(1200);
+        const bldgBtn = page.locator('button').filter({ hasText: /Bldgs \(/ });
+        if (await bldgBtn.count()) await bldgBtn.first().click();
+        await page.waitForTimeout(1500);
+        const bldgRow = page.locator('#world-editor-panel div').filter({ hasText: /Architect/ }).first();
+        if (await bldgRow.count()) await bldgRow.click();
+        await page.waitForTimeout(1500);
         const indoorBtn = page.locator('button').filter({ hasText: /Indoor \(/ });
         if (await indoorBtn.count()) await indoorBtn.first().click();
-        await page.waitForTimeout(1500);
-        const outdoorBtn = page.locator('button').filter({ hasText: /Outdoor \(/ });
-        if (await outdoorBtn.count()) await outdoorBtn.first().click();
         await page.waitForTimeout(1500);
         const treesBtn = page.locator('button').filter({ hasText: /Trees \(/ });
         if (await treesBtn.count()) await treesBtn.first().click();
         await page.waitForTimeout(1500);
         const listRow = page.locator('#world-editor-panel div').filter({ hasText: /tree.*@/ }).first();
         if (await listRow.count()) await listRow.click();
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(1200);
         const flipBtn = page.locator('button[title^="F — flip"]').first();
         if (await flipBtn.count()) await flipBtn.click();
         await page.waitForTimeout(1200);
         await page.keyboard.press('e');
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(600);
       }
     };
   },

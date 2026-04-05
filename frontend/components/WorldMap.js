@@ -1474,7 +1474,21 @@ export default class WorldMap {
         dx: s.dx, dy: s.dy, label: s.label
       });
     }
-    if (Array.isArray(patched.world.locations)) {
+    // If the editor has a buildings[] list, rebuild locations from it so
+    // dragging a building updates its position (and all its stations) live.
+    if (Array.isArray(layout.buildings)) {
+      const origById = {};
+      for (const l of (patched.world.locations || [])) origById[l.id] = l;
+      patched.world.locations = layout.buildings.map(b => {
+        const orig = origById[b.id] || {};
+        return {
+          ...orig,
+          id: b.id, name: b.name, type: b.type,
+          x: b.x, y: b.y, w: b.w, h: b.h,
+          stations: byLoc[b.id] || []
+        };
+      });
+    } else if (Array.isArray(patched.world.locations)) {
       patched.world.locations = patched.world.locations.map(loc => ({
         ...loc, stations: byLoc[loc.id] || []
       }));
@@ -2168,6 +2182,21 @@ export default class WorldMap {
         ctx.lineWidth = 3;
         ctx.strokeRect(this.offsetX + m.x * ts - 1, this.offsetY + m.y * ts - 1, ts + 2, ts + 2);
       }
+    }
+
+    // Building outlines + selection ring (multi-tile rects).
+    const buildings = Array.isArray(layout.buildings) ? layout.buildings : [];
+    for (const b of buildings) {
+      const isSel = selection && selection.kind === 'building' && selection.id === b.id;
+      const x = this.offsetX + b.x * ts;
+      const y = this.offsetY + b.y * ts;
+      const w = b.w * ts;
+      const hh = b.h * ts;
+      ctx.strokeStyle = isSel ? '#fbbf24' : 'rgba(251,191,36,0.35)';
+      ctx.lineWidth = isSel ? 3 : 1;
+      ctx.setLineDash(isSel ? [] : [4, 3]);
+      ctx.strokeRect(x, y, w, hh);
+      ctx.setLineDash([]);
     }
 
     // Pending-add cursor hint

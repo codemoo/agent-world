@@ -468,26 +468,38 @@ function createWorldModel(layout = null) {
 
   const trees = layout && Array.isArray(layout.trees) ? layout.trees.slice() : [];
 
+  // Buildings: if layout provides its own array, use that (editable).
+  // Otherwise fall back to LOCATION_DEFS. We always preserve LOCATION_DEFS'
+  // zones + interiorWalls by id so interior floor tints don't vanish when
+  // the user only moves/renames a building.
+  const defsById = Object.fromEntries(LOCATION_DEFS.map(l => [l.id, l]));
+  const buildingSource = layout && Array.isArray(layout.buildings)
+    ? layout.buildings
+    : LOCATION_DEFS;
+
   return {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
     defaultTile: DEFAULT_TILE_TYPE,
     tiles: createVillageGrid(),
-    locations: LOCATION_DEFS.map(loc => ({
-      id: loc.id,
-      name: loc.name,
-      type: loc.type,
-      x: loc.x,
-      y: loc.y,
-      w: loc.w,
-      h: loc.h,
-      subLocations: SUB_LOCATIONS[loc.id] || [],
-      stations: layout
-        ? (stationsByLocation[loc.id] || [])
-        : (Array.isArray(loc.stations) ? loc.stations : []),
-      zones: Array.isArray(loc.zones) ? loc.zones : [],
-      interiorWalls: Array.isArray(loc.interiorWalls) ? loc.interiorWalls : []
-    })),
+    locations: buildingSource.map(loc => {
+      const def = defsById[loc.id] || null;
+      return {
+        id: loc.id,
+        name: loc.name,
+        type: loc.type,
+        x: loc.x,
+        y: loc.y,
+        w: loc.w,
+        h: loc.h,
+        subLocations: SUB_LOCATIONS[loc.id] || [],
+        stations: layout
+          ? (stationsByLocation[loc.id] || [])
+          : (def && Array.isArray(def.stations) ? def.stations : []),
+        zones: def && Array.isArray(def.zones) ? def.zones : [],
+        interiorWalls: def && Array.isArray(def.interiorWalls) ? def.interiorWalls : []
+      };
+    }),
     outdoorStations,
     trees
   };

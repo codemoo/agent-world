@@ -1,5 +1,70 @@
 {
   "version": 1,
+  "buildings": [
+    {
+      "id": "home_nw",
+      "name": "Architect Studio",
+      "type": "house",
+      "x": 2,
+      "y": 2,
+      "w": 5,
+      "h": 6
+    },
+    {
+      "id": "home_ne",
+      "name": "QA Lab",
+      "type": "house2",
+      "x": 23,
+      "y": 2,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "id": "cafe",
+      "name": "Agent Lounge",
+      "type": "shop",
+      "x": 16,
+      "y": 8,
+      "w": 5,
+      "h": 5
+    },
+    {
+      "id": "home_sw",
+      "name": "Security HQ",
+      "type": "house.green",
+      "x": 2,
+      "y": 20,
+      "w": 5,
+      "h": 6
+    },
+    {
+      "id": "library",
+      "name": "Docs Archive",
+      "type": "house.gray",
+      "x": 23,
+      "y": 20,
+      "w": 6,
+      "h": 5
+    },
+    {
+      "id": "office",
+      "name": "CEO Office",
+      "type": "tower",
+      "x": 10,
+      "y": 2,
+      "w": 4,
+      "h": 4
+    },
+    {
+      "id": "store",
+      "name": "Deploy Center",
+      "type": "house.green2",
+      "x": 2,
+      "y": 9,
+      "w": 5,
+      "h": 4
+    }
+  ],
   "indoorStations": [
     {
       "id": "nw_w1",

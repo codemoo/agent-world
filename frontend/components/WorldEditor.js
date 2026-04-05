@@ -43,6 +43,10 @@ const OUTDOOR_TYPES = [
   'outdoor.reading', 'outdoor.chatting', 'outdoor.flowers',
   'outdoor.mining', 'outdoor.foraging', 'outdoor.napping'
 ];
+const BUILDING_TYPES = [
+  'house', 'house2', 'house.green', 'house.green2', 'house.gray',
+  'tower', 'shop', 'large'
+];
 
 function h(tag, attrs = {}, children = []) {
   const el = document.createElement(tag);
@@ -84,6 +88,10 @@ function resolveSpriteKey(kind, type) {
   if (kind === 'indoor') {
     const raw = `furniture.${type}`;
     return FURNITURE_ALIASES[raw] || raw;
+  }
+  if (kind === 'building') {
+    // Building types: 'house', 'house2', 'house.green', 'tower' → 'building.<type>'
+    return `building.${type}`;
   }
   return null; // outdoor stations have no sprite
 }
@@ -304,12 +312,23 @@ export default class WorldEditor {
       // Remember pre-drag state. If the drag actually moves the item, we'll
       // push to history on first move (not here, to avoid noise when the
       // user just clicks to select).
-      this.dragging = {
+      const drag = {
         kind: hit.kind, id: hit.id,
         startTile: { x: tileX, y: tileY },
         lastTile: { x: tileX, y: tileY },
         historyPushed: false
       };
+      // For buildings, remember the offset from the top-left so the
+      // drag feels anchored to the grab point instead of snapping
+      // corner-first.
+      if (hit.kind === 'building') {
+        const b = (this.layout.buildings || []).find(x => x.id === hit.id);
+        if (b) {
+          drag.grabOffsetX = tileX - b.x;
+          drag.grabOffsetY = tileY - b.y;
+        }
+      }
+      this.dragging = drag;
       this._render();
       this._syncCanvas();
       if (event) event.preventDefault();
@@ -339,6 +358,12 @@ export default class WorldEditor {
       const dy = clamp(ty - loc.y, 0, loc.h - 1);
       obj.dx = dx;
       obj.dy = dy;
+    } else if (kind === 'building') {
+      // Keep the building inside world bounds (account for its footprint).
+      const gox = (this.dragging && this.dragging.grabOffsetX) || 0;
+      const goy = (this.dragging && this.dragging.grabOffsetY) || 0;
+      obj.x = clamp(tx - gox, 0, Math.max(0, W - obj.w));
+      obj.y = clamp(ty - goy, 0, Math.max(0, H - obj.h));
     }
   }
 
@@ -373,10 +398,20 @@ export default class WorldEditor {
       }
       const body = await res.json();
       this.layout = deepClone(body.data);
-      this.originalLayout = deepClone(body.data);
+      // If the saved layout predates the buildings field, derive it from
+      // the current world state so the Buildings tab isn't empty.
+      if (!Array.isArray(this.layout.buildings)) {
+        const locs = this.worldMap?.state?.world?.locations || [];
+        this.layout.buildings = locs.map(l => ({
+          id: l.id, name: l.name, type: l.type,
+          x: l.x, y: l.y, w: l.w, h: l.h
+        }));
+      }
+      this.originalLayout = deepClone(this.layout);
       this.loadError = null;
       this._resetHistory();
       console.log('[WorldEditor] layout loaded', {
+        buildings: this.layout.buildings.length,
         trees: this.layout.trees.length,
         indoor: this.layout.indoorStations.length,
         outdoor: this.layout.outdoorStations.length
@@ -478,7 +513,8 @@ export default class WorldEditor {
   _takenIds(kind) {
     if (!this.layout) return new Set();
     const list = kind === 'indoor' ? this.layout.indoorStations :
-      kind === 'outdoor' ? this.layout.outdoorStations : [];
+      kind === 'outdoor' ? this.layout.outdoorStations :
+      kind === 'building' ? (this.layout.buildings || []) : [];
     return new Set(list.map(s => s.id));
   }
 
@@ -491,6 +527,10 @@ export default class WorldEditor {
       this.layout.indoorStations = this.layout.indoorStations.filter(s => s.id !== id);
     } else if (kind === 'outdoor') {
       this.layout.outdoorStations = this.layout.outdoorStations.filter(s => s.id !== id);
+    } else if (kind === 'building') {
+      this.layout.buildings = (this.layout.buildings || []).filter(b => b.id !== id);
+      // Also drop any indoor stations that pointed at this building.
+      this.layout.indoorStations = this.layout.indoorStations.filter(s => s.locationId !== id);
     }
     this.selection = null;
     this._pushHistory();
@@ -502,6 +542,8 @@ export default class WorldEditor {
   _flipSelected(axis) {
     const obj = this._getSelectedObject();
     if (!obj) return;
+    // Buildings don't support flipping.
+    if (this.selection?.kind === 'building') return;
     if (axis === 'x') obj.flipX = !obj.flipX;
     else obj.flipY = !obj.flipY;
     // Strip false flip flags to keep layout compact.
@@ -522,6 +564,9 @@ export default class WorldEditor {
     if (kind === 'tree' || kind === 'outdoor') {
       obj.x = clamp(obj.x + dx, 0, W - 1);
       obj.y = clamp(obj.y + dy, 0, H - 1);
+    } else if (kind === 'building') {
+      obj.x = clamp(obj.x + dx, 0, Math.max(0, W - obj.w));
+      obj.y = clamp(obj.y + dy, 0, Math.max(0, H - obj.h));
     } else if (kind === 'indoor') {
       const loc = (world?.locations || []).find(l => l.id === obj.locationId);
       if (!loc) return;
@@ -547,6 +592,14 @@ export default class WorldEditor {
       const loc = locs.find(l => l.id === s.locationId);
       if (!loc) continue;
       if (loc.x + s.dx === tx && loc.y + s.dy === ty) return { kind: 'indoor', id: s.id };
+    }
+    // Buildings: the only kind whose hit area spans multiple tiles. Checked
+    // last so trees/stations sitting on top of a building still win.
+    const buildings = this.layout.buildings || [];
+    for (const b of buildings) {
+      if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) {
+        return { kind: 'building', id: b.id };
+      }
     }
     return null;
   }
@@ -590,6 +643,19 @@ export default class WorldEditor {
         id, locationId: loc.id, kind: 'rest', type, dx, dy, label: type
       });
       this.selection = { kind: 'indoor', id };
+    } else if (kind === 'building') {
+      // Default new-building footprint: 5×4, clamped to world bounds
+      // and anchored at the clicked tile.
+      const w = 5, hh = 4;
+      const bx = clamp(tx, 0, Math.max(0, W - w));
+      const by = clamp(ty, 0, Math.max(0, H - hh));
+      if (!this.layout.buildings) this.layout.buildings = [];
+      const id = uniqueId('bldg_', this._takenIds('building'));
+      this.layout.buildings.push({
+        id, name: type.replace(/\./g, ' '), type,
+        x: bx, y: by, w, h: hh
+      });
+      this.selection = { kind: 'building', id };
     }
     this.pendingAdd = null;
     this._pushHistory();
@@ -690,6 +756,7 @@ export default class WorldEditor {
     if (kind === 'tree') return this.layout.trees[Number(id)] || null;
     if (kind === 'indoor') return this.layout.indoorStations.find(s => s.id === id) || null;
     if (kind === 'outdoor') return this.layout.outdoorStations.find(s => s.id === id) || null;
+    if (kind === 'building') return (this.layout.buildings || []).find(b => b.id === id) || null;
     return null;
   }
 
@@ -786,6 +853,7 @@ export default class WorldEditor {
   _renderTabs() {
     const tabs = h('div', { style: { display: 'flex', borderBottom: '1px solid #334155' } });
     const specs = [
+      ['buildings', 'Bldgs', (this.layout.buildings || []).length],
       ['trees', 'Trees', this.layout.trees.length],
       ['indoor', 'Indoor', this.layout.indoorStations.length],
       ['outdoor', 'Outdoor', this.layout.outdoorStations.length]
@@ -829,8 +897,12 @@ export default class WorldEditor {
 
     // Thumbnail grid
     const types = this.activeTab === 'trees' ? TREE_TYPES :
-      this.activeTab === 'indoor' ? INDOOR_TYPES : OUTDOOR_TYPES;
-    const kind = this.activeTab === 'trees' ? 'tree' : this.activeTab;
+      this.activeTab === 'indoor' ? INDOOR_TYPES :
+      this.activeTab === 'buildings' ? BUILDING_TYPES :
+      OUTDOOR_TYPES;
+    const kind = this.activeTab === 'trees' ? 'tree' :
+      this.activeTab === 'buildings' ? 'building' :
+      this.activeTab;
     const grid = h('div', {
       style: {
         display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)',
@@ -923,6 +995,11 @@ export default class WorldEditor {
         kind: 'indoor', id: s.id,
         label: `[${s.locationId}] ${s.type} (${s.dx},${s.dy}) · ${s.kind}`
       }));
+    } else if (this.activeTab === 'buildings') {
+      items = (this.layout.buildings || []).map(b => ({
+        kind: 'building', id: b.id,
+        label: `${b.name} · ${b.type} @ (${b.x},${b.y}) ${b.w}×${b.h}`
+      }));
     } else {
       items = this.layout.outdoorStations.map(s => ({
         kind: 'outdoor', id: s.id,
@@ -1013,6 +1090,21 @@ export default class WorldEditor {
         onchange: (e) => mutate(() => obj.x = Number(e.target.value) | 0) }));
       addField('y', h('input', { type: 'number', value: obj.y, style: s,
         onchange: (e) => mutate(() => obj.y = Number(e.target.value) | 0) }));
+    } else if (kind === 'building') {
+      addField('id', h('input', { type: 'text', value: obj.id, readonly: 'true',
+        style: { ...s, opacity: '0.6' } }));
+      addField('name', h('input', { type: 'text', value: obj.name, style: s,
+        onchange: (e) => mutate(() => obj.name = e.target.value) }));
+      addField('type', h('select', { style: s, onchange: (e) => mutate(() => obj.type = e.target.value) },
+        BUILDING_TYPES.map(t => h('option', { value: t, selected: t === obj.type || undefined }, t))));
+      addField('x', h('input', { type: 'number', value: obj.x, style: s,
+        onchange: (e) => mutate(() => obj.x = Number(e.target.value) | 0) }));
+      addField('y', h('input', { type: 'number', value: obj.y, style: s,
+        onchange: (e) => mutate(() => obj.y = Number(e.target.value) | 0) }));
+      addField('w', h('input', { type: 'number', value: obj.w, min: '1', style: s,
+        onchange: (e) => mutate(() => obj.w = Math.max(1, Number(e.target.value) | 0)) }));
+      addField('h', h('input', { type: 'number', value: obj.h, min: '1', style: s,
+        onchange: (e) => mutate(() => obj.h = Math.max(1, Number(e.target.value) | 0)) }));
     } else {
       // Station (indoor/outdoor)
       const idInput = h('input', { type: 'text', value: obj.id, style: s });

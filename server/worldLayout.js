@@ -83,6 +83,17 @@ function validateTree(t, idx) {
   validateOptionalBool(t.flipY, `trees[${idx}].flipY`);
 }
 
+function validateBuilding(b, idx) {
+  if (!isRecord(b)) throw new Error(`buildings[${idx}] must be an object`);
+  if (!cleanString(b.id)) throw new Error(`buildings[${idx}].id required`);
+  if (!cleanString(b.name)) throw new Error(`buildings[${idx}].name required`);
+  if (!cleanString(b.type)) throw new Error(`buildings[${idx}].type required`);
+  if (!Number.isInteger(b.x) || b.x < 0) throw new Error(`buildings[${idx}].x must be non-negative int`);
+  if (!Number.isInteger(b.y) || b.y < 0) throw new Error(`buildings[${idx}].y must be non-negative int`);
+  if (!Number.isInteger(b.w) || b.w < 1) throw new Error(`buildings[${idx}].w must be >=1`);
+  if (!Number.isInteger(b.h) || b.h < 1) throw new Error(`buildings[${idx}].h must be >=1`);
+}
+
 function validateLayout(layout) {
   if (!isRecord(layout)) throw new Error('layout must be a JSON object');
   if (layout.version !== LAYOUT_VERSION) {
@@ -94,6 +105,11 @@ function validateLayout(layout) {
   layout.indoorStations.forEach(validateIndoorStation);
   layout.outdoorStations.forEach(validateOutdoorStation);
   layout.trees.forEach(validateTree);
+  // buildings is optional (old layouts omit it — fallback to LOCATION_DEFS)
+  if (layout.buildings !== undefined) {
+    if (!Array.isArray(layout.buildings)) throw new Error('buildings must be an array');
+    layout.buildings.forEach(validateBuilding);
+  }
 }
 
 function normalizeLayout(layout) {
@@ -129,7 +145,15 @@ function normalizeLayout(layout) {
       x: t.x,
       y: t.y,
       type: t.type.trim()
-    }, t))
+    }, t)),
+    ...(Array.isArray(layout.buildings) ? {
+      buildings: layout.buildings.map(b => ({
+        id: b.id.trim(),
+        name: b.name.trim(),
+        type: b.type.trim(),
+        x: b.x, y: b.y, w: b.w, h: b.h
+      }))
+    } : {})
   };
 }
 
@@ -171,8 +195,15 @@ function buildSeedLayout({ locationDefs, outdoorStations, trees }) {
       });
     }
   }
+  const buildings = locationDefs.map(loc => ({
+    id: loc.id,
+    name: loc.name,
+    type: loc.type,
+    x: loc.x, y: loc.y, w: loc.w, h: loc.h
+  }));
   return {
     version: LAYOUT_VERSION,
+    buildings,
     indoorStations,
     outdoorStations: outdoorStations.map(s => ({
       id: s.id,
