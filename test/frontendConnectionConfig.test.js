@@ -38,6 +38,7 @@ test('development + 명시 플래그에서만 authToken/token 쿼리를 허용�
     {
       protocol: 'https:',
       hostname: 'dev.local',
+      port: '',
       search: '?authToken=dev-secret'
     },
     { environment: 'development', allowDevQueryToken: true }
@@ -46,7 +47,36 @@ test('development + 명시 플래그에서만 authToken/token 쿼리를 허용�
   assert.equal(config.environment, 'development');
   assert.equal(config.allowDevQueryToken, true);
   assert.equal(config.authToken, 'dev-secret');
-  assert.equal(config.wsBaseUrl, 'wss://dev.local:3000/');
+  // Standard https port (443) should NOT be baked into the URL — the
+  // browser uses the origin's port automatically. This lets external
+  // tunnels / reverse proxies work without hardcoding :3102.
+  assert.equal(config.wsBaseUrl, 'wss://dev.local/');
+  assert.equal(config.wsPort, 443);
+});
+
+test('location.port이 있으면 같은 포트로 연결한다 (localhost dev)', async () => {
+  const { createConnectionConfig } = await loadConnectionConfig();
+  const config = createConnectionConfig({
+    protocol: 'http:',
+    hostname: 'localhost',
+    port: '3102',
+    search: ''
+  });
+  assert.equal(config.apiBaseUrl, 'http://localhost:3102');
+  assert.equal(config.wsBaseUrl, 'ws://localhost:3102/');
+  assert.equal(config.apiPort, 3102);
+});
+
+test('외부 터널 (port 미지정)은 origin을 그대로 사용한다', async () => {
+  const { createConnectionConfig } = await loadConnectionConfig();
+  const config = createConnectionConfig({
+    protocol: 'https:',
+    hostname: 'tunnel.example.com',
+    port: '',
+    search: ''
+  });
+  assert.equal(config.apiBaseUrl, 'https://tunnel.example.com');
+  assert.equal(config.wsBaseUrl, 'wss://tunnel.example.com/');
 });
 
 test('유효한 포트 입력은 반영되고 wsPort 미지정 시 apiPort를 상속한다', async () => {

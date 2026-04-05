@@ -103,6 +103,21 @@ async function getJson(baseUrl, path, options = {}) {
   return { response, json };
 }
 
+async function putJson(baseUrl, path, body, options = {}) {
+  const headers = buildHeaders(
+    baseUrl,
+    { 'content-type': 'application/json' },
+    options
+  );
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(body)
+  });
+  const json = await response.json();
+  return { response, json };
+}
+
 async function issueWsTicket(baseUrl, options = {}) {
   const headers = buildHeaders(
     baseUrl,
@@ -225,6 +240,7 @@ module.exports = {
   issueWsTicket,
   openWebSocket,
   postJson,
+  putJson,
   startTestServer,
   stopTestServer,
   waitForWebSocketMessage

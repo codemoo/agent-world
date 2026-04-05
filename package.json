@@ -4,6 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "start": "node server/index.js",
     "test": "npm run test:all",
     "test:unit": "node --test test/paperclipAdapter.test.js test/eventsPipeline.test.js test/paperclipSync.test.js test/frontendConnectionConfig.test.js test/avatarRuntime.test.js test/ensurePlaywrightChromium.test.js test/wsTicketStore.test.js",
     "test:request": "node --test test/eventsApi.request.test.js",
@@ -12,7 +13,12 @@
     "test:e2e:browser": "node test/helpers/runPlaywrightBrowserTest.cjs",
     "test:e2e": "node --test test/eventsApi.e2e.test.js test/frontendSmoke.e2e.test.js && npm run test:e2e:browser",
     "test:smoke": "npm run test:unit && npm run test:request && npm run test:integration && npm run test:e2e",
-    "test:all": "npm run test:smoke"
+    "test:all": "npm run test:smoke",
+    "daemon:install": "mkdir -p logs && cp scripts/agent-world.plist ~/Library/LaunchAgents/dev.agentworld.server.plist && launchctl load ~/Library/LaunchAgents/dev.agentworld.server.plist",
+    "daemon:uninstall": "launchctl unload ~/Library/LaunchAgents/dev.agentworld.server.plist 2>/dev/null; rm -f ~/Library/LaunchAgents/dev.agentworld.server.plist",
+    "daemon:restart": "launchctl kickstart -k gui/$(id -u)/dev.agentworld.server",
+    "daemon:status": "launchctl list dev.agentworld.server 2>/dev/null || echo 'Not loaded'",
+    "daemon:logs": "tail -f logs/agent-world.stdout.log logs/agent-world.stderr.log"
   },
   "dependencies": {
     "express": "^4.19.2",

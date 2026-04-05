@@ -1,6 +1,7 @@
-import { bootstrapFrontendApp } from './appBootstrap.mjs';
-import WorldMap from './components/WorldMap.js';
-import { createConnectionConfig } from './connectionConfig.mjs';
+// Dynamic imports with a per-load cache-buster query param. This bypasses
+// the browser's aggressive ES module cache so frontend edits propagate on
+// every page load without the user needing to clear cache manually.
+const v = `${Date.now()}`;
 
 const runtimeConfig =
   typeof window !== 'undefined' &&
@@ -9,8 +10,16 @@ const runtimeConfig =
     ? window.__AGENT_WORLD_RUNTIME__
     : {};
 
-bootstrapFrontendApp({
-  WorldMapClass: WorldMap,
-  connectionConfigOptions: runtimeConfig,
-  connectionConfigFactory: createConnectionConfig
+Promise.all([
+  import(`./appBootstrap.mjs?v=${v}`),
+  import(`./components/WorldMap.js?v=${v}`),
+  import(`./components/WorldEditor.js?v=${v}`),
+  import(`./connectionConfig.mjs?v=${v}`)
+]).then(([boot, wm, we, cc]) => {
+  boot.bootstrapFrontendApp({
+    WorldMapClass: wm.default,
+    WorldEditorClass: we.default,
+    connectionConfigOptions: runtimeConfig,
+    connectionConfigFactory: cc.createConnectionConfig
+  });
 });

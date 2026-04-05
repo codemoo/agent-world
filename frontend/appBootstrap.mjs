@@ -7,6 +7,7 @@ export function createFrontendApp({
   fetchImpl,
   WebSocketImpl,
   WorldMapClass,
+  WorldEditorClass = null,
   connectionConfigOptions = {},
   connectionConfigFactory = createConnectionConfig
 } = {}) {
@@ -44,6 +45,18 @@ export function createFrontendApp({
   const worldMap = new WorldMapClass(root, { assetRoot });
   if (typeof worldMap.start === 'function') {
     worldMap.start();
+  }
+
+  // World editor — optional. Mounts its own DOM panel + toggle button.
+  // Only instantiate in browser context (needs document.body).
+  let worldEditor = null;
+  if (WorldEditorClass && resolvedDocument.body) {
+    worldEditor = new WorldEditorClass({
+      worldMap,
+      apiBaseUrl,
+      authToken,
+      fetchImpl: resolvedFetch
+    });
   }
 
   let socket = null;

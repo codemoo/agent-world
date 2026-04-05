@@ -1,175 +1,265 @@
 # Agent World
 
-Agent World is a visualization layer for multi‑agent systems. It connects to an underlying orchestration platform (such as [Paperclip](https://paperclipai.net)) and renders the behaviour of your agents as a living, breathing world.
+A visualization layer for multi-agent systems. Agent World connects to an
+orchestration platform (such as
+[Paperclip](https://paperclipai.net)) and renders agent behaviour as a
+living RPG-style world — characters walk between buildings, station
+themselves at desks / fishing spots / mining quarries, and carry the
+labels of whatever task they are currently working on.
+
+Inspired by **Park et al., "Generative Agents: Interactive Simulacra of
+Human Behavior"** ([paper](https://arxiv.org/abs/2304.03442) ·
+[original repo](https://github.com/joonspk-research/generative_agents)).
+
+![status: early](https://img.shields.io/badge/status-early-orange)
+
+---
+
+## Features
+
+- **Live world map** — canvas-rendered 30×30 tile grid with buildings,
+  trees, stations and animated avatars.
+- **Paperclip adapter** — translates task / run / tool events into
+  on-world activity. Agents move to indoor work desks while a task is
+  in flight and to outdoor rest spots (pond fishing, shady naps, garden
+  strolls) when idle.
+- **Client-side routing** — A\* pathfinding with per-agent jitter and
+  soft-blocking so agents route around each other instead of stacking
+  on the same tile.
+- **Built-in world editor** — in-browser panel (toggle with `E`) to
+  place, move, flip or delete trees and stations. Edits are persisted
+  to `world-layout.json` via a REST API and reflected live.
+- **Asset manager UI** — `/assets-manager` to browse the sprite sheets
+  and curate per-cell props + groups.
+- **Mobile friendly** — responsive tile sizing, full-width slide-over
+  editor panel, touch drag, keyboard + tap parity.
+
+---
+
+## Quick start
+
+```bash
+# 1) install deps
+npm install
+
+# 2) drop your PixyMoon asset pack in place (see Credits section below)
+#    assets/pixymoon/Cute RPG World/...
+
+# 3) start the server
+export AGENT_WORLD_API_TOKEN=$(openssl rand -hex 16)
+npm start
+
+# 4) open http://localhost:3102 in a browser
+```
+
+The server serves both the frontend and the API on the same port
+(default `3102`). Use `PORT=…` to override.
+
+### Try the editor
+
+1. Click **편집 모드 (E)** in the top-right (or press `E`).
+2. Pick a category tab (trees / indoor stations / outdoor stations),
+   click a sprite thumbnail, then click on the map to place it.
+3. Click an existing item to select it. Drag to move. Use `↔` / `↕` to
+   flip, `🗑` to delete, arrow keys to nudge.
+4. `Ctrl+Z` / `Ctrl+Shift+Z` undo/redo. `Ctrl+S` saves to disk.
+
+---
 
 ## Project structure
 
-This repository is organised into several packages:
+| Package | Purpose |
+| --- | --- |
+| `server/` | Express + `ws` server. Hosts the API, serves the frontend, persists `world-layout.json`, polls Paperclip, exposes the asset manager. |
+| `adapter/` | Translates external agent events (Paperclip today) into the internal world model. Owns the building / station / outdoor-spot definitions. |
+| `frontend/` | Browser canvas client. Renders tiles, buildings, avatars, speech bubbles, and hosts the world editor. |
+| `test/` | Node test-runner + Playwright suites for the event API, avatar runtime, editor round-trips, and frontend smoke. |
+| `assets/pixymoon/` | PixyMoon asset pack drop zone (not committed — see Credits). |
 
-- **server** – a lightweight Node/Express process that ingests events from your agent runtime (e.g. Paperclip) and maintains an in‑memory world state. It also exposes a WebSocket endpoint to broadcast state updates to connected clients.
-- **adapter** – code responsible for translating your specific agent platform’s events into the normalised format used by Agent World. A `paperclipAdapter.js` is included as a starting point. Additional adapters (e.g. for OpenClaw, Claude Code) can be added here later.
-- **frontend** – a browser Canvas client that draws terrain, props, buildings, and walking avatars on top of the 25x25 world grid. It supports PixyMoon sprite loading (with fallback rendering) and receives live updates over WebSockets.
-- **assets/pixymoon** – a placeholder for your purchased PixyMoon tile set and sprite assets. These files are not tracked in git; see below.
+---
 
-## Getting started
+## Configuration
 
-1. Purchase the **2D Topdown Cute RPG World** pack from PixyMoon (or another compatible tile set).
-2. Extract the entire **Cute RPG World** directory into `assets/pixymoon/`. Your tile sheet images should live at `assets/pixymoon/Cute RPG World/...`.
-3. Install dependencies and start the server:
+### Authentication
 
-```bash
-cd <repo-root>
-npm install
-AGENT_WORLD_API_TOKEN=<strong-token> node server/index.js
-```
-
-4. Open another terminal and serve the repository root (so `/assets/...` is reachable):
+API/WebSocket auth is required by default:
 
 ```bash
-python3 -m http.server 4173 --directory .
+export AGENT_WORLD_API_TOKEN='<strong-token>'
 ```
 
-5. Open `http://127.0.0.1:4173/frontend/` in your browser.
+The token is passed via `Authorization: Bearer …` for HTTP and issued as
+a short-lived one-shot ticket for WebSocket upgrades
+(`POST /auth/ws-ticket`, 15s TTL).
 
-The frontend connects to `ws://localhost:3000` and `http://localhost:3000` by default.
-If needed, override ports with query params:
+Pass the token to the frontend via runtime config (recommended) — the
+server injects it automatically when serving `index.html`. For dev,
+you can opt in to `?authToken=` query params:
 
-- `?apiPort=3100`
-- `?wsPort=3100`
-- `?assetRoot=/assets/pixymoon/Cute%20RPG%20World` (default)
-
-인증 토큰은 기본적으로 URL 쿼리에서 읽지 않습니다. `frontend/index.html`에서 런타임 설정 객체로 전달하세요:
-
-```html
-<script>
-  window.__AGENT_WORLD_RUNTIME__ = {
-    environment: 'production',
-    authToken: '<strong-token>'
-  };
-</script>
+```js
+window.__AGENT_WORLD_RUNTIME__ = {
+  environment: 'development',
+  allowDevQueryToken: true,
+  authToken: '<strong-token>'
+};
 ```
 
-개발 환경에서만 명시 플래그를 켜면 `?authToken=`/`?token=` 쿼리 토큰 입력을 임시 허용할 수 있습니다.
+### Environment variables
 
-### Browser render checkpoints (T2 handoff)
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `3102` | HTTP/WS listen port |
+| `AGENT_WORLD_API_TOKEN` | _required_ | Bearer token for all auth-protected endpoints |
+| `AGENT_WORLD_CORS_ALLOWED_ORIGINS` | (same-origin only) | Comma-separated allowlist |
+| `AGENT_WORLD_RATE_LIMIT_WINDOW_MS` | `60000` | Fixed-window rate-limit window |
+| `AGENT_WORLD_RATE_LIMIT_MAX_REQUESTS` | `120` | Requests per client per window |
+| `AGENT_WORLD_MAX_EVENT_BATCH_SIZE` | `100` | Cap on `/events` batch size |
+| `AGENT_WORLD_MAX_STATE_AGENTS` | `500` | Backpressure cap on tracked agents |
+| `AGENT_WORLD_MAX_STATE_RUNS` | `2000` | Backpressure cap on tracked runs |
+| `AGENT_WORLD_MAX_STATE_TASKS` | `10000` | Backpressure cap on tracked tasks |
+| `AGENT_WORLD_WS_TICKET_TTL_MS` | `15000` | WS ticket TTL |
+| `PAPERCLIP_API_URL` | — | Enable Paperclip polling |
+| `PAPERCLIP_API_KEY` | — | Paperclip bearer token |
+| `PAPERCLIP_SYNC_INTERVAL_MS` | `0` | Poll cadence (0 disables) |
 
-- Terrain, props, buildings, avatars are rendered in separate layers.
-- Avatars animate walking frames while moving; when working they stop and show a speech bubble.
-- If sprite files are missing/unmatched, deterministic fallback shapes are rendered instead of a blank screen.
+### Behind a reverse proxy / tunnel (FRP, nginx, Cloudflare)
 
-### Optional asset manifest
+Agent World sets `app.set('trust proxy', true)` and honours
+`X-Forwarded-Proto` when resolving same-origin. WebSocket heartbeats
+(20s ping interval) keep long-lived connections alive through idle
+timeouts. When accessed via a standard port the frontend derives the
+WS URL from `window.location.origin` — no hard-coded `:3102`.
 
-If your PixyMoon file names differ, add `asset-manifest.json` under `assets/pixymoon/Cute RPG World/` and map sprite keys to file+frame definitions.
+---
 
-```json
-{
-  "assetRoot": "/assets/pixymoon/Cute RPG World",
-  "sprites": [
-    {
-      "key": "terrain.grassA",
-      "url": "Cute RPG World/Tilesets/Outside_A2.png",
-      "frame": { "mode": "grid", "columns": 8, "rows": 6, "column": 0, "row": 0 }
-    },
-    {
-      "key": "avatar.walk.down.0",
-      "url": "Cute RPG World/Characters/Actor/Actor 01.png",
-      "frame": { "mode": "grid", "columns": 3, "rows": 4, "column": 0, "row": 0 }
-    }
-  ]
-}
-```
+## Paperclip sync
 
-### Security defaults
-
-- API/WS 인증은 기본 활성화이며 `AGENT_WORLD_API_TOKEN`이 필수입니다.
-- `AGENT_WORLD_API_TOKEN`은 시작 시 trim 정규화되며, 공백만 입력되면 서버가 부팅을 거부합니다.
-- `/events`, `/state`, `/sync/paperclip`, `/auth/ws-ticket`는 Bearer 토큰이 필요합니다.
-- WebSocket 연결은 장기 토큰 대신 `POST /auth/ws-ticket`로 발급한 단기 1회성 `?ticket=`만 허용합니다.
-- CORS는 same-origin 기본 정책이며, 교차 출처 허용이 필요하면 allowlist를 명시해야 합니다.
-- 프론트 런타임 기본 정책: `production`에서는 `?authToken=`/`?token=` 입력을 인증 경로에서 사용하지 않습니다.
-- 개발 모드(`environment: 'development'`)에서만 `allowDevQueryToken: true`를 명시했을 때 쿼리 토큰 입력을 허용합니다.
-- 기본 DoS 완화 정책:
-  - JSON body limit: `256kb`
-  - fixed-window rate limit: `120 req / 60s` (경로·클라이언트 기준)
-  - 이벤트 배치 상한: `100`
-  - 상태 저장소 상한: agents `500`, runs `2000`, tasks `10000`
-- 환경변수로 조정 가능합니다:
-  - `AGENT_WORLD_RATE_LIMIT_WINDOW_MS`
-  - `AGENT_WORLD_RATE_LIMIT_MAX_REQUESTS`
-  - `AGENT_WORLD_MAX_EVENT_BATCH_SIZE`
-  - `AGENT_WORLD_MAX_STATE_AGENTS`
-  - `AGENT_WORLD_MAX_STATE_RUNS`
-  - `AGENT_WORLD_MAX_STATE_TASKS`
-  - `AGENT_WORLD_WS_TICKET_TTL_MS`
-  - `AGENT_WORLD_MAX_WS_TICKET_ENTRIES`
-  - `AGENT_WORLD_CORS_ALLOWED_ORIGINS` (comma-separated, 예: `https://app.example.com,https://admin.example.com`)
-
-## Optional Paperclip polling sync
-
-The server can poll local Paperclip `inbox-lite` and normalize it into world events.
+Poll the local Paperclip `inbox-lite` and fold events into the world:
 
 ```bash
 PAPERCLIP_API_URL=http://127.0.0.1:3100 \
-PAPERCLIP_API_KEY=<token> \
+PAPERCLIP_API_KEY='<token>' \
 PAPERCLIP_SYNC_INTERVAL_MS=5000 \
-node server/index.js
+npm start
 ```
 
-You can also trigger sync manually:
+Manual trigger:
 
 ```bash
-curl -X POST http://127.0.0.1:3000/sync/paperclip \
-  -H 'authorization: Bearer <strong-token>' \
+curl -X POST http://127.0.0.1:3102/sync/paperclip \
+  -H "Authorization: Bearer $AGENT_WORLD_API_TOKEN" \
   -H 'content-type: application/json' \
   -d '{}'
 ```
 
-## Event API and tests
+Event ingestion contract: [`server/EVENTS.md`](server/EVENTS.md).
 
-- Event ingestion contract: `server/EVENTS.md`
-- T0 functional scope: `docs/T0-functional-scope.md`
-- T0 non-functional requirements: `docs/T0-nonfunctional-requirements.md`
-- T0 temporary backlog: `docs/T0-temp-backlog.md`
-- Quality gate plan: `test/TEST_PLAN.md`
-- Install dependencies and run regression guards:
+---
 
-```bash
-npm install
-npm run test:smoke
+## World layout editor
+
+The editor stores its state in `world-layout.json` at the repo root.
+On first boot the server seeds the file from the in-code defaults
+(`adapter/paperclipAdapter.js`, `adapter/treeGenerator.js`). After
+that the JSON is the source of truth.
+
+- `GET  /api/world/layout` — returns the current layout
+- `PUT  /api/world/layout` — replaces it (validated server-side)
+
+Schema (version 1):
+
+```jsonc
+{
+  "version": 1,
+  "indoorStations":  [ { "id", "locationId", "kind": "work"|"rest",
+                         "type", "dx", "dy", "label",
+                         "flipX?", "flipY?" } ],
+  "outdoorStations": [ { "id", "kind", "type", "x", "y",
+                         "label", "activity",
+                         "flipX?", "flipY?" } ],
+  "trees":           [ { "x", "y", "type", "flipX?", "flipY?" } ]
+}
 ```
 
-`npm run test:e2e:browser`는 Chromium 실행 파일이 없는 환경에서 자동으로 `npx playwright install chromium`를 수행한 뒤 테스트를 실행합니다.
+---
 
-### Playwright 캐시/오프라인 운영 가드
-
-- 브라우저 캐시 기본 경로: `~/.cache/agent-world-playwright`
-- 경로 표준화: `PLAYWRIGHT_BROWSERS_PATH`를 지정하지 않으면 자동으로 위 기본 경로를 사용합니다.
-- 네트워크 모드 제어: `AGENT_WORLD_PLAYWRIGHT_NETWORK_MODE`
-  - `auto`(기본): 캐시 miss 시 설치 시도
-  - `online`: 캐시 miss 시 설치 강제
-  - `offline`: 캐시 miss 시 설치 금지 + 즉시 실패(`PLAYWRIGHT_CACHE_MISSING_OFFLINE`)
-
-사전 캐시 준비(온라인 환경 1회):
+## Tests
 
 ```bash
-PLAYWRIGHT_BROWSERS_PATH=~/.cache/agent-world-playwright npx playwright install chromium
+npm run test:unit          # node test runner, no network
+npm run test:integration   # ws/http integration
+npm run test:e2e           # incl. playwright smoke
+npm run test:smoke         # everything above
 ```
 
-오프라인 게이트 점검:
+Playwright cache preflight / offline gating:
 
 ```bash
+# prime the browser cache once
+PLAYWRIGHT_BROWSERS_PATH=~/.cache/agent-world-playwright \
+  npx playwright install chromium
+
+# verify offline operation
 AGENT_WORLD_PLAYWRIGHT_NETWORK_MODE=offline npm run test:e2e:browser
 ```
 
-오프라인 GO/NO-GO 기준:
+---
 
-- GO: 오프라인 모드에서도 preflight 통과 + `test:e2e:browser` 성공
-- NO-GO: preflight가 `PLAYWRIGHT_CACHE_MISSING_OFFLINE` 또는 설치 실패 코드로 종료
+## Development daemon (macOS launchd)
 
-## PixyMoon assets
+```bash
+npm run daemon:install    # install + load the launchd plist
+npm run daemon:restart    # kickstart after code changes
+npm run daemon:status
+npm run daemon:logs       # tail stdout+stderr
+npm run daemon:uninstall
+```
 
-The files under `assets/pixymoon/` are intentionally ignored by git. You must purchase the asset pack yourself and place the files here. See `assets/pixymoon/README.md` for details.
+Logs are written to `logs/agent-world.{stdout,stderr}.log`.
+
+---
+
+## Credits
+
+### Assets — PixyMoon
+
+The tile sets and character sprites come from the
+**2D Topdown Cute RPG World** pack by [**PixyMoon**](https://pixymoon.itch.io/)
+([Twitter](https://twitter.com/_PixyMoon_)). Assets are **not** included
+in this repository; you must purchase the pack yourself and drop it
+under `assets/pixymoon/Cute RPG World/` (see
+[`assets/pixymoon/README.md`](assets/pixymoon/README.md)).
+
+Per the PixyMoon license:
+
+- Usable in personal and commercial projects.
+- Can be modified and edited to fit your project.
+- **Credits to PixyMoon** required.
+- Cannot be resold (even modified) and cannot be claimed as your own.
+
+### Inspiration — Generative Agents
+
+The agent-world metaphor (characters walking between locations, station
+affordances, activity labels above each character) is directly inspired
+by:
+
+> Park, J. S., O'Brien, J. C., Cai, C. J., Morris, M. R., Liang, P.,
+> & Bernstein, M. S. (2023). **Generative Agents: Interactive
+> Simulacra of Human Behavior.** UIST '23.
+
+- Paper: <https://arxiv.org/abs/2304.03442>
+- Code: <https://github.com/joonspk-research/generative_agents>
+
+This project borrows the _visual language_ of Smallville (tile map +
+per-agent activity bubbles + building location signs). It does **not**
+reimplement the generative memory / reflection / planning pipelines
+from that paper — the cognition comes from whatever agent platform you
+connect (e.g. Paperclip).
+
+---
 
 ## License
 
-This project is provided under the MIT License. You are responsible for ensuring you have the appropriate rights to any third‑party assets used (such as tile sets and sprites).
+Agent World's own code is released under the **MIT License** (see
+`LICENSE`). Third-party assets retain their original licenses; you are
+responsible for complying with them.

@@ -26,6 +26,10 @@
   - 티켓은 1회만 사용 가능(재사용 시 연결 거부)
   - 활성 티켓 저장소 상한 기본 `10000`(`AGENT_WORLD_MAX_WS_TICKET_ENTRIES`로 조정)
   - 티켓 충돌 고갈 시 `503` + `WS_TICKET_COLLISION_LIMIT_EXCEEDED`
+- WS 업그레이드 인가:
+  - 업그레이드 요청에서 `Origin` 헤더가 없으면 허용
+  - `Origin` 헤더가 있으면 same-origin 또는 allowlist(`AGENT_WORLD_CORS_ALLOWED_ORIGINS`)만 허용
+  - 허용되지 않은 Origin: `403 Forbidden`으로 업그레이드 거부
 
 ## `/events` 요청 형식
 
@@ -33,6 +37,38 @@
 - 배열인 경우, 모든 이벤트가 유효할 때만 반영합니다(원자성 보장).
 - 유효성 실패 시 HTTP `400`과 함께 실패 인덱스/에러 메시지를 반환합니다.
 - 배치 상한 초과 시 HTTP `413` + `EVENT_BATCH_LIMIT_EXCEEDED`를 반환합니다.
+
+## `/events` 응답 계약(고정)
+
+- 성공(200):
+
+  - `status`: 문자열, 고정값 `ok`
+  - `processed`: 숫자, 반영된 이벤트 개수
+  - `events`: 배열
+    - 각 항목:
+      - `eventType`: 이벤트 타입 문자열
+      - `agentId`: 문자열
+      - `taskId`: 문자열 또는 `null`
+      - `runId`: 문자열 또는 `null`
+      - `timestamp`: RFC3339 문자열
+
+- 실패(400/413/429/500):
+  - `error`: 에러 메시지 문자열
+  - `details`: 배열(선택, 오류 메타데이터)
+    - 공통 필드: `code`(문자열), `error`(문자열), `index`(배열 기준 이벤트 인덱스, 해당 시 존재)
+
+예시
+
+```json
+{ "status": "ok", "processed": 1, "events": [] }
+```
+
+```json
+{
+  "error": "One or more events are invalid.",
+  "details": [{ "index": 1, "error": "run_id is required for event_type=run_started.", "code": "VALIDATION_ERROR" }]
+}
+```
 
 ## 정규화 규칙
 
@@ -61,6 +97,16 @@
 ## DoS 완화/안정성 규칙
 
 - 고정 윈도우 rate limit 적용(기본: `120 req / 60s`) — 초과 시 `429` + `RATE_LIMITED`
+- rate limit 데이터 계약:
+  - 설정 값:
+    - `security.rateLimitWindowMs` 또는 `AGENT_WORLD_RATE_LIMIT_WINDOW_MS` (기본: `60000`)
+    - `security.maxRequestsPerWindow` 또는 `AGENT_WORLD_RATE_LIMIT_MAX_REQUESTS` (기본: `120`)
+  - 실패 응답:
+    - `429` + `RATE_LIMITED`
+    - `retry-after` 헤더(초 단위 정수)로 해당 window 잔여 초를 전달
+  - 마이그레이션 영향:
+    - 기준치 하향 시 기존 배치 전송 클라이언트는 `429`가 빈번해져 재시도 지연/backoff을 조정해야 함
+    - 기준치 상향 시 악성 트래픽 완화 효능은 감소할 수 있음
 - JSON body size 상한 적용(기본: `256kb`)
 - 상태 저장소 상한 초과 시 반영 거부 + 롤백:
   - agents `500`, runs `2000`, tasks `10000` (기본값)

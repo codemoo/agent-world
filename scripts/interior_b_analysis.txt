@@ -1,0 +1,441 @@
+====================================================================================================
+CuteRPG_Interior_B.png Analysis
+Image size: (768, 768), Grid: 16x16, Cell size: 48px
+====================================================================================================
+
+Col Row |  Transp% |        Class | Dominant Colors
+----------------------------------------------------------------------------------------------------
+  0   0 |   100.0% |        empty |
+  1   0 |     0.0% |     autotile |
+  2   0 |   100.0% |        empty |
+  3   0 |     1.2% |     autotile |
+  4   0 |     1.2% |     autotile |
+  5   0 |    68.8% |   STANDALONE | #b28759 (olive, 75%), #cca97a (yellow, 25%)
+  6   0 |    71.9% |   STANDALONE | #ffff99 (mixed, 19%), #e5bf00 (olive, 19%), #d4ff00 (yellow-green, 19%)
+  7   0 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+  8   0 |    91.8% |        empty |
+  9   0 |    91.8% |        empty |
+ 10   0 |    91.8% |        empty |
+ 11   0 |    91.8% |        empty |
+ 12   0 |    91.8% |        empty |
+ 13   0 |    91.8% |        empty |
+ 14   0 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+ 15   0 |    71.9% |   STANDALONE | #ffff99 (mixed, 19%), #d4ff00 (yellow-green, 19%), #e5bf00 (olive, 19%)
+
+  0   1 |     0.0% |     autotile |
+  1   1 |     0.0% |     autotile |
+  2   1 |     0.0% |     autotile |
+  3   1 |     0.0% |     autotile |
+  4   1 |     0.0% |     autotile |
+  5   1 |     0.0% |     autotile |
+  6   1 |    59.4% |   STANDALONE | #fffbcc (yellow, 38%), #e5e0a0 (yellow, 15%), #ffff99 (mixed, 12%)
+  7   1 |    72.7% |   STANDALONE | #fffbcc (yellow, 57%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 10%)
+  8   1 |    67.6% |   STANDALONE | #fffbcc (yellow, 14%), #5b6661 (dark gray, 12%), #d8d8d8 (light gray, 12%)
+  9   1 |    76.2% |   STANDALONE | #fffbcc (yellow, 20%), #5b6661 (dark gray, 16%), #d8d8d8 (light gray, 16%)
+ 10   1 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 11   1 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 12   1 |    76.2% |   STANDALONE | #fffbcc (yellow, 20%), #5b6661 (dark gray, 16%), #d8d8d8 (light gray, 16%)
+ 13   1 |    67.6% |   STANDALONE | #fffbcc (yellow, 14%), #5b6661 (dark gray, 12%), #d8d8d8 (light gray, 12%)
+ 14   1 |    72.7% |   STANDALONE | #fffbcc (yellow, 57%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 10%)
+ 15   1 |    59.4% |   STANDALONE | #fffbcc (yellow, 38%), #e5e0a0 (yellow, 15%), #ffff99 (mixed, 12%)
+
+  0   2 |     0.0% |     autotile |
+  1   2 |     0.0% |     autotile |
+  2   2 |     0.0% |     autotile |
+  3   2 |     1.2% |     autotile |
+  4   2 |     1.2% |     autotile |
+  5   2 |    68.8% |   STANDALONE | #b28759 (olive, 75%), #cca97a (yellow, 25%)
+  6   2 |    78.9% |   STANDALONE | #fffbcc (yellow, 22%), #5b6661 (dark gray, 22%), #e5e0a0 (yellow, 13%)
+  7   2 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+  8   2 |    91.8% |        empty |
+  9   2 |    91.8% |        empty |
+ 10   2 |    91.8% |        empty |
+ 11   2 |    91.8% |        empty |
+ 12   2 |    91.8% |        empty |
+ 13   2 |    91.8% |        empty |
+ 14   2 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+ 15   2 |    78.9% |   STANDALONE | #fffbcc (yellow, 22%), #5b6661 (dark gray, 22%), #e5e0a0 (yellow, 13%)
+
+  0   3 |     0.0% |     autotile |
+  1   3 |   100.0% |        empty |
+  2   3 |     0.0% |     autotile |
+  3   3 |     0.0% |     autotile |
+  4   3 |     0.0% |     autotile |
+  5   3 |     0.0% |     autotile |
+  6   3 |    75.0% |   STANDALONE | #ffff99 (mixed, 19%), #d4ff00 (yellow-green, 19%), #fffbcc (yellow, 19%)
+  7   3 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+  8   3 |    67.6% |   STANDALONE | #fffbcc (yellow, 14%), #5b6661 (dark gray, 12%), #d8d8d8 (light gray, 12%)
+  9   3 |    76.2% |   STANDALONE | #fffbcc (yellow, 20%), #5b6661 (dark gray, 16%), #d8d8d8 (light gray, 16%)
+ 10   3 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 11   3 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 12   3 |    76.2% |   STANDALONE | #fffbcc (yellow, 20%), #5b6661 (dark gray, 16%), #d8d8d8 (light gray, 16%)
+ 13   3 |    67.6% |   STANDALONE | #fffbcc (yellow, 14%), #5b6661 (dark gray, 12%), #d8d8d8 (light gray, 12%)
+ 14   3 |    88.3% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 23%)
+ 15   3 |    75.0% |   STANDALONE | #ffff99 (mixed, 19%), #d4ff00 (yellow-green, 19%), #fffbcc (yellow, 19%)
+
+  0   4 |     0.0% |     autotile |
+  1   4 |     0.0% |     autotile |
+  2   4 |     0.0% |     autotile |
+  3   4 |   100.0% |        empty |
+  4   4 |     0.0% |     autotile |
+  5   4 |     0.0% |     autotile |
+  6   4 |    59.4% |   STANDALONE | #fffbcc (yellow, 38%), #e5e0a0 (yellow, 15%), #d4ff00 (yellow-green, 12%)
+  7   4 |    72.7% |   STANDALONE | #fffbcc (yellow, 57%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 10%)
+  8   4 |    91.8% |        empty |
+  9   4 |    91.8% |        empty |
+ 10   4 |    91.8% |        empty |
+ 11   4 |    91.8% |        empty |
+ 12   4 |    91.8% |        empty |
+ 13   4 |    91.8% |        empty |
+ 14   4 |    72.7% |   STANDALONE | #fffbcc (yellow, 57%), #e5e0a0 (yellow, 23%), #b2ac6b (yellow, 10%)
+ 15   4 |    59.4% |   STANDALONE | #fffbcc (yellow, 38%), #e5e0a0 (yellow, 15%), #d4ff00 (yellow-green, 12%)
+
+  0   5 |     7.0% |     autotile |
+  1   5 |    62.5% |   STANDALONE | #b28759 (olive, 42%), #724c16 (brown, 21%), #593b11 (brown, 17%)
+  2   5 |    62.5% |   STANDALONE | #b28759 (olive, 42%), #724c16 (brown, 21%), #593b11 (brown, 17%)
+  3   5 |    62.5% |   STANDALONE | #b28759 (olive, 42%), #724c16 (brown, 21%), #593b11 (brown, 17%)
+  4   5 |    55.5% |   STANDALONE | #593b11 (brown, 36%), #b28759 (olive, 31%), #996c3d (olive, 17%)
+  5   5 |    55.5% |   STANDALONE | #593b11 (brown, 36%), #b28759 (olive, 31%), #996c3d (olive, 17%)
+  6   5 |    82.0% |   STANDALONE | #ffff99 (mixed, 35%), #d4ff00 (yellow-green, 35%), #e5bf00 (olive, 30%)
+  7   5 |    76.6% |   STANDALONE | #5b6661 (dark gray, 20%), #ffff99 (mixed, 20%), #e5bf00 (olive, 20%)
+  8   5 |    65.2% |   STANDALONE | #5b6661 (dark gray, 25%), #d8d8d8 (light gray, 18%), #ffff99 (mixed, 13%)
+  9   5 |    60.5% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 16%), #5b6661 (dark gray, 10%)
+ 10   5 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 11   5 |    87.9% |   STANDALONE | #5b6661 (dark gray, 32%), #d8d8d8 (light gray, 32%), #727f79 (gray, 16%)
+ 12   5 |    60.5% |   STANDALONE | #fffbcc (yellow, 40%), #e5e0a0 (yellow, 16%), #5b6661 (dark gray, 10%)
+ 13   5 |    65.2% |   STANDALONE | #5b6661 (dark gray, 25%), #d8d8d8 (light gray, 18%), #ffff99 (mixed, 13%)
+ 14   5 |    76.6% |   STANDALONE | #5b6661 (dark gray, 20%), #ffff99 (mixed, 20%), #d4ff00 (yellow-green, 20%)
+ 15   5 |    82.0% |   STANDALONE | #ffff99 (mixed, 35%), #d4ff00 (yellow-green, 35%), #e5bf00 (olive, 30%)
+
+  0   6 |     7.8% |     autotile |
+  1   6 |     7.8% |     autotile |
+  2   6 |    62.5% |   STANDALONE | #b28759 (olive, 42%), #724c16 (brown, 21%), #593b11 (brown, 17%)
+  3   6 |    62.5% |   STANDALONE | #b28759 (olive, 42%), #724c16 (brown, 21%), #593b11 (brown, 17%)
+  4   6 |    40.6% |   STANDALONE | #b28759 (olive, 32%), #593b11 (brown, 24%), #996c3d (olive, 20%)
+  5   6 |    46.9% |   STANDALONE | #996c3d (olive, 43%), #593b11 (brown, 37%), #724c16 (brown, 9%)
+  6   6 |    90.6% |        empty |
+  7   6 |    71.9% |   STANDALONE | #5b6661 (dark gray, 50%), #d8d8d8 (light gray, 25%), #89998c (gray, 25%)
+  8   6 |    81.2% |   STANDALONE | #5b6661 (dark gray, 50%), #d8d8d8 (light gray, 25%), #89998c (gray, 25%)
+  9   6 |    78.9% |   STANDALONE | #5b6661 (dark gray, 22%), #fffbcc (yellow, 22%), #e5e0a0 (yellow, 13%)
+ 10   6 |    78.9% |   STANDALONE | #fffbcc (yellow, 22%), #5b6661 (dark gray, 22%), #e5e0a0 (yellow, 13%)
+ 11   6 |    75.4% |   STANDALONE | #fffbcc (yellow, 51%), #e5e0a0 (yellow, 25%), #7f7c59 (olive, 14%)
+ 12   6 |    66.0% |   STANDALONE | #fffbcc (yellow, 37%), #e5e0a0 (yellow, 18%), #5b6661 (dark gray, 14%)
+ 13   6 |    66.0% |   STANDALONE | #fffbcc (yellow, 37%), #e5e0a0 (yellow, 18%), #5b6661 (dark gray, 14%)
+ 14   6 |    63.7% |   STANDALONE | #fffbcc (yellow, 47%), #e5e0a0 (yellow, 25%), #b2ac6b (yellow, 14%)
+ 15   6 |    63.7% |   STANDALONE | #fffbcc (yellow, 47%), #e5e0a0 (yellow, 25%), #b2ac6b (yellow, 14%)
+
+  0   7 |     0.0% |     autotile |
+  1   7 |     0.0% |     autotile |
+  2   7 |     0.0% |     autotile |
+  3   7 |   100.0% |        empty |
+  4   7 |   100.0% |        empty |
+  5   7 |   100.0% |        empty |
+  6   7 |    85.5% |   STANDALONE | #d8d8d8 (light gray, 38%), #89998c (gray, 27%), #5b6661 (dark gray, 19%)
+  7   7 |    85.5% |   STANDALONE | #d8d8d8 (light gray, 38%), #89998c (gray, 27%), #5b6661 (dark gray, 19%)
+  8   7 |    85.5% |   STANDALONE | #d8d8d8 (light gray, 38%), #89998c (gray, 27%), #5b6661 (dark gray, 19%)
+  9   7 |    85.5% |   STANDALONE | #d8d8d8 (light gray, 38%), #89998c (gray, 27%), #5b6661 (dark gray, 19%)
+ 10   7 |    85.5% |   STANDALONE | #d8d8d8 (light gray, 38%), #89998c (gray, 27%), #5b6661 (dark gray, 19%)
+ 11   7 |    77.7% |   STANDALONE | #d8d8d8 (light gray, 32%), #5b6661 (dark gray, 30%), #89998c (gray, 28%)
+ 12   7 |    76.2% |   STANDALONE | #d8d8d8 (light gray, 33%), #5b6661 (dark gray, 31%), #89998c (gray, 26%)
+ 13   7 |    76.2% |   STANDALONE | #d8d8d8 (light gray, 33%), #5b6661 (dark gray, 31%), #89998c (gray, 26%)
+ 14   7 |    76.2% |   STANDALONE | #d8d8d8 (light gray, 33%), #5b6661 (dark gray, 31%), #89998c (gray, 26%)
+ 15   7 |    79.7% |   STANDALONE | #5b6661 (dark gray, 19%), #d8d8d8 (light gray, 19%), #f6757a (red, 12%)
+
+  0   8 |     7.8% |     autotile |
+  1   8 |     7.8% |     autotile |
+  2   8 |     7.0% |     autotile |
+  3   8 |   100.0% |        empty |
+  4   8 |   100.0% |        empty |
+  5   8 |   100.0% |        empty |
+  6   8 |    76.2% |   STANDALONE | #7f1e0c (dark red, 18%), #545472 (blue, 16%), #d7e1ea (white, 11%)
+  7   8 |    76.2% |   STANDALONE | #7f1e0c (dark red, 18%), #545472 (blue, 16%), #42425a (dark gray, 11%)
+  8   8 |    76.2% |   STANDALONE | #7f1e0c (dark red, 18%), #545472 (blue, 16%), #42425a (dark gray, 11%)
+  9   8 |    76.2% |   STANDALONE | #7f1e0c (dark red, 18%), #545472 (blue, 16%), #d7e1ea (white, 11%)
+ 10   8 |    68.8% |   STANDALONE | #545472 (blue, 38%), #b1bac9 (light gray, 18%), #42425a (dark gray, 18%)
+ 11   8 |    45.7% |   STANDALONE | #545472 (blue, 29%), #42425a (dark gray, 15%), #d7e1ea (white, 14%)
+ 12   8 |    45.7% |   STANDALONE | #545472 (blue, 29%), #42425a (dark gray, 15%), #d7e1ea (white, 14%)
+ 13   8 |    45.7% |   STANDALONE | #545472 (blue, 29%), #42425a (dark gray, 15%), #b1bac9 (light gray, 14%)
+ 14   8 |    45.7% |   STANDALONE | #545472 (blue, 29%), #42425a (dark gray, 15%), #b1bac9 (light gray, 14%)
+ 15   8 |    79.7% |   STANDALONE | #5b6661 (dark gray, 19%), #d8d8d8 (light gray, 19%), #ae45d1 (purple, 12%)
+
+  0   9 |    64.1% |   STANDALONE | #724c16 (brown, 15%), #b28759 (olive, 13%), #cca97a (yellow, 13%)
+  1   9 |    64.1% |   STANDALONE | #724c16 (brown, 15%), #b28759 (olive, 13%), #cca97a (yellow, 13%)
+  2   9 |    64.1% |   STANDALONE | #724c16 (brown, 15%), #b28759 (olive, 13%), #cca97a (yellow, 13%)
+  3   9 |    59.4% |   STANDALONE | #ff7f83 (red, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  4   9 |    18.0% |   STANDALONE | #996c3d (olive, 19%), #ff7f83 (red, 17%), #593b11 (brown, 12%)
+  5   9 |    59.4% |   STANDALONE | #4cdfff (blue, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  6   9 |    18.0% |   STANDALONE | #996c3d (olive, 19%), #4cdfff (blue, 17%), #593b11 (brown, 12%)
+  7   9 |   100.0% |        empty |
+  8   9 |   100.0% |        empty |
+  9   9 |   100.0% |        empty |
+ 10   9 |   100.0% |        empty |
+ 11   9 |   100.0% |        empty |
+ 12   9 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 13   9 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 14   9 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 15   9 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+
+  0  10 |    21.9% |   STANDALONE | #7f7f7f (gray, 35%), #593b11 (brown, 20%), #996c3d (olive, 19%)
+  1  10 |    21.9% |   STANDALONE | #ff7f83 (red, 35%), #593b11 (brown, 20%), #996c3d (olive, 19%)
+  2  10 |    21.9% |   STANDALONE | #4cdfff (blue, 35%), #593b11 (brown, 20%), #996c3d (olive, 19%)
+  3  10 |    18.0% |   STANDALONE | #996c3d (olive, 19%), #ff7f83 (red, 17%), #593b11 (brown, 12%)
+  4  10 |    59.4% |   STANDALONE | #ff7f83 (red, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  5  10 |    18.0% |   STANDALONE | #996c3d (olive, 19%), #4cdfff (blue, 17%), #593b11 (brown, 12%)
+  6  10 |    59.4% |   STANDALONE | #4cdfff (blue, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  7  10 |   100.0% |        empty |
+  8  10 |   100.0% |        empty |
+  9  10 |   100.0% |        empty |
+ 10  10 |   100.0% |        empty |
+ 11  10 |   100.0% |        empty |
+ 12  10 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 13  10 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 14  10 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 15  10 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+
+  0  11 |    59.4% |   STANDALONE | #7f7f7f (gray, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  1  11 |    18.0% |   STANDALONE | #7f7f7f (gray, 19%), #996c3d (olive, 19%), #593b11 (brown, 12%)
+  2  11 |    18.0% |   STANDALONE | #7f7f7f (gray, 19%), #996c3d (olive, 19%), #593b11 (brown, 12%)
+  3  11 |    59.4% |   STANDALONE | #7f7f7f (gray, 23%), #996c3d (olive, 20%), #593b11 (brown, 16%)
+  4  11 |     0.0% |     autotile |
+  5  11 |     0.0% |     autotile |
+  6  11 |     0.0% |     autotile |
+  7  11 |     0.0% |     autotile |
+  8  11 |     0.0% |     autotile |
+  9  11 |     0.0% |     autotile |
+ 10  11 |     0.0% |     autotile |
+ 11  11 |   100.0% |        empty |
+ 12  11 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 13  11 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 14  11 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+ 15  11 |    82.8% |   STANDALONE | #593b11 (brown, 100%)
+
+  0  12 |     0.0% |     autotile |
+  1  12 |     0.0% |     autotile |
+  2  12 |     0.0% |     autotile |
+  3  12 |     0.0% |     autotile |
+  4  12 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  5  12 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  6  12 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  7  12 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  8  12 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+  9  12 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 10  12 |    50.0% |   STANDALONE | #b28759 (olive, 66%), #724c16 (brown, 22%), #cca97a (yellow, 11%)
+ 11  12 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 12  12 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 13  12 |    50.0% |   STANDALONE | #b28759 (olive, 66%), #724c16 (brown, 22%), #cca97a (yellow, 11%)
+ 14  12 |     0.0% |     autotile |
+ 15  12 |     0.0% |     autotile |
+
+  0  13 |     0.0% |     autotile |
+  1  13 |     0.0% |     autotile |
+  2  13 |     0.0% |     autotile |
+  3  13 |     0.0% |     autotile |
+  4  13 |     0.0% |     autotile |
+  5  13 |     0.0% |     autotile |
+  6  13 |     0.0% |     autotile |
+  7  13 |     0.0% |     autotile |
+  8  13 |     0.0% |     autotile |
+  9  13 |     0.0% |     autotile |
+ 10  13 |     0.0% |     autotile |
+ 11  13 |     0.0% |     autotile |
+ 12  13 |     0.0% |     autotile |
+ 13  13 |     0.0% |     autotile |
+ 14  13 |     0.0% |     autotile |
+ 15  13 |     0.0% |     autotile |
+
+  0  14 |     0.0% |     autotile |
+  1  14 |     0.0% |     autotile |
+  2  14 |     0.0% |     autotile |
+  3  14 |     0.0% |     autotile |
+  4  14 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  5  14 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  6  14 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  7  14 |    50.0% |   STANDALONE | #b1bac9 (light gray, 77%), #545472 (blue, 23%)
+  8  14 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+  9  14 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 10  14 |    50.0% |   STANDALONE | #b28759 (olive, 66%), #724c16 (brown, 22%), #cca97a (yellow, 11%)
+ 11  14 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 12  14 |    50.0% |   STANDALONE | #b28759 (olive, 77%), #724c16 (brown, 23%)
+ 13  14 |    50.0% |   STANDALONE | #b28759 (olive, 66%), #724c16 (brown, 22%), #cca97a (yellow, 11%)
+ 14  14 |     0.0% |     autotile |
+ 15  14 |     0.0% |     autotile |
+
+  0  15 |     0.0% |     autotile |
+  1  15 |     0.0% |     autotile |
+  2  15 |     0.0% |     autotile |
+  3  15 |     0.0% |     autotile |
+  4  15 |     0.0% |     autotile |
+  5  15 |     0.0% |     autotile |
+  6  15 |     0.0% |     autotile |
+  7  15 |     0.0% |     autotile |
+  8  15 |     0.0% |     autotile |
+  9  15 |     0.0% |     autotile |
+ 10  15 |     0.0% |     autotile |
+ 11  15 |     0.0% |     autotile |
+ 12  15 |     0.0% |     autotile |
+ 13  15 |     0.0% |     autotile |
+ 14  15 |     0.0% |     autotile |
+ 15  15 |     0.0% |     autotile |
+
+====================================================================================================
+SUMMARY
+====================================================================================================
+Total cells: 256
+Autotile cells: 84
+Standalone cells: 132
+Empty cells: 40
+
+STANDALONE SPRITES (usable furniture/objects):
+------------------------------------------------------------
+  col= 5, row= 0  (sx=240, sy=0)  transp=68.8%
+  col= 6, row= 0  (sx=288, sy=0)  transp=71.9%
+  col= 7, row= 0  (sx=336, sy=0)  transp=88.3%
+  col=14, row= 0  (sx=672, sy=0)  transp=88.3%
+  col=15, row= 0  (sx=720, sy=0)  transp=71.9%
+  col= 6, row= 1  (sx=288, sy=48)  transp=59.4%
+  col= 7, row= 1  (sx=336, sy=48)  transp=72.7%
+  col= 8, row= 1  (sx=384, sy=48)  transp=67.6%
+  col= 9, row= 1  (sx=432, sy=48)  transp=76.2%
+  col=10, row= 1  (sx=480, sy=48)  transp=87.9%
+  col=11, row= 1  (sx=528, sy=48)  transp=87.9%
+  col=12, row= 1  (sx=576, sy=48)  transp=76.2%
+  col=13, row= 1  (sx=624, sy=48)  transp=67.6%
+  col=14, row= 1  (sx=672, sy=48)  transp=72.7%
+  col=15, row= 1  (sx=720, sy=48)  transp=59.4%
+  col= 5, row= 2  (sx=240, sy=96)  transp=68.8%
+  col= 6, row= 2  (sx=288, sy=96)  transp=78.9%
+  col= 7, row= 2  (sx=336, sy=96)  transp=88.3%
+  col=14, row= 2  (sx=672, sy=96)  transp=88.3%
+  col=15, row= 2  (sx=720, sy=96)  transp=78.9%
+  col= 6, row= 3  (sx=288, sy=144)  transp=75.0%
+  col= 7, row= 3  (sx=336, sy=144)  transp=88.3%
+  col= 8, row= 3  (sx=384, sy=144)  transp=67.6%
+  col= 9, row= 3  (sx=432, sy=144)  transp=76.2%
+  col=10, row= 3  (sx=480, sy=144)  transp=87.9%
+  col=11, row= 3  (sx=528, sy=144)  transp=87.9%
+  col=12, row= 3  (sx=576, sy=144)  transp=76.2%
+  col=13, row= 3  (sx=624, sy=144)  transp=67.6%
+  col=14, row= 3  (sx=672, sy=144)  transp=88.3%
+  col=15, row= 3  (sx=720, sy=144)  transp=75.0%
+  col= 6, row= 4  (sx=288, sy=192)  transp=59.4%
+  col= 7, row= 4  (sx=336, sy=192)  transp=72.7%
+  col=14, row= 4  (sx=672, sy=192)  transp=72.7%
+  col=15, row= 4  (sx=720, sy=192)  transp=59.4%
+  col= 1, row= 5  (sx=48, sy=240)  transp=62.5%
+  col= 2, row= 5  (sx=96, sy=240)  transp=62.5%
+  col= 3, row= 5  (sx=144, sy=240)  transp=62.5%
+  col= 4, row= 5  (sx=192, sy=240)  transp=55.5%
+  col= 5, row= 5  (sx=240, sy=240)  transp=55.5%
+  col= 6, row= 5  (sx=288, sy=240)  transp=82.0%
+  col= 7, row= 5  (sx=336, sy=240)  transp=76.6%
+  col= 8, row= 5  (sx=384, sy=240)  transp=65.2%
+  col= 9, row= 5  (sx=432, sy=240)  transp=60.5%
+  col=10, row= 5  (sx=480, sy=240)  transp=87.9%
+  col=11, row= 5  (sx=528, sy=240)  transp=87.9%
+  col=12, row= 5  (sx=576, sy=240)  transp=60.5%
+  col=13, row= 5  (sx=624, sy=240)  transp=65.2%
+  col=14, row= 5  (sx=672, sy=240)  transp=76.6%
+  col=15, row= 5  (sx=720, sy=240)  transp=82.0%
+  col= 2, row= 6  (sx=96, sy=288)  transp=62.5%
+  col= 3, row= 6  (sx=144, sy=288)  transp=62.5%
+  col= 4, row= 6  (sx=192, sy=288)  transp=40.6%
+  col= 5, row= 6  (sx=240, sy=288)  transp=46.9%
+  col= 7, row= 6  (sx=336, sy=288)  transp=71.9%
+  col= 8, row= 6  (sx=384, sy=288)  transp=81.2%
+  col= 9, row= 6  (sx=432, sy=288)  transp=78.9%
+  col=10, row= 6  (sx=480, sy=288)  transp=78.9%
+  col=11, row= 6  (sx=528, sy=288)  transp=75.4%
+  col=12, row= 6  (sx=576, sy=288)  transp=66.0%
+  col=13, row= 6  (sx=624, sy=288)  transp=66.0%
+  col=14, row= 6  (sx=672, sy=288)  transp=63.7%
+  col=15, row= 6  (sx=720, sy=288)  transp=63.7%
+  col= 6, row= 7  (sx=288, sy=336)  transp=85.5%
+  col= 7, row= 7  (sx=336, sy=336)  transp=85.5%
+  col= 8, row= 7  (sx=384, sy=336)  transp=85.5%
+  col= 9, row= 7  (sx=432, sy=336)  transp=85.5%
+  col=10, row= 7  (sx=480, sy=336)  transp=85.5%
+  col=11, row= 7  (sx=528, sy=336)  transp=77.7%
+  col=12, row= 7  (sx=576, sy=336)  transp=76.2%
+  col=13, row= 7  (sx=624, sy=336)  transp=76.2%
+  col=14, row= 7  (sx=672, sy=336)  transp=76.2%
+  col=15, row= 7  (sx=720, sy=336)  transp=79.7%
+  col= 6, row= 8  (sx=288, sy=384)  transp=76.2%
+  col= 7, row= 8  (sx=336, sy=384)  transp=76.2%
+  col= 8, row= 8  (sx=384, sy=384)  transp=76.2%
+  col= 9, row= 8  (sx=432, sy=384)  transp=76.2%
+  col=10, row= 8  (sx=480, sy=384)  transp=68.8%
+  col=11, row= 8  (sx=528, sy=384)  transp=45.7%
+  col=12, row= 8  (sx=576, sy=384)  transp=45.7%
+  col=13, row= 8  (sx=624, sy=384)  transp=45.7%
+  col=14, row= 8  (sx=672, sy=384)  transp=45.7%
+  col=15, row= 8  (sx=720, sy=384)  transp=79.7%
+  col= 0, row= 9  (sx=0, sy=432)  transp=64.1%
+  col= 1, row= 9  (sx=48, sy=432)  transp=64.1%
+  col= 2, row= 9  (sx=96, sy=432)  transp=64.1%
+  col= 3, row= 9  (sx=144, sy=432)  transp=59.4%
+  col= 4, row= 9  (sx=192, sy=432)  transp=18.0%
+  col= 5, row= 9  (sx=240, sy=432)  transp=59.4%
+  col= 6, row= 9  (sx=288, sy=432)  transp=18.0%
+  col=12, row= 9  (sx=576, sy=432)  transp=82.8%
+  col=13, row= 9  (sx=624, sy=432)  transp=82.8%
+  col=14, row= 9  (sx=672, sy=432)  transp=82.8%
+  col=15, row= 9  (sx=720, sy=432)  transp=82.8%
+  col= 0, row=10  (sx=0, sy=480)  transp=21.9%
+  col= 1, row=10  (sx=48, sy=480)  transp=21.9%
+  col= 2, row=10  (sx=96, sy=480)  transp=21.9%
+  col= 3, row=10  (sx=144, sy=480)  transp=18.0%
+  col= 4, row=10  (sx=192, sy=480)  transp=59.4%
+  col= 5, row=10  (sx=240, sy=480)  transp=18.0%
+  col= 6, row=10  (sx=288, sy=480)  transp=59.4%
+  col=12, row=10  (sx=576, sy=480)  transp=82.8%
+  col=13, row=10  (sx=624, sy=480)  transp=82.8%
+  col=14, row=10  (sx=672, sy=480)  transp=82.8%
+  col=15, row=10  (sx=720, sy=480)  transp=82.8%
+  col= 0, row=11  (sx=0, sy=528)  transp=59.4%
+  col= 1, row=11  (sx=48, sy=528)  transp=18.0%
+  col= 2, row=11  (sx=96, sy=528)  transp=18.0%
+  col= 3, row=11  (sx=144, sy=528)  transp=59.4%
+  col=12, row=11  (sx=576, sy=528)  transp=82.8%
+  col=13, row=11  (sx=624, sy=528)  transp=82.8%
+  col=14, row=11  (sx=672, sy=528)  transp=82.8%
+  col=15, row=11  (sx=720, sy=528)  transp=82.8%
+  col= 4, row=12  (sx=192, sy=576)  transp=50.0%
+  col= 5, row=12  (sx=240, sy=576)  transp=50.0%
+  col= 6, row=12  (sx=288, sy=576)  transp=50.0%
+  col= 7, row=12  (sx=336, sy=576)  transp=50.0%
+  col= 8, row=12  (sx=384, sy=576)  transp=50.0%
+  col= 9, row=12  (sx=432, sy=576)  transp=50.0%
+  col=10, row=12  (sx=480, sy=576)  transp=50.0%
+  col=11, row=12  (sx=528, sy=576)  transp=50.0%
+  col=12, row=12  (sx=576, sy=576)  transp=50.0%
+  col=13, row=12  (sx=624, sy=576)  transp=50.0%
+  col= 4, row=14  (sx=192, sy=672)  transp=50.0%
+  col= 5, row=14  (sx=240, sy=672)  transp=50.0%
+  col= 6, row=14  (sx=288, sy=672)  transp=50.0%
+  col= 7, row=14  (sx=336, sy=672)  transp=50.0%
+  col= 8, row=14  (sx=384, sy=672)  transp=50.0%
+  col= 9, row=14  (sx=432, sy=672)  transp=50.0%
+  col=10, row=14  (sx=480, sy=672)  transp=50.0%
+  col=11, row=14  (sx=528, sy=672)  transp=50.0%
+  col=12, row=14  (sx=576, sy=672)  transp=50.0%
+  col=13, row=14  (sx=624, sy=672)  transp=50.0%
+
+VISUAL GRID (A=autotile, S=STANDALONE, .=empty):
+       0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+    -------------------------------------------------
+  0 |  .  A  .  A  A  S  S  S  .  .  .  .  .  .  S  S
+  1 |  A  A  A  A  A  A  S  S  S  S  S  S  S  S  S  S
+  2 |  A  A  A  A  A  S  S  S  .  .  .  .  .  .  S  S
+  3 |  A  .  A  A  A  A  S  S  S  S  S  S  S  S  S  S
+  4 |  A  A  A  .  A  A  S  S  .  .  .  .  .  .  S  S
+  5 |  A  S  S  S  S  S  S  S  S  S  S  S  S  S  S  S
+  6 |  A  A  S  S  S  S  .  S  S  S  S  S  S  S  S  S
+  7 |  A  A  A  .  .  .  S  S  S  S  S  S  S  S  S  S
+  8 |  A  A  A  .  .  .  S  S  S  S  S  S  S  S  S  S
+  9 |  S  S  S  S  S  S  S  .  .  .  .  .  S  S  S  S
+ 10 |  S  S  S  S  S  S  S  .  .  .  .  .  S  S  S  S
+ 11 |  S  S  S  S  A  A  A  A  A  A  A  .  S  S  S  S
+ 12 |  A  A  A  A  S  S  S  S  S  S  S  S  S  S  A  A
+ 13 |  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A
+ 14 |  A  A  A  A  S  S  S  S  S  S  S  S  S  S  A  A
+ 15 |  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A  A

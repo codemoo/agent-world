@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
+  buildEventsFromAgentsList,
   buildEventsFromInboxSnapshot,
   createPaperclipPoller,
   mapIssueStatusToEventType,
@@ -156,4 +157,186 @@ test('poller.pollNow 동시 호출은 in-flight promise를 재사용한다', asy
   const [left, right] = await Promise.all([first, second]);
   assert.deepEqual(left, { fetched: 0, emitted: 0 });
   assert.deepEqual(right, { fetched: 0, emitted: 0 });
+});
+
+test('buildEventsFromAgentsList는 issue가 없고 idle인 agent에 대해���도 presence 이벤트를 생성한다', () => {
+  const events = buildEventsFromAgentsList(
+    [
+      {
+        id: 'agent-idle',
+        name: 'Agent Idle',
+        status: 'idle',
+        updatedAt: '2026-04-02T12:00:00.000Z'
+      }
+    ],
+    []
+  );
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].event_type, 'run_started');
+  assert.equal(events[0].agent_id, 'agent-idle');
+  assert.equal(events[0].payload.agent_status, 'idle');
+});
+
+test('buildEventsFromAgentsList는 issue가 없지만 working 상태인 agent에 대해 presence run 이벤트를 생성한다', () => {
+  const events = buildEventsFromAgentsList(
+    [
+      {
+        id: 'agent-presence',
+        name: 'Agent Presence',
+        status: 'working',
+        updatedAt: '2026-04-02T12:00:00.000Z'
+      }
+    ],
+    []
+  );
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].event_type, 'run_started');
+  assert.equal(events[0].agent_id, 'agent-presence');
+  assert.equal(events[0].run_id, 'presence-agent-presence');
+  assert.equal(events[0].timestamp, '2026-04-02T12:00:00.000Z');
+});
+
+test('poller.pollNow는 company sync에서 agents/issues를 병렬 조회해 이벤트를 정규화한다', async () => {
+  const calledUrls = [];
+  const captured = [];
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    companyId: 'company-1',
+    endpointPath: '/api/agents/me/inbox-lite',
+    onEvents: events => {
+      captured.push(...events);
+    },
+    fetchImpl: async url => {
+      calledUrls.push(url);
+
+      if (url === 'http://paperclip.local/api/companies/company-1/agents') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            {
+              id: 'agent-company',
+              name: 'Agent Company',
+              status: 'working'
+            }
+          ]
+        };
+      }
+
+      if (
+        url ===
+        'http://paperclip.local/api/companies/company-1/issues?status=todo,in_progress,blocked,in_review'
+      ) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            {
+              id: 'task-company-1',
+              identifier: 'MOO-901',
+              status: 'blocked',
+              assigneeAgentId: 'agent-company',
+              title: '회사 동기화 케이스',
+              activeRun: { id: 'run-company-1' },
+              updatedAt: '2026-04-02T12:10:00.000Z'
+            }
+          ]
+        };
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    }
+  });
+
+  const result = await poller.pollNow();
+
+  assert.equal(calledUrls.length, 2);
+  assert.equal(
+    calledUrls.includes(
+      'http://paperclip.local/api/companies/company-1/agents'
+    ),
+    true
+  );
+  assert.equal(
+    calledUrls.includes(
+      'http://paperclip.local/api/companies/company-1/issues?status=todo,in_progress,blocked,in_review'
+    ),
+    true
+  );
+  assert.equal(result.fetched, 2);
+  assert.equal(result.emitted, 1);
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].event_type, 'task_paused');
+  assert.equal(captured[0].agent_id, 'agent-company');
+  assert.equal(captured[0].task_id, 'task-company-1');
+  assert.equal(captured[0].run_id, 'run-company-1');
+});
+
+test('poller.pollNow는 company sync에서 agents 조회 실패를 바로 예외로 전달한다', async () => {
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    companyId: 'company-1',
+    fetchImpl: async url => {
+      if (url === 'http://paperclip.local/api/companies/company-1/agents') {
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({})
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => []
+      };
+    }
+  });
+
+  await assert.rejects(
+    () => poller.pollNow(),
+    /Paperclip agents fetch failed: 503/
+  );
+});
+
+test('poller.pollNow는 company sync에서 issues 조회 실패를 바로 예외로 전달한다', async () => {
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    companyId: 'company-1',
+    fetchImpl: async url => {
+      if (
+        url ===
+        'http://paperclip.local/api/companies/company-1/agents'
+      ) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => []
+        };
+      }
+
+      if (
+        url ===
+        'http://paperclip.local/api/companies/company-1/issues?status=todo,in_progress,blocked,in_review'
+      ) {
+        return {
+          ok: false,
+          status: 502,
+          json: async () => ({})
+        };
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    }
+  });
+
+  await assert.rejects(
+    () => poller.pollNow(),
+    /Paperclip issues fetch failed: 502/
+  );
 });

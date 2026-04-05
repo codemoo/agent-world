@@ -1,0 +1,5153 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-04-05T11:32:08.980Z",
+  "assetRoot": "assets/pixymoon/Cute RPG World/Cute RPG World (RPG Maker)",
+  "counts": {
+    "sheets": 143,
+    "props": 12118,
+    "multiCellProps": 496,
+    "groups": 223
+  },
+  "categories": {
+    "character_sheet": 90,
+    "icons": 6,
+    "tileset_object": 42,
+    "tileset_autotile": 5
+  },
+  "tags": {
+    "character": 90,
+    "multi_character": 75,
+    "npc": 53,
+    "player_sprite": 53,
+    "rm_pack": 53,
+    "tileset": 47,
+    "object_tileset": 42,
+    "outdoor": 38,
+    "civilized": 34,
+    "wild": 23,
+    "castle": 21,
+    "single_character": 15,
+    "underground": 13,
+    "animated": 8,
+    "castle_new": 8,
+    "arid": 8,
+    "desert": 8,
+    "dungeon": 8,
+    "combatant": 7,
+    "enemy": 7,
+    "door": 7,
+    "fortress": 7,
+    "interactive": 7,
+    "creature": 7,
+    "ambient": 6,
+    "dark_castle": 6,
+    "evil": 6,
+    "mountain": 6,
+    "rocky": 6,
+    "icon": 6,
+    "ui": 6,
+    "ui_icon": 6,
+    "building": 6,
+    "dwelling": 6,
+    "house": 6,
+    "cactus": 5,
+    "forest": 5,
+    "trees": 5,
+    "woodland": 5,
+    "autotile": 5,
+    "cave": 5,
+    "decoration": 4,
+    "placeable": 4,
+    "field": 4,
+    "grassland": 4,
+    "plains": 4,
+    "settlement": 4,
+    "town": 4,
+    "village": 4,
+    "coast": 3,
+    "harbor": 3,
+    "port": 3,
+    "water_adjacent": 3,
+    "furniture": 3,
+    "indoor": 3,
+    "interior": 3,
+    "room": 3,
+    "ground_tile": 3,
+    "magical": 2,
+    "cold": 2,
+    "ice": 2,
+    "snow": 2,
+    "winter": 2
+  },
+  "sheets": [
+    {
+      "id": "f1e843298dfab209",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_001.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#001) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_001_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_001_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_001_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_001_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "32c79062c498d2cc",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_002.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#002) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_002_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_002_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_002_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_002_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9f6db1fb82bc9ff8",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_003.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#003) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_003_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_003_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_003_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_003_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "6d69b1bf405e14e6",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_004.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#004) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_004_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_004_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_004_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_004_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "296ca39fac8be5e0",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_005.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#005) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_005_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_005_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_005_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_005_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "2ce0a54a27e00802",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_006.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#006) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_006_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_006_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_006_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_006_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "ba42d0f44b5d94dd",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_007.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#007) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_007_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_007_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_007_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_007_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "b7fd0afe645c945b",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_008.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#008) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_008_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_008_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_008_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_008_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "a435335d29d1c5be",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_009.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#009) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_009_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_009_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_009_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_009_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "405a221c7562d7a8",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_010.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#010) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_010_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_010_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_010_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_010_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "8b76e4b057815241",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_011.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#011) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_011_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_011_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_011_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_011_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9157f596b5a1eb9a",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_012.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#012) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_012_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_012_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_012_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_012_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "58f72f90195863d1",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_013.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#013) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_013_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_013_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_013_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_013_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "a1fcfc70e74bdcaa",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_014.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#014) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_014_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_014_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_014_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_014_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "359568783583cc5f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_015.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#015) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_015_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_015_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_015_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_015_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "97d5495e38a882e5",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_016.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#016) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_016_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_016_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_016_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_016_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "437f423905729616",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_017.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#017) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_017_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_017_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_017_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_017_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "6a9ef4d1c19ae71f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_018.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#018) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_018_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_018_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_018_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_018_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "14c3d5471c72659b",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_019.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#019) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_019_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_019_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_019_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_019_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "5f7664044de7ff3f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_020.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#020) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_020_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_020_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_020_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_020_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "1caadd07700e6aaa",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_021.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#021) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_021_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_021_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_021_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_021_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "1e3211adffa4d529",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_022.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#022) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_022_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_022_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_022_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_022_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "e81421e037cf8106",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_023.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#023) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_023_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_023_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_023_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_023_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "e721cdd5bbf9dace",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_024.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#024) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_024_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_024_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_024_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_024_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "b762eab640ff53f9",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_025.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#025) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_025_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_025_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_025_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_025_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "1cd72383cb5ecbcb",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_026.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#026) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_026_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_026_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_026_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_026_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "64fab7a01cf38f14",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_027.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#027) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_027_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_027_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_027_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_027_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "ec17c65198916d64",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_028.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#028) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_028_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_028_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_028_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_028_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "375b4a9d2e9fb051",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_029.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#029) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_029_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_029_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_029_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_029_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "2bbbd60edcc74e48",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_030.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#030) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_030_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_030_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_030_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_030_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "0f5af63eb723892f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_031.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#031) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_031_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_031_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_031_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_031_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "e4fb118bf6c2694a",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_032.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#032) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_032_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_032_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_032_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_032_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9e4f0063707d8436",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_033.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#033) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_033_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_033_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_033_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_033_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "ca65397bfc539c25",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_034.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#034) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_034_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_034_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_034_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_034_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9172d86f360f5a32",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_035.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#035) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 288,
+      "height": 192,
+      "grid": {
+        "columns": 6,
+        "rows": 4,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "비표준 크기 RM 시트 (288×192).",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "06f8d31f418c3c76",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_036.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#036) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_036_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_036_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_036_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_036_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "a32d43572736eadb",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_037.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#037) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_037_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_037_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_037_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_037_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "b34eb709892c165f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_038.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#038) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_038_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_038_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_038_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_038_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "4a12331f18343fd5",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_039.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#039) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_039_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_039_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_039_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_039_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "42a3fa3745696183",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_040.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#040) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_040_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_040_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_040_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_040_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "281a0694183e3725",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_041.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#041) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_041_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_041_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_041_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_041_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "5905498cc7a9b5ca",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_042.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#042) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_042_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_042_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_042_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_042_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "55d1eeae1770474f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_043.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#043) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_043_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_043_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_043_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_043_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "6173c0bc96289b3f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_044.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#044) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_044_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_044_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_044_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_044_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "f61480487863c650",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_045.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#045) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_045_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_045_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_045_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_045_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "2524f37a6e11d02f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_046.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#046) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_046_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_046_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_046_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_046_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9e5521fc530cfb7c",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_047.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#047) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_047_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_047_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_047_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_047_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "7756dae717c3dd85",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_048.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#048) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_048_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_048_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_048_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_048_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "3813393c5e07d7cd",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_049.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#049) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_049_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_049_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_049_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_049_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "1a3fc149cdcdcaf8",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_050.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#050) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_050_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_050_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_050_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_050_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "8d6a0d8892fb06d4",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_051.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#051) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_051_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_051_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_051_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_051_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "3a92d1d085eb0ce9",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_052.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#052) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_052_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_052_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_052_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_052_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "2a7a289f8b1eaa47",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!Character_RM_053.png",
+      "category": "character_sheet",
+      "description": "일반 캐릭터 시트 (#053) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "multi_character",
+        "npc",
+        "player_sprite",
+        "rm_pack"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 4,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "Cute RPG World RM 팩 표준 시트. 상단 4행에 4명의 캐릭터가 수평 배치됨 (각 3열 × 4행, cell 72×72). 하단 절반은 빈 영역.",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "Character_RM_053_char1",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        },
+        {
+          "name": "Character_RM_053_char2",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 3,row 0)"
+        },
+        {
+          "name": "Character_RM_053_char3",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 6,row 0)"
+        },
+        {
+          "name": "Character_RM_053_char4",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 9,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "9c9ef6571d83e314",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!CuteRPG_Dark_Castle_Animations02.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Dark_Castle_Animations02) [! 접두사 = no-shift]",
+      "tags": [
+        "ambient",
+        "animated",
+        "castle",
+        "character",
+        "civilized",
+        "dark_castle",
+        "evil",
+        "multi_character"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "8a742cd73a876f90",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies01.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies01) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "f47e9d12bb75a5fe",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies02.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies02) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "c07fd6ac66172f07",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies03.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies03) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "bf17f3b4b84c38c0",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies04.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies04) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "9434f2ce3c064c50",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies05.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies05) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "cf364d12af9679f5",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies06.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies06) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "eec8570b6588eb7f",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/!enemies07.png",
+      "category": "character_sheet",
+      "description": "적 캐릭터 시트 (enemies07) [! 접두사 = no-shift]",
+      "tags": [
+        "character",
+        "combatant",
+        "enemy",
+        "multi_character"
+      ],
+      "width": 864,
+      "height": 576,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 72,
+        "cellHeight": 72
+      },
+      "notes": "적(enemies) 시트. 4캐릭터 12×8 레이아웃.",
+      "propCount": 60,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "00cfc43b9df9d9b6",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_Doors01.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_Doors01 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "door",
+        "fortress",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_Doors01_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "bbd48397f34d154c",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_Doors02.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_Doors02 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "door",
+        "fortress",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_Doors02_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "136198963559ebb1",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_New_Doors01.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_New_Doors01 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "castle_new",
+        "character",
+        "civilized",
+        "door",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_New_Doors01_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "8d5baec0a8780fda",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_New_Doors02.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_New_Doors02 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "castle_new",
+        "character",
+        "civilized",
+        "door",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_New_Doors02_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "a3f1c67f658eb35b",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_New_Doors03.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_New_Doors03 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "castle_new",
+        "character",
+        "civilized",
+        "door",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_New_Doors03_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "cc9ce752a1c126c4",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_Objects02.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_Objects02 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "decoration",
+        "fortress",
+        "placeable",
+        "single_character"
+      ],
+      "width": 144,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 48,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_Objects02_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "c294a70e6eaf47c6",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_Objects03.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_Objects03 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "decoration",
+        "fortress",
+        "placeable",
+        "single_character"
+      ],
+      "width": 144,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 48,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_Objects03_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "76904d36e49be048",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Castle_Objects04.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle_Objects04 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "decoration",
+        "fortress",
+        "placeable",
+        "single_character"
+      ],
+      "width": 288,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 96,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Castle_Objects04_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "e4eb6f9fe91c2f61",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Dark_Castle_Doors01.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Dark_Castle_Doors01 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "dark_castle",
+        "door",
+        "evil",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Dark_Castle_Doors01_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "3a6612f3a36d8259",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Dark_Castle_Doors02.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Dark_Castle_Doors02 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "dark_castle",
+        "door",
+        "evil",
+        "interactive",
+        "single_character"
+      ],
+      "width": 432,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 144,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Dark_Castle_Doors02_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "948607e1086d3f45",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Desert_Cactuar00.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert_Cactuar00 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "arid",
+        "cactus",
+        "character",
+        "creature",
+        "desert",
+        "outdoor",
+        "single_character",
+        "wild"
+      ],
+      "width": 144,
+      "height": 192,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Desert_Cactuar00_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "5ae09b31f53848a0",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Desert_Cactuar01.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert_Cactuar01 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "arid",
+        "cactus",
+        "character",
+        "creature",
+        "desert",
+        "outdoor",
+        "single_character",
+        "wild"
+      ],
+      "width": 288,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 96,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Desert_Cactuar01_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "b449371a349a50af",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Desert_Cactuar02.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert_Cactuar02 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "arid",
+        "cactus",
+        "character",
+        "creature",
+        "desert",
+        "outdoor",
+        "single_character",
+        "wild"
+      ],
+      "width": 288,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 96,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Desert_Cactuar02_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "05d2605eae8d97d9",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Desert_Cactuar03.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert_Cactuar03 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "arid",
+        "cactus",
+        "character",
+        "creature",
+        "desert",
+        "outdoor",
+        "single_character",
+        "wild"
+      ],
+      "width": 288,
+      "height": 384,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 96,
+        "cellHeight": 96
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Desert_Cactuar03_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "25e0804b566c7017",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/$CuteRPG_Desert_Cactuar04.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert_Cactuar04 (단일 캐릭터, $ 접두사)",
+      "tags": [
+        "arid",
+        "cactus",
+        "character",
+        "creature",
+        "desert",
+        "outdoor",
+        "single_character",
+        "wild"
+      ],
+      "width": 144,
+      "height": 192,
+      "grid": {
+        "columns": 3,
+        "rows": 4,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "$ 접두사 = 3프레임 × 4방향 단일 캐릭터 시트.",
+      "propCount": 12,
+      "multiCellPropCount": 0,
+      "groups": [
+        {
+          "name": "CuteRPG_Desert_Cactuar04_char",
+          "role": "character",
+          "members": 12,
+          "description": "캐릭터 블록 (3×4 @ col 0,row 0)"
+        }
+      ]
+    },
+    {
+      "id": "95360ddc5eb262c0",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Castle_New_Objects.png",
+      "category": "character_sheet",
+      "description": "오브젝트 시트 (CuteRPG_Castle_New_Objects)",
+      "tags": [
+        "castle",
+        "castle_new",
+        "character",
+        "civilized",
+        "decoration",
+        "multi_character",
+        "placeable"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "543a87dfbf63e021",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Castle.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Castle",
+      "tags": [
+        "castle",
+        "character",
+        "civilized",
+        "fortress",
+        "multi_character"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "76154f76afe0f1c8",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Dark_Castle_Animations01.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Dark_Castle_Animations01)",
+      "tags": [
+        "ambient",
+        "animated",
+        "castle",
+        "character",
+        "civilized",
+        "dark_castle",
+        "evil",
+        "multi_character"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "ec764cc89b9ec5ac",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Desert.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Desert",
+      "tags": [
+        "arid",
+        "character",
+        "desert",
+        "multi_character",
+        "outdoor",
+        "wild"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "d1aa747969cef0e2",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Dungeon_Entrance_Animations01.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Dungeon_Entrance_Animations01)",
+      "tags": [
+        "ambient",
+        "animated",
+        "character",
+        "dungeon",
+        "multi_character",
+        "underground"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "8c4a3255c802f749",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Dungeon_Entrance_Animations02.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Dungeon_Entrance_Animations02)",
+      "tags": [
+        "ambient",
+        "animated",
+        "character",
+        "dungeon",
+        "multi_character",
+        "underground"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "64c1231d5d0a1eb9",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Dungeon.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Dungeon",
+      "tags": [
+        "character",
+        "dungeon",
+        "multi_character",
+        "underground"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 72,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "1e93c1f968802e1c",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Field.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Field",
+      "tags": [
+        "character",
+        "field",
+        "grassland",
+        "multi_character",
+        "outdoor",
+        "plains",
+        "wild"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "800bcbd93227687e",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Forest.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Forest",
+      "tags": [
+        "character",
+        "forest",
+        "multi_character",
+        "outdoor",
+        "trees",
+        "wild",
+        "woodland"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 72,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "e266f0c60ee160b2",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Harbor_Animations.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Harbor_Animations)",
+      "tags": [
+        "ambient",
+        "animated",
+        "character",
+        "coast",
+        "harbor",
+        "multi_character",
+        "outdoor",
+        "port",
+        "water_adjacent"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "6ca90dd9622bd07c",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Interior.png",
+      "category": "character_sheet",
+      "description": "CuteRPG_Interior",
+      "tags": [
+        "character",
+        "civilized",
+        "furniture",
+        "indoor",
+        "interior",
+        "multi_character",
+        "room"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 48,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "026198524426edf5",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Magical01.png",
+      "category": "character_sheet",
+      "description": "매지컬 캐릭터 시트 (CuteRPG_Magical01)",
+      "tags": [
+        "character",
+        "creature",
+        "magical",
+        "multi_character"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "aea2c211a2e24b1b",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Magical02.png",
+      "category": "character_sheet",
+      "description": "매지컬 캐릭터 시트 (CuteRPG_Magical02)",
+      "tags": [
+        "character",
+        "creature",
+        "magical",
+        "multi_character"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 96,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "1b87171feb7be0d1",
+      "relPath": "Cute RPG World - RPG Maker MZ/characters/CuteRPG_Mountains_animations.png",
+      "category": "character_sheet",
+      "description": "애니메이션 오브젝트 시트 (CuteRPG_Mountains_animations)",
+      "tags": [
+        "ambient",
+        "animated",
+        "character",
+        "mountain",
+        "multi_character",
+        "outdoor",
+        "rocky",
+        "wild"
+      ],
+      "width": 576,
+      "height": 384,
+      "grid": {
+        "columns": 12,
+        "rows": 8,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "환경 애니메이션.",
+      "propCount": 72,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "e76a7b09e2979950",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons01.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons01) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "90c6169ac173e66e",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons02.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons02) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "0caf9211f643d031",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons03.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons03) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "4a633453d6143096",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons04.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons04) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "99a33d714b37d610",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons05.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons05) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "3e0797257c96e7a4",
+      "relPath": "Cute RPG World - RPG Maker MZ/system/CuteRPG_Icons06.png",
+      "category": "icons",
+      "description": "아이콘 시트 (Icons06) — 32×32 셀",
+      "tags": [
+        "icon",
+        "ui",
+        "ui_icon"
+      ],
+      "width": 512,
+      "height": 320,
+      "grid": {
+        "columns": 16,
+        "rows": 10,
+        "cellWidth": 32,
+        "cellHeight": 32
+      },
+      "notes": "아이템/스킬/상태 아이콘 모음.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "cea1e05531b6c45c",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Castle_B.png",
+      "category": "tileset_object",
+      "description": "성 (Castle) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "civilized",
+        "fortress",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 201,
+      "multiCellPropCount": 18,
+      "groups": []
+    },
+    {
+      "id": "517fec36c7edd1f0",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Castle_New_B.png",
+      "category": "tileset_object",
+      "description": "새 성 (Castle New) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "castle_new",
+        "civilized",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 153,
+      "multiCellPropCount": 12,
+      "groups": []
+    },
+    {
+      "id": "06a2c822fe71e306",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Castle_New_C.png",
+      "category": "tileset_object",
+      "description": "새 성 (Castle New) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "castle_new",
+        "civilized",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 173,
+      "multiCellPropCount": 14,
+      "groups": []
+    },
+    {
+      "id": "76ca080da6c85f9d",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Castle_New_D.png",
+      "category": "tileset_object",
+      "description": "새 성 (Castle New) 테마 — D — 추가 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "castle_new",
+        "civilized",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 173,
+      "multiCellPropCount": 14,
+      "groups": []
+    },
+    {
+      "id": "c66c02838d7215c9",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Castle_New_E.png",
+      "category": "tileset_object",
+      "description": "새 성 (Castle New) 테마 — E — 추가 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "castle_new",
+        "civilized",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 153,
+      "multiCellPropCount": 12,
+      "groups": []
+    },
+    {
+      "id": "711c74210dc645ec",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Caves_A5.png",
+      "category": "tileset_autotile",
+      "description": "동굴 (Caves) 테마 — A5 — 바닥 타일",
+      "tags": [
+        "autotile",
+        "cave",
+        "ground_tile",
+        "tileset",
+        "underground"
+      ],
+      "width": 384,
+      "height": 768,
+      "grid": {
+        "columns": 8,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "바닥(floor) 타일 시트. 각 셀은 반복 가능한 floor 타일.",
+      "propCount": 115,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "3677cc2bccc788e2",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Caves_B.png",
+      "category": "tileset_object",
+      "description": "동굴 (Caves) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "cave",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 202,
+      "multiCellPropCount": 3,
+      "groups": []
+    },
+    {
+      "id": "42bab0abd1be6d09",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Caves_C.png",
+      "category": "tileset_object",
+      "description": "동굴 (Caves) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "cave",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 87,
+      "multiCellPropCount": 22,
+      "groups": []
+    },
+    {
+      "id": "a96e1cc46859f837",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Caves_D.png",
+      "category": "tileset_object",
+      "description": "동굴 (Caves) 테마 — D — 추가 오브젝트 타일셋",
+      "tags": [
+        "cave",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 132,
+      "multiCellPropCount": 9,
+      "groups": []
+    },
+    {
+      "id": "ffff0d35797a7e97",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Caves_E.png",
+      "category": "tileset_object",
+      "description": "동굴 (Caves) 테마 — E — 추가 오브젝트 타일셋",
+      "tags": [
+        "cave",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 93,
+      "multiCellPropCount": 33,
+      "groups": []
+    },
+    {
+      "id": "8d53b153fa4b135f",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dark_Castle_B.png",
+      "category": "tileset_object",
+      "description": "어두운 성 (Dark Castle) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "civilized",
+        "dark_castle",
+        "evil",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 210,
+      "multiCellPropCount": 10,
+      "groups": []
+    },
+    {
+      "id": "27b980fd2d11fa7a",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dark_Castle_C.png",
+      "category": "tileset_object",
+      "description": "어두운 성 (Dark Castle) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "castle",
+        "civilized",
+        "dark_castle",
+        "evil",
+        "object_tileset",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 123,
+      "multiCellPropCount": 31,
+      "groups": []
+    },
+    {
+      "id": "8f1559898a3d5dd4",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Desert_B.png",
+      "category": "tileset_object",
+      "description": "사막 (Desert) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "arid",
+        "desert",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 143,
+      "multiCellPropCount": 28,
+      "groups": []
+    },
+    {
+      "id": "9fcb4ff3e8c9afdf",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Desert_C.png",
+      "category": "tileset_object",
+      "description": "사막 (Desert) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "arid",
+        "desert",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 102,
+      "multiCellPropCount": 24,
+      "groups": []
+    },
+    {
+      "id": "7e12ffc5281a8b96",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dungeon_A5.png",
+      "category": "tileset_autotile",
+      "description": "던전 (Dungeon) 테마 — A5 — 바닥 타일",
+      "tags": [
+        "autotile",
+        "dungeon",
+        "ground_tile",
+        "tileset",
+        "underground"
+      ],
+      "width": 384,
+      "height": 768,
+      "grid": {
+        "columns": 8,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "바닥(floor) 타일 시트. 각 셀은 반복 가능한 floor 타일.",
+      "propCount": 78,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "2188ad842208d105",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dungeon_B.png",
+      "category": "tileset_object",
+      "description": "던전 (Dungeon) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "dungeon",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 174,
+      "multiCellPropCount": 16,
+      "groups": []
+    },
+    {
+      "id": "53c70409c74fdd54",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dungeon_C.png",
+      "category": "tileset_object",
+      "description": "던전 (Dungeon) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "dungeon",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 120,
+      "multiCellPropCount": 6,
+      "groups": []
+    },
+    {
+      "id": "4bb6aa4f3ba021b8",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dungeon_Entrance_B.png",
+      "category": "tileset_object",
+      "description": "던전 입구 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "dungeon",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 200,
+      "multiCellPropCount": 6,
+      "groups": []
+    },
+    {
+      "id": "fccf2d6b4e8fd5b2",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Dungeon_Entrance_C.png",
+      "category": "tileset_object",
+      "description": "던전 입구 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "dungeon",
+        "object_tileset",
+        "tileset",
+        "underground"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 220,
+      "multiCellPropCount": 4,
+      "groups": []
+    },
+    {
+      "id": "acc277d3eac302a5",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_A1.png",
+      "category": "tileset_autotile",
+      "description": "필드 (Field / 초원) 테마 — A1 — 물/폭포 등 애니메이션 오토타일",
+      "tags": [
+        "animated",
+        "autotile",
+        "field",
+        "grassland",
+        "outdoor",
+        "plains",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 576,
+      "grid": {
+        "columns": 16,
+        "rows": 12,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "오토타일 시트. 개별 셀은 전환(transition) 타일이 많습니다.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "e07fbf81d43cff07",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "category": "tileset_object",
+      "description": "필드 (Field / 초원) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "field",
+        "grassland",
+        "object_tileset",
+        "outdoor",
+        "plains",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 171,
+      "multiCellPropCount": 8,
+      "groups": []
+    },
+    {
+      "id": "f5b385ad0dc3aac6",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_C.png",
+      "category": "tileset_object",
+      "description": "필드 (Field / 초원) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "field",
+        "grassland",
+        "object_tileset",
+        "outdoor",
+        "plains",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 58,
+      "multiCellPropCount": 19,
+      "groups": []
+    },
+    {
+      "id": "12f70412204f67b8",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_B.png",
+      "category": "tileset_object",
+      "description": "숲 (Forest) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "forest",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "trees",
+        "wild",
+        "woodland"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 205,
+      "multiCellPropCount": 1,
+      "groups": []
+    },
+    {
+      "id": "2dd16a8c471cbf73",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_C.png",
+      "category": "tileset_object",
+      "description": "숲 (Forest) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "forest",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "trees",
+        "wild",
+        "woodland"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 91,
+      "multiCellPropCount": 11,
+      "groups": []
+    },
+    {
+      "id": "acef5b191c401948",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_D.png",
+      "category": "tileset_object",
+      "description": "숲 (Forest) 테마 — D — 추가 오브젝트 타일셋",
+      "tags": [
+        "forest",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "trees",
+        "wild",
+        "woodland"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 91,
+      "multiCellPropCount": 11,
+      "groups": []
+    },
+    {
+      "id": "c4c7dbdb26c8e0eb",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_E.png",
+      "category": "tileset_object",
+      "description": "숲 (Forest) 테마 — E — 추가 오브젝트 타일셋",
+      "tags": [
+        "forest",
+        "object_tileset",
+        "outdoor",
+        "tileset",
+        "trees",
+        "wild",
+        "woodland"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 91,
+      "multiCellPropCount": 11,
+      "groups": []
+    },
+    {
+      "id": "80940c0eccd87472",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Harbor_B.png",
+      "category": "tileset_object",
+      "description": "항구 (Harbor) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "coast",
+        "harbor",
+        "object_tileset",
+        "outdoor",
+        "port",
+        "tileset",
+        "water_adjacent"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 123,
+      "multiCellPropCount": 18,
+      "groups": []
+    },
+    {
+      "id": "25b877cda1afad6f",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Harbor_C.png",
+      "category": "tileset_object",
+      "description": "항구 (Harbor) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "coast",
+        "harbor",
+        "object_tileset",
+        "outdoor",
+        "port",
+        "tileset",
+        "water_adjacent"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 248,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "9bc33218706a1658",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_B1.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — B — 주 오브젝트 타일셋 (변형 1)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_B1 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 47,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "bee7500ddc778a9e",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_B2.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — B — 주 오브젝트 타일셋 (변형 2)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_B2 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 47,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "c32ffb7d45866f70",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_B3.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — B — 주 오브젝트 타일셋 (변형 3)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_B3 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 47,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "f28b677b8947d31a",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C1.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — C — 보조 오브젝트 타일셋 (변형 1)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_C1 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 91,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "145a9dc69d117e89",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C2.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — C — 보조 오브젝트 타일셋 (변형 2)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_C2 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 91,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "dc929a3627c2594a",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C3.png",
+      "category": "tileset_object",
+      "description": "건물 (Houses) 테마 — C — 보조 오브젝트 타일셋 (변형 3)",
+      "tags": [
+        "building",
+        "civilized",
+        "dwelling",
+        "house",
+        "object_tileset",
+        "outdoor",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "Houses_RPGMaker_C3 — 사전 조합된 건물 시트. 상단 행에 타이트한 바운딩 박스의 개별 집들이 있음 (C1/C2/C3: sx=3,195,387,579 / sy=24 / sw=186 / sh=216).",
+      "propCount": 91,
+      "multiCellPropCount": 7,
+      "groups": []
+    },
+    {
+      "id": "524cbe6e80656678",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Interior_B.png",
+      "category": "tileset_object",
+      "description": "실내 (Interior) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "civilized",
+        "furniture",
+        "indoor",
+        "interior",
+        "object_tileset",
+        "room",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 196,
+      "multiCellPropCount": 27,
+      "groups": []
+    },
+    {
+      "id": "bce51a472847f37f",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Interior_C.png",
+      "category": "tileset_object",
+      "description": "실내 (Interior) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "civilized",
+        "furniture",
+        "indoor",
+        "interior",
+        "object_tileset",
+        "room",
+        "tileset"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 75,
+      "multiCellPropCount": 3,
+      "groups": []
+    },
+    {
+      "id": "99a0d9313457b6f5",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Mountains_A1.png",
+      "category": "tileset_autotile",
+      "description": "산 (Mountains) 테마 — A1 — 물/폭포 등 애니메이션 오토타일",
+      "tags": [
+        "animated",
+        "autotile",
+        "mountain",
+        "outdoor",
+        "rocky",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 576,
+      "grid": {
+        "columns": 16,
+        "rows": 12,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "오토타일 시트. 개별 셀은 전환(transition) 타일이 많습니다.",
+      "propCount": 144,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "f5452116f2592a33",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Mountains_A5.png",
+      "category": "tileset_autotile",
+      "description": "산 (Mountains) 테마 — A5 — 바닥 타일",
+      "tags": [
+        "autotile",
+        "ground_tile",
+        "mountain",
+        "outdoor",
+        "rocky",
+        "tileset",
+        "wild"
+      ],
+      "width": 384,
+      "height": 768,
+      "grid": {
+        "columns": 8,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "바닥(floor) 타일 시트. 각 셀은 반복 가능한 floor 타일.",
+      "propCount": 118,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "9959c63d0b8fdcb4",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Mountains_B.png",
+      "category": "tileset_object",
+      "description": "산 (Mountains) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "mountain",
+        "object_tileset",
+        "outdoor",
+        "rocky",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 187,
+      "multiCellPropCount": 12,
+      "groups": []
+    },
+    {
+      "id": "667c7821cebbfcee",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Mountains_C.png",
+      "category": "tileset_object",
+      "description": "산 (Mountains) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "mountain",
+        "object_tileset",
+        "outdoor",
+        "rocky",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 187,
+      "multiCellPropCount": 12,
+      "groups": []
+    },
+    {
+      "id": "8419d3673860cd60",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Mountains_D.png",
+      "category": "tileset_object",
+      "description": "산 (Mountains) 테마 — D — 추가 오브젝트 타일셋",
+      "tags": [
+        "mountain",
+        "object_tileset",
+        "outdoor",
+        "rocky",
+        "tileset",
+        "wild"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 187,
+      "multiCellPropCount": 12,
+      "groups": []
+    },
+    {
+      "id": "8db0d5133636e5fc",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Village_B.png",
+      "category": "tileset_object",
+      "description": "마을 (Village) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "civilized",
+        "object_tileset",
+        "outdoor",
+        "settlement",
+        "tileset",
+        "town",
+        "village"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 149,
+      "multiCellPropCount": 23,
+      "groups": []
+    },
+    {
+      "id": "428dd0be15f62d2a",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Village_C01.png",
+      "category": "tileset_object",
+      "description": "마을 (Village) 테마 — C — 보조 오브젝트 타일셋 (변형 01)",
+      "tags": [
+        "civilized",
+        "object_tileset",
+        "outdoor",
+        "settlement",
+        "tileset",
+        "town",
+        "village"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 212,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "e3ea920dee63b832",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Village_C02.png",
+      "category": "tileset_object",
+      "description": "마을 (Village) 테마 — C — 보조 오브젝트 타일셋 (변형 02)",
+      "tags": [
+        "civilized",
+        "object_tileset",
+        "outdoor",
+        "settlement",
+        "tileset",
+        "town",
+        "village"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 212,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "adf5c71a770fddcc",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Village_C03.png",
+      "category": "tileset_object",
+      "description": "마을 (Village) 테마 — C — 보조 오브젝트 타일셋 (변형 03)",
+      "tags": [
+        "civilized",
+        "object_tileset",
+        "outdoor",
+        "settlement",
+        "tileset",
+        "town",
+        "village"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 212,
+      "multiCellPropCount": 0,
+      "groups": []
+    },
+    {
+      "id": "97e41c3702a3c686",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Winter_B.png",
+      "category": "tileset_object",
+      "description": "겨울 (Winter) 테마 — B — 주 오브젝트 타일셋",
+      "tags": [
+        "cold",
+        "ice",
+        "object_tileset",
+        "outdoor",
+        "snow",
+        "tileset",
+        "winter"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 134,
+      "multiCellPropCount": 5,
+      "groups": []
+    },
+    {
+      "id": "02eef92de3ea898e",
+      "relPath": "Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Winter_C.png",
+      "category": "tileset_object",
+      "description": "겨울 (Winter) 테마 — C — 보조 오브젝트 타일셋",
+      "tags": [
+        "cold",
+        "ice",
+        "object_tileset",
+        "outdoor",
+        "snow",
+        "tileset",
+        "winter"
+      ],
+      "width": 768,
+      "height": 768,
+      "grid": {
+        "columns": 16,
+        "rows": 16,
+        "cellWidth": 48,
+        "cellHeight": 48
+      },
+      "notes": "",
+      "propCount": 109,
+      "multiCellPropCount": 19,
+      "groups": []
+    }
+  ]
+}

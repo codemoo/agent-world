@@ -78,9 +78,9 @@ test('API 통합 흐름: /events 반영 후 /state에서 런/태스크 상태를
   assert.equal(agent.tasks[0].label, 'quality gate');
   assert.equal(run.status, 'completed');
   assert.deepEqual(run.taskIds, ['task-int-1']);
-  assert.equal(stateResult.json.data.world.width, 25);
-  assert.equal(stateResult.json.data.world.height, 25);
-  assert.equal(stateResult.json.data.world.tiles.length, 25);
+  assert.equal(stateResult.json.data.world.width, 30);
+  assert.equal(stateResult.json.data.world.height, 30);
+  assert.equal(stateResult.json.data.world.tiles.length, 30);
   assert.equal(avatar.state, 'idle');
   assert.equal(avatar.moving, true);
 });
@@ -118,7 +118,8 @@ test('API 통합: task_paused(blocked) 이벤트는 작업/아바타를 idle로 
   assert.equal(agent.activity, 'idle');
   assert.equal(avatar.state, 'idle');
   assert.equal(avatar.moving, true);
-  assert.equal(avatar.bubbleText, '');
+  // Idle agents now show destination text (Generative Agents behavior)
+  assert.equal(typeof avatar.bubbleText, 'string');
 });
 
 test('API 통합: 배치 실패 시 world state가 변경되지 않는다(원자성)', async () => {

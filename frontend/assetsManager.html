@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Agent World — 애셋 관리</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #0f1a1f;
+        color: #e2e8f0;
+        font-size: 13px;
+      }
+      a { color: #7dd3fc; }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        background: #111827;
+        border-bottom: 1px solid #1f2937;
+      }
+      header h1 { margin: 0; font-size: 16px; letter-spacing: 0.5px; }
+      header .links a { margin-left: 12px; text-decoration: none; }
+      #layout {
+        display: grid;
+        grid-template-columns: 320px 1fr 340px;
+        height: calc(100vh - 48px);
+      }
+      #sheetList {
+        border-right: 1px solid #1f2937;
+        overflow-y: auto;
+        background: #0b1418;
+      }
+      #sheetList .filter {
+        padding: 8px;
+        position: sticky;
+        top: 0;
+        background: #0b1418;
+        border-bottom: 1px solid #1f2937;
+      }
+      #sheetList input[type='search'] {
+        width: 100%;
+        padding: 6px 8px;
+        background: #111827;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 4px;
+      }
+      #sheetList ul { list-style: none; margin: 0; padding: 0; }
+      #sheetList li {
+        padding: 8px 10px;
+        border-bottom: 1px solid #162029;
+        cursor: pointer;
+      }
+      #sheetList li:hover { background: #162029; }
+      #sheetList li.selected { background: #1e3a4a; }
+      #sheetList li .name { font-weight: bold; color: #f1f5f9; font-size: 12px; word-break: break-all; }
+      #sheetList li .meta { color: #94a3b8; font-size: 11px; margin-top: 2px; }
+      #sheetList li .cat {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        margin-right: 4px;
+      }
+      .cat.tileset_object { background: #1e4d6b; color: #bae6fd; }
+      .cat.tileset_autotile { background: #5b3a1e; color: #fed7aa; }
+      .cat.character_sheet { background: #3b1e5b; color: #e9d5ff; }
+      .cat.icons { background: #1e5b3a; color: #bbf7d0; }
+      .cat.unknown { background: #374151; color: #d1d5db; }
+      #canvasWrap {
+        overflow: auto;
+        padding: 12px;
+        background: #05090b;
+        position: relative;
+      }
+      #canvasStage {
+        position: relative;
+        display: inline-block;
+      }
+      #canvasStage img {
+        display: block;
+        image-rendering: pixelated;
+        border: 1px solid #1f2937;
+        background: #1f2937;
+      }
+      #overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        cursor: crosshair;
+      }
+      #details {
+        border-left: 1px solid #1f2937;
+        overflow-y: auto;
+        padding: 14px;
+        background: #0b1418;
+      }
+      #details h2 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        color: #7dd3fc;
+      }
+      #details h3 {
+        margin: 14px 0 6px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
+        border-top: 1px solid #1f2937;
+        padding-top: 10px;
+      }
+      #details label {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: #94a3b8;
+      }
+      #details input, #details textarea, #details select {
+        width: 100%;
+        padding: 5px 7px;
+        margin-top: 2px;
+        background: #111827;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 3px;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      #details textarea { resize: vertical; min-height: 60px; }
+      #details .row { display: flex; gap: 6px; }
+      #details .row label { flex: 1; }
+      button {
+        padding: 6px 10px;
+        background: #1e3a4a;
+        color: #e2e8f0;
+        border: 1px solid #334155;
+        border-radius: 3px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 12px;
+      }
+      button:hover { background: #2a4d60; }
+      button.primary { background: #0369a1; border-color: #0369a1; }
+      button.danger { background: #7f1d1d; border-color: #7f1d1d; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btnRow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+      #propsList, #groupsList {
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid #1f2937;
+        border-radius: 3px;
+      }
+      #groupsList { max-height: 180px; margin-bottom: 8px; }
+      #groupsList .groupItem {
+        padding: 6px 8px;
+        border-bottom: 1px solid #162029;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      #groupsList .groupItem:hover { background: #162029; }
+      #groupsList .groupItem.selected { background: #3b1e5b; color: #e9d5ff; }
+      #groupsList .groupItem .meta { color: #94a3b8; font-size: 10px; }
+      .propItem .group-badge {
+        display: inline-block;
+        padding: 0 4px;
+        margin-left: 4px;
+        background: #3b1e5b;
+        color: #e9d5ff;
+        border-radius: 2px;
+        font-size: 9px;
+      }
+      #propsList .propItem {
+        padding: 6px 8px;
+        border-bottom: 1px solid #162029;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      #propsList .propItem:hover { background: #162029; }
+      #propsList .propItem.selected { background: #1e3a4a; }
+      #propsList .propItem .coords { color: #94a3b8; font-size: 10px; }
+      .info { color: #94a3b8; font-size: 11px; line-height: 1.4; }
+      .toast {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        background: #111827;
+        border: 1px solid #1f2937;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .toast.show { opacity: 1; }
+      .toast.error { border-color: #7f1d1d; color: #fecaca; }
+      #zoomControls { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>애셋 관리</h1>
+      <div class="links">
+        <a href="/">← 월드 보기</a>
+      </div>
+    </header>
+    <div id="layout">
+      <aside id="sheetList">
+        <div class="filter">
+          <input type="search" id="sheetFilter" placeholder="파일명으로 필터..." />
+        </div>
+        <ul id="sheetListItems"></ul>
+      </aside>
+      <main id="canvasWrap">
+        <div id="zoomControls">
+          <button id="zoomOut">−</button>
+          <span id="zoomLabel">100%</span>
+          <button id="zoomIn">+</button>
+          <span class="info" id="canvasInfo"></span>
+        </div>
+        <div id="canvasStage">
+          <img id="sheetImage" alt="" />
+          <canvas id="overlay"></canvas>
+        </div>
+      </main>
+      <aside id="details">
+        <div class="info" id="emptyDetails">시트를 선택하세요.</div>
+        <div id="sheetDetails" hidden>
+          <h2 id="sheetName"></h2>
+          <div class="info" id="sheetDims"></div>
+
+          <label>설명
+            <textarea id="sheetDescription"></textarea>
+          </label>
+          <label>카테고리
+            <select id="sheetCategory">
+              <option value="tileset_object">타일셋 (오브젝트)</option>
+              <option value="tileset_autotile">타일셋 (오토타일)</option>
+              <option value="character_sheet">캐릭터 시트</option>
+              <option value="icons">아이콘</option>
+              <option value="unknown">미분류</option>
+            </select>
+          </label>
+          <label>메모
+            <textarea id="sheetNotes" rows="2"></textarea>
+          </label>
+
+          <h3>그리드 설정</h3>
+          <div class="row">
+            <label>Cols <input type="number" id="gridCols" min="1" max="512" /></label>
+            <label>Rows <input type="number" id="gridRows" min="1" max="512" /></label>
+          </div>
+          <div class="row">
+            <label>CellW <input type="number" id="gridCellW" min="1" max="4096" /></label>
+            <label>CellH <input type="number" id="gridCellH" min="1" max="4096" /></label>
+          </div>
+          <div class="btnRow">
+            <button id="saveSheet" class="primary">저장</button>
+            <button id="autoSlice">그리드로 자동 분할</button>
+          </div>
+
+          <h3>그룹 (<span id="groupCount">0</span>)</h3>
+          <div class="info">캐릭터 시트는 각 캐릭터 블록이 하나의 그룹(12프레임 = 3프레임×4방향). 그룹을 클릭하면 멤버 props가 캔버스에 강조됨.</div>
+          <div id="groupsList"></div>
+
+          <h3>Props (<span id="propCount">0</span>)</h3>
+          <div class="info">캔버스에서 드래그해 새 prop을 만들거나, 아래 목록에서 선택해 편집.</div>
+          <div id="propsList"></div>
+
+          <h3>선택된 Prop</h3>
+          <div id="propEditor">
+            <div class="info" id="noPropSelected">선택된 prop이 없습니다.</div>
+            <div id="propFields" hidden>
+              <label>이름 <input type="text" id="propName" /></label>
+              <label>설명 <textarea id="propDescription" rows="2"></textarea></label>
+              <div class="row">
+                <label>X <input type="number" id="propX" min="0" /></label>
+                <label>Y <input type="number" id="propY" min="0" /></label>
+              </div>
+              <div class="row">
+                <label>W <input type="number" id="propW" min="1" /></label>
+                <label>H <input type="number" id="propH" min="1" /></label>
+              </div>
+              <div class="btnRow">
+                <button id="savePropBtn" class="primary">Prop 저장</button>
+                <button id="deletePropBtn" class="danger">삭제</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+    <div id="toast" class="toast"></div>
+    <script src="assetsManager.js" type="module"></script>
+  </body>
+</html>

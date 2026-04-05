@@ -14,9 +14,14 @@ assets/pixymoon/*
 .DS_Store
 .vscode/
 
+# Daemon logs
+logs/
+output.log
+
 # Paperclip Files
 MEMORY.md
 memory
 docs
 SOUL.md
 USER.md
+.agents

@@ -62,3 +62,20 @@ test('E2E: WebSocket은 인증 토큰 없이 연결할 수 없다', async () => 
     /401|Unauthorized|Unexpected server response/
   );
 });
+
+test('E2E: WebSocket은 허용되지 않은 Origin이면 403으로 거부한다', async () => {
+  const ticketResult = await postJson(runtime.baseUrl, '/auth/ws-ticket', {});
+  assert.equal(ticketResult.response.status, 201);
+  const ticket = ticketResult.json.ticket;
+  assert.equal(typeof ticket, 'string');
+
+  await assert.rejects(
+    () =>
+      openWebSocket(runtime.wsUrl, {
+        ticket,
+        headers: { Origin: 'https://evil.example' },
+        auth: false
+      }),
+    /403|Forbidden|Unexpected server response/
+  );
+});

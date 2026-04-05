@@ -254,6 +254,31 @@ test('rate limit 초과 시 429를 반환한다', async () => {
   }
 });
 
+test('rate limit 기본값(120 req/60s) 동작을 검증한다', async () => {
+  const defaultRateLimitRuntime = await startTestServer();
+
+  try {
+    for (let i = 1; i <= 120; i += 1) {
+      const result = await getJson(defaultRateLimitRuntime.baseUrl, '/state');
+      assert.equal(result.response.status, 200, `요청 ${i}회는 통과해야 함`);
+    }
+
+    const overflow = await getJson(
+      defaultRateLimitRuntime.baseUrl,
+      '/state'
+    );
+    assert.equal(overflow.response.status, 429);
+    assert.equal(overflow.json.error, 'Too many requests.');
+    assert.equal(overflow.json.details[0].code, 'RATE_LIMITED');
+    assert.equal(
+      Number(overflow.response.headers.get('retry-after')) > 0,
+      true
+    );
+  } finally {
+    await stopTestServer(defaultRateLimitRuntime);
+  }
+});
+
 test('run_started/run_completed에서 run_id 누락 시 400으로 거부한다', async () => {
   for (const eventType of ['run_started', 'run_completed']) {
     const { response, json } = await postJson(runtime.baseUrl, '/events', {
@@ -422,8 +447,159 @@ test('Paperclip 동기화에서 blocked 상태는 task_paused로 반영되어 �
     assert.equal(agent.activity, 'idle');
     assert.equal(avatar.state, 'idle');
     assert.equal(avatar.moving, true);
-    assert.equal(avatar.bubbleText, '');
+    // Idle agents now show destination text (Generative Agents behavior)
+    assert.equal(typeof avatar.bubbleText, 'string');
   } finally {
     await stopTestServer(syncRuntime);
+  }
+});
+
+test('Paperclip 수동 동기화 성공 시 메타 상태가 lastSyncAt/lastSyncError를 갱신한다', async () => {
+  const syncRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'task-sync-meta',
+            identifier: 'MOO-2000',
+            title: '메타 동기화 점검',
+            status: 'in_progress',
+            assigneeAgentId: 'agent-sync-meta',
+            updatedAt: '2026-04-02T12:00:00.000Z'
+          }
+        ]
+      })
+    }
+  });
+
+  try {
+    const syncResult = await postJson(syncRuntime.baseUrl, '/sync/paperclip', {});
+    assert.equal(syncResult.response.status, 200);
+    assert.equal(syncResult.json.fetched, 1);
+    assert.equal(syncResult.json.emitted, 1);
+
+    const stateResult = await getJson(syncRuntime.baseUrl, '/state');
+    assert.equal(typeof stateResult.json.data.meta.paperclip.lastSyncAt, 'string');
+    assert.match(stateResult.json.data.meta.paperclip.lastSyncAt, /\d{4}-/);
+    assert.equal(stateResult.json.data.meta.paperclip.lastSyncError, null);
+    assert.equal(stateResult.json.data.meta.paperclip.lastPolledCount, 1);
+  } finally {
+    await stopTestServer(syncRuntime);
+  }
+});
+
+test('Paperclip 수동 동기화는 companyId 모드에서 agents/issues 엔드포인트를 사용해 동기화한다', async () => {
+  const syncCompanyRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      companyId: 'company-1',
+      fetchImpl: async url => {
+        if (url === 'http://paperclip.local/api/companies/company-1/agents') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'agent-sync-company',
+                name: 'Company Agent',
+                status: 'working',
+                role: 'engineer'
+              }
+            ]
+          };
+        }
+
+        if (
+          url ===
+          'http://paperclip.local/api/companies/company-1/issues?status=todo,in_progress,blocked,in_review'
+        ) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'task-sync-company-1',
+                identifier: 'MOO-3000',
+                status: 'in_progress',
+                assigneeAgentId: 'agent-sync-company',
+                title: '회사 동기화 케이스',
+                activeRun: { id: 'run-company-1' },
+                updatedAt: '2026-04-02T13:00:00.000Z'
+              }
+            ]
+          };
+        }
+
+        throw new Error(`Unexpected URL: ${url}`);
+      }
+    }
+  });
+
+  try {
+    const syncResult = await postJson(
+      syncCompanyRuntime.baseUrl,
+      '/sync/paperclip',
+      {}
+    );
+    assert.equal(syncResult.response.status, 200);
+    assert.equal(syncResult.json.fetched, 2);
+    assert.equal(syncResult.json.emitted, 1);
+
+    const stateResult = await getJson(syncCompanyRuntime.baseUrl, '/state');
+    const agent = stateResult.json.data.agents['agent-sync-company'];
+    assert.equal(agent.tasks[0].status, 'in_progress');
+    assert.equal(agent.tasks[0].id, 'task-sync-company-1');
+    assert.equal(agent.tasks[0].label, '회사 동기화 케이스');
+    assert.equal(stateResult.json.data.runs['run-company-1'].status, 'running');
+  } finally {
+    await stopTestServer(syncCompanyRuntime);
+  }
+});
+
+test('Paperclip 수동 동기화 실패 시 meta.lastSyncError에 원인 메시지가 남는다', async () => {
+  const syncFailRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async () => ({
+        ok: false,
+        status: 500,
+        json: async () => ({})
+      })
+    }
+  });
+
+  try {
+    const syncFailResult = await postJson(
+      syncFailRuntime.baseUrl,
+      '/sync/paperclip',
+      {}
+    );
+    assert.equal(syncFailResult.response.status, 502);
+    assert.equal(syncFailResult.json.error, 'Paperclip sync failed.');
+    assert.equal(syncFailResult.json.details[0].code, 'PAPERCLIP_SYNC_FAILED');
+
+    const stateResult = await getJson(syncFailRuntime.baseUrl, '/state');
+    assert.equal(
+      typeof stateResult.json.data.meta.paperclip.lastSyncError,
+      'string'
+    );
+    assert.match(
+      stateResult.json.data.meta.paperclip.lastSyncError,
+      /Paperclip inbox fetch failed: 500/
+    );
+  } finally {
+    await stopTestServer(syncFailRuntime);
   }
 });

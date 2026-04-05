@@ -98,10 +98,11 @@ test('task lifecycle 시나리오(생성->할당->도구호출->완료->run 완�
   assert.equal(avatar.agentId, 'agent-1');
   assert.equal(avatar.state, 'idle');
   assert.equal(avatar.moving, true);
-  assert.equal(avatar.bubbleText, '');
+  // Idle agents now show destination text (Generative Agents behavior)
+  assert.equal(typeof avatar.bubbleText, 'string');
 });
 
-test('작업 시작 시 아바타가 정지하고 말풍선을 표시한다', () => {
+test('작업 시작 시 아바타가 working 상태로 전환되고 말풍선을 표시한다', () => {
   const worldState = createWorldState();
   const created = {
     event_type: 'task_created',
@@ -114,7 +115,9 @@ test('작업 시작 시 아바타가 정지하고 말풍선을 표시한다', ()
 
   const avatar = worldState.avatars['agent-bubble'];
   assert.equal(avatar.state, 'working');
-  assert.equal(avatar.moving, false);
+  // moving=true so the client-side runtime can route this agent to a
+  // work station. The runtime will linger at the station between picks.
+  assert.equal(avatar.moving, true);
   assert.equal(avatar.currentTaskId, 'task-bubble');
   assert.equal(avatar.bubbleText, '회귀 테스트 작성');
 
@@ -128,7 +131,8 @@ test('작업 시작 시 아바타가 정지하고 말풍선을 표시한다', ()
 
   assert.equal(avatar.state, 'idle');
   assert.equal(avatar.moving, true);
-  assert.equal(avatar.bubbleText, '');
+  // Idle agents now get destination text (Generative Agents behavior)
+  assert.equal(typeof avatar.bubbleText, 'string');
 });
 
 test('task_paused(blocked) 이벤트는 작업 상태를 비활성으로 전환한다', () => {
@@ -165,7 +169,37 @@ test('task_paused(blocked) 이벤트는 작업 상태를 비활성으로 전환�
   assert.equal(agent.zone, 'blocked');
   assert.equal(avatar.state, 'idle');
   assert.equal(avatar.moving, true);
-  assert.equal(avatar.bubbleText, '');
+  // Idle agents now get destination text (Generative Agents behavior)
+  assert.equal(typeof avatar.bubbleText, 'string');
+});
+
+test('applyPaperclipEvent: 이전 타임스탬프의 이벤트는 무시한다', () => {
+  const worldState = createWorldState();
+  
+  // 1. 최신 이벤트 먼저 처리 (12:00)
+  handlePaperclipEvent({
+    event_type: 'task_created',
+    agent_id: 'agent-ts',
+    task_id: 'task-ts',
+    timestamp: '2026-04-05T12:00:00.000Z',
+    payload: { label: 'Latest' }
+  }, worldState);
+
+  const agent = worldState.agents['agent-ts'];
+  assert.equal(agent.tasks[0].label, 'Latest');
+  assert.equal(agent.lastEventAt, '2026-04-05T12:00:00.000Z');
+
+  // 2. 과거 이벤트 처리 (11:59) - 무시되어야 함
+  handlePaperclipEvent({
+    event_type: 'task_created',
+    agent_id: 'agent-ts',
+    task_id: 'task-ts',
+    timestamp: '2026-04-05T11:59:00.000Z',
+    payload: { label: 'Old' }
+  }, worldState);
+
+  assert.equal(agent.tasks[0].label, 'Latest');
+  assert.equal(agent.lastEventAt, '2026-04-05T12:00:00.000Z');
 });
 
 test('task event에 task_id가 없으면 검증 에러를 낸다', () => {

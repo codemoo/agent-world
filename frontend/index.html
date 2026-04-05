@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Agent World</title>
+    <title>Agent World — Generative Agents</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       :root {
@@ -19,6 +19,7 @@
         min-height: 100vh;
         background: radial-gradient(circle at 20% 10%, #325f31, #0f1a0f 60%);
         color: #f2f7ff;
+        overflow: hidden;
       }
 
       #app-shell {
@@ -31,7 +32,8 @@
       #connection-status {
         position: absolute;
         top: 12px;
-        right: 12px;
+        left: 50%;
+        transform: translateX(-50%);
         z-index: 2;
         border-radius: 999px;
         padding: 6px 12px;
@@ -39,6 +41,7 @@
         font-size: 12px;
         letter-spacing: 0.2px;
         background: rgba(15, 23, 42, 0.8);
+        pointer-events: none;
       }
 
       #connection-status[data-state='live'] {
@@ -60,11 +63,48 @@
         width: 100%;
         height: 100%;
       }
+
+      #assets-link {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 2;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid #7dd3fc;
+        color: #bae6fd;
+        font-size: 12px;
+        text-decoration: none;
+      }
+      #assets-link:hover { background: rgba(30, 58, 74, 0.9); }
+
+      /* Mobile adjustments — compact buttons on narrow screens */
+      @media (max-width: 600px) {
+        #connection-status {
+          font-size: 10px;
+          padding: 4px 8px;
+          top: 8px;
+        }
+        #assets-link {
+          font-size: 10px;
+          padding: 4px 8px;
+          top: 8px;
+          right: 8px;
+        }
+        #world-editor-toggle {
+          font-size: 10px !important;
+          padding: 4px 8px !important;
+          top: 8px !important;
+          right: 80px !important;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="app-shell">
       <div id="connection-status" data-state="connecting">Connecting...</div>
+      <a id="assets-link" href="/assets-manager">애셋 관리 →</a>
       <div id="root"></div>
     </div>
     <script src="main.js" type="module"></script>
