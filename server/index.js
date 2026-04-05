@@ -379,9 +379,21 @@ function createWorldState(layout = null) {
   };
 }
 
-// Seed world-layout.json on first run: flatten in-code LOCATION_DEFS +
-// OUTDOOR_STATIONS and procedurally generate the initial tree set.
+// Seed world-layout.json on first run. Preference order:
+//   1. data/world-layout.default.json — the curated baseline shipped
+//      with the repo. Every fresh clone lands on the same hand-arranged
+//      world without looking half-procedural.
+//   2. Procedural fallback from LOCATION_DEFS + OUTDOOR_STATIONS +
+//      generateTrees() in case the baseline file is missing.
 function seedWorldLayout() {
+  const baselinePath = path.join(__dirname, '..', 'data', 'world-layout.default.json');
+  if (fs.existsSync(baselinePath)) {
+    try {
+      return JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+    } catch (err) {
+      console.warn('[seed] failed to read baseline layout, falling back to procedural', err.message);
+    }
+  }
   const tiles = createVillageGrid(WORLD_WIDTH, WORLD_HEIGHT);
   const locations = LOCATION_DEFS.map(loc => ({
     x: loc.x, y: loc.y, w: loc.w, h: loc.h

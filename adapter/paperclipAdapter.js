@@ -655,21 +655,51 @@ function hashString(input) {
   return hash;
 }
 
+// Build a diverse pool of spawn points so agents don't all start on the
+// same building door. Pulls from:
+//   - one tile below each building door
+//   - every outdoor station position (fishing spots, napping spots,
+//     garden benches, mining quarries, etc.)
+// The agent's ID hash picks an index, then we add a small deterministic
+// jitter so two agents with adjacent hashes don't stack on one tile.
+function collectSpawnCandidates(world) {
+  const points = [];
+  const W = world.width, H = world.height;
+  const locations = Array.isArray(world.locations) ? world.locations : [];
+  for (const loc of locations) {
+    const x = loc.x + Math.floor((loc.w || 5) / 2);
+    const y = loc.y + (loc.h || 4); // one tile below the door
+    if (x >= 0 && x < W && y >= 0 && y < H) points.push({ x, y });
+  }
+  const outdoor = Array.isArray(world.outdoorStations) ? world.outdoorStations : [];
+  for (const s of outdoor) {
+    if (Number.isInteger(s.x) && Number.isInteger(s.y) &&
+        s.x >= 0 && s.x < W && s.y >= 0 && s.y < H) {
+      points.push({ x: s.x, y: s.y });
+    }
+  }
+  return points;
+}
+
 function deriveInitialAvatarPosition(agentId, world) {
   const hash = hashString(agentId);
-
-  // If world has locations, place agent near a building door
-  const locations = world.locations;
-  if (locations && locations.length > 0) {
-    const loc = locations[hash % locations.length];
-    const doorX = loc.x + Math.floor(loc.w / 2);
-    const doorY = loc.y + loc.h; // one tile below building
-    return { x: doorX, y: Math.min(doorY, world.height - 1) };
+  const pool = collectSpawnCandidates(world);
+  if (pool.length > 0) {
+    const base = pool[hash % pool.length];
+    // Tiny per-agent jitter (-1..1) in both axes so agents with adjacent
+    // hashes don't stack. Clamped to world bounds.
+    const jitterX = ((hash >>> 5) % 3) - 1;
+    const jitterY = ((hash >>> 11) % 3) - 1;
+    const W = world.width, H = world.height;
+    return {
+      x: Math.max(0, Math.min(W - 1, base.x + jitterX)),
+      y: Math.max(0, Math.min(H - 1, base.y + jitterY))
+    };
   }
 
+  // Last-resort fallback: hash into the full grid.
   const area = world.width * world.height;
   const cellIndex = area > 0 ? hash % area : 0;
-
   return {
     x: cellIndex % world.width,
     y: Math.floor(cellIndex / world.width)
