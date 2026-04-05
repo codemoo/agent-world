@@ -18,6 +18,10 @@ assets/pixymoon/*
 logs/
 output.log
 
+# Playwright outputs
+test-results/
+playwright-report/
+
 # Paperclip Files
 MEMORY.md
 memory
