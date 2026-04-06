@@ -35,6 +35,9 @@ function normalizeInboxIssue(rawIssue) {
     agentId:
       pickString(rawIssue, ['assigneeAgentId', 'agentId']) ||
       pickString(run, ['agentId']),
+    agentName:
+      pickString(rawIssue, ['assigneeAgentName', 'agentName']) ||
+      pickString(run, ['agentName']),
     runId:
       pickString(run, ['id', 'runId']) ||
       pickString(rawIssue, ['executionRunId', 'runId']),
@@ -88,7 +91,8 @@ function buildEventsFromInboxSnapshot(rawInbox, timestamp = null) {
         label: issue.title || issue.identifier,
         source: 'paperclip_inbox',
         issue_identifier: issue.identifier,
-        issue_status: issue.status
+        issue_status: issue.status,
+        ...(issue.agentName ? { agent_name: issue.agentName } : {})
       }
     };
 
@@ -176,6 +180,12 @@ function buildEventsFromAgentsList(rawAgents, rawIssues, timestamp = null) {
   return events;
 }
 
+// Deduplication: build a fingerprint for each event so we can skip
+// events that haven't changed since the last successful poll.
+function eventFingerprint(event) {
+  return `${event.agent_id}:${event.task_id || ''}:${event.event_type}:${event.timestamp}`;
+}
+
 function createPaperclipPoller(options = {}) {
   const {
     apiUrl,
@@ -185,7 +195,9 @@ function createPaperclipPoller(options = {}) {
     onEvents = () => {},
     onError = () => {},
     endpointPath = '/api/agents/me/inbox-lite',
-    companyId = null
+    companyId = null,
+    fetchTimeoutMs = 15000,
+    maxBackoffMs = 120000
   } = options;
 
   if (!apiUrl || !apiKey) {
@@ -199,6 +211,37 @@ function createPaperclipPoller(options = {}) {
   const useCompanySync = Boolean(companyId);
   let timer = null;
   let inFlightPoll = null;
+  let consecutiveErrors = 0;
+  let nextRetryAt = 0;
+  let lastSeenFingerprints = new Set();
+
+  // Fetch with a timeout to prevent hanging requests from blocking
+  // all future polls via the inFlightPoll lock.
+  function fetchWithTimeout(url, opts) {
+    if (typeof AbortController === 'undefined' || fetchTimeoutMs <= 0) {
+      return fetchImpl(url, opts);
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutMs);
+    return fetchImpl(url, { ...opts, signal: controller.signal }).finally(() => {
+      clearTimeout(timeoutId);
+    });
+  }
+
+  // Filter out events we already saw in the previous poll cycle.
+  function deduplicateEvents(events) {
+    const newFingerprints = new Set();
+    const novel = [];
+    for (const ev of events) {
+      const fp = eventFingerprint(ev);
+      newFingerprints.add(fp);
+      if (!lastSeenFingerprints.has(fp)) {
+        novel.push(ev);
+      }
+    }
+    lastSeenFingerprints = newFingerprints;
+    return novel;
+  }
 
   function pollNow() {
     if (inFlightPoll) {
@@ -213,20 +256,29 @@ function createPaperclipPoller(options = {}) {
 
       if (useCompanySync) {
         const [agentsRes, issuesRes] = await Promise.all([
-          fetchImpl(`${apiUrl}/api/companies/${companyId}/agents`, { headers }),
-          fetchImpl(`${apiUrl}/api/companies/${companyId}/issues?status=todo,in_progress,blocked,in_review`, { headers })
+          fetchWithTimeout(`${apiUrl}/api/companies/${companyId}/agents`, { headers }),
+          fetchWithTimeout(`${apiUrl}/api/companies/${companyId}/issues?status=todo,in_progress,blocked,in_review`, { headers })
         ]);
 
         if (!agentsRes.ok) {
+          // Drain body to free the socket (node-fetch keeps it open otherwise)
+          if (typeof agentsRes.text === 'function') await agentsRes.text().catch(() => {});
           throw new Error(`Paperclip agents fetch failed: ${agentsRes.status}`);
         }
         if (!issuesRes.ok) {
+          if (typeof issuesRes.text === 'function') await issuesRes.text().catch(() => {});
           throw new Error(`Paperclip issues fetch failed: ${issuesRes.status}`);
         }
 
         const agents = await agentsRes.json();
         const issues = await issuesRes.json();
-        const events = buildEventsFromAgentsList(agents, issues);
+        const allEvents = buildEventsFromAgentsList(agents, issues);
+        const events = deduplicateEvents(allEvents);
+
+        // Reset consecutive errors — the fetch itself succeeded.
+        // onEvents() failures are handled by applyInboxEvents() internally
+        // and should not trigger backoff (those are data issues, not connectivity).
+        consecutiveErrors = 0;
 
         if (events.length > 0) {
           await onEvents(events);
@@ -238,14 +290,18 @@ function createPaperclipPoller(options = {}) {
         };
       }
 
-      const response = await fetchImpl(`${apiUrl}${endpointPath}`, { headers });
+      const response = await fetchWithTimeout(`${apiUrl}${endpointPath}`, { headers });
 
       if (!response.ok) {
+        if (typeof response.text === 'function') await response.text().catch(() => {});
         throw new Error(`Paperclip inbox fetch failed: ${response.status}`);
       }
 
       const inbox = await response.json();
-      const events = buildEventsFromInboxSnapshot(inbox);
+      const allEvents = buildEventsFromInboxSnapshot(inbox);
+      const events = deduplicateEvents(allEvents);
+
+      consecutiveErrors = 0;
 
       if (events.length > 0) {
         await onEvents(events);
@@ -268,8 +324,29 @@ function createPaperclipPoller(options = {}) {
     }
 
     const safeIntervalMs = Math.max(1000, Number(intervalMs) || 10000);
+
+    // Poll immediately on start so we don't wait a full interval.
+    pollNow().catch(error => {
+      consecutiveErrors += 1;
+      nextRetryAt = Date.now() + Math.min(
+        safeIntervalMs * Math.pow(2, consecutiveErrors - 1),
+        maxBackoffMs
+      );
+      onError(error);
+    });
+
     timer = setInterval(() => {
+      // Exponential backoff: skip this tick if we haven't reached nextRetryAt.
+      if (consecutiveErrors > 0 && Date.now() < nextRetryAt) {
+        return;
+      }
+
       pollNow().catch(error => {
+        consecutiveErrors += 1;
+        nextRetryAt = Date.now() + Math.min(
+          safeIntervalMs * Math.pow(2, consecutiveErrors - 1),
+          maxBackoffMs
+        );
         onError(error);
       });
     }, safeIntervalMs);
@@ -277,18 +354,25 @@ function createPaperclipPoller(options = {}) {
 
   function stop() {
     if (!timer) {
-      return;
+      return Promise.resolve();
     }
 
     clearInterval(timer);
     timer = null;
+
+    // Wait for any in-flight poll to finish so callers (e.g. server
+    // shutdown) can be sure no async work continues after stop().
+    return inFlightPoll
+      ? inFlightPoll.catch(() => {})
+      : Promise.resolve();
   }
 
   return {
     pollNow,
     start,
     stop,
-    isRunning: () => Boolean(timer)
+    isRunning: () => Boolean(timer),
+    getConsecutiveErrors: () => consecutiveErrors
   };
 }
 
@@ -296,6 +380,7 @@ module.exports = {
   buildEventsFromAgentsList,
   buildEventsFromInboxSnapshot,
   createPaperclipPoller,
+  eventFingerprint,
   mapIssueStatusToEventType,
   normalizeInboxIssue
 };

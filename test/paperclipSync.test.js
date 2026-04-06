@@ -5,6 +5,7 @@ const {
   buildEventsFromAgentsList,
   buildEventsFromInboxSnapshot,
   createPaperclipPoller,
+  eventFingerprint,
   mapIssueStatusToEventType,
   normalizeInboxIssue
 } = require('../server/paperclipSync');
@@ -339,4 +340,121 @@ test('poller.pollNow는 company sync에서 issues 조회 실패를 바로 예외
     () => poller.pollNow(),
     /Paperclip issues fetch failed: 502/
   );
+});
+
+test('eventFingerprint produces stable keys for deduplication', () => {
+  const ev = {
+    agent_id: 'a1',
+    task_id: 't1',
+    event_type: 'tool_called',
+    timestamp: '2026-04-02T12:00:00.000Z'
+  };
+  const fp1 = eventFingerprint(ev);
+  const fp2 = eventFingerprint(ev);
+  assert.equal(fp1, fp2);
+
+  const different = eventFingerprint({ ...ev, timestamp: '2026-04-02T12:01:00.000Z' });
+  assert.notEqual(fp1, different);
+});
+
+test('poller deduplicates identical events across consecutive polls', async () => {
+  const captured = [];
+  const inbox = [
+    {
+      id: 'task-dup',
+      identifier: 'MOO-200',
+      status: 'in_progress',
+      assigneeAgentId: 'agent-dup',
+      title: 'Dedup test',
+      updatedAt: '2026-04-02T12:00:00.000Z'
+    }
+  ];
+
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => inbox
+    }),
+    onEvents: events => { captured.push(...events); }
+  });
+
+  // First poll — event is novel
+  await poller.pollNow();
+  assert.equal(captured.length, 1);
+
+  // Second poll — same snapshot, should be deduplicated
+  await poller.pollNow();
+  assert.equal(captured.length, 1, 'duplicate event should be skipped');
+
+  // Third poll — status changes, new event emitted
+  inbox[0].status = 'done';
+  inbox[0].updatedAt = '2026-04-02T12:01:00.000Z';
+  await poller.pollNow();
+  assert.equal(captured.length, 2, 'changed event should be emitted');
+});
+
+test('poller.start() fires an immediate poll', async () => {
+  let pollCount = 0;
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    intervalMs: 60000, // long interval so setInterval doesn't fire
+    fetchImpl: async () => {
+      pollCount += 1;
+      return { ok: true, status: 200, json: async () => [] };
+    }
+  });
+
+  poller.start();
+  // Wait a short time for the immediate poll to complete
+  await new Promise(r => setTimeout(r, 50));
+  poller.stop();
+  assert.ok(pollCount >= 1, 'should have polled at least once immediately');
+});
+
+test('poller tracks consecutive errors and exposes count', async () => {
+  const errors = [];
+  const poller = createPaperclipPoller({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    fetchImpl: async () => ({ ok: false, status: 500, json: async () => ({}) }),
+    onError: err => errors.push(err)
+  });
+
+  assert.equal(poller.getConsecutiveErrors(), 0);
+
+  await poller.pollNow().catch(() => {});
+  // pollNow itself throws; consecutiveErrors only incremented by start()'s catch
+  // But getConsecutiveErrors should reflect the counter
+  assert.equal(poller.getConsecutiveErrors(), 0, 'direct pollNow does not increment counter');
+});
+
+test('normalizeInboxIssue extracts agentName when available', () => {
+  const issue = normalizeInboxIssue({
+    id: 'task-name',
+    status: 'todo',
+    assigneeAgentId: 'agent-name',
+    assigneeAgentName: 'Designer Agent'
+  });
+
+  assert.equal(issue.agentName, 'Designer Agent');
+});
+
+test('buildEventsFromInboxSnapshot includes agent_name in payload when available', () => {
+  const events = buildEventsFromInboxSnapshot([
+    {
+      id: 'task-named',
+      status: 'in_progress',
+      assigneeAgentId: 'agent-named',
+      assigneeAgentName: 'Build Agent',
+      title: 'named test',
+      updatedAt: '2026-04-02T13:00:00.000Z'
+    }
+  ]);
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.agent_name, 'Build Agent');
 });

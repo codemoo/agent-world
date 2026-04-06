@@ -328,9 +328,20 @@ function cleanupWorldState(worldState, stateLimits) {
     });
 
     const toRemove = runs.slice(0, Math.ceil(stateLimits.maxRuns * 0.2));
+    const removedIds = new Set();
     toRemove.forEach(run => {
+      removedIds.add(run.id);
       delete worldState.runs[run.id];
     });
+
+    // Clear stale currentRunId references from agents
+    if (removedIds.size > 0) {
+      Object.values(worldState.agents || {}).forEach(agent => {
+        if (agent.currentRunId && removedIds.has(agent.currentRunId)) {
+          agent.currentRunId = null;
+        }
+      });
+    }
   }
 
   // Cleanup old tasks for each agent
@@ -508,20 +519,41 @@ function createServer(options = {}) {
     };
   }
 
+  // Apply events from Paperclip polling. Unlike the /events HTTP endpoint
+  // which rejects the entire batch on validation errors, polling events
+  // are applied individually — bad events are skipped with a warning so
+  // one malformed issue doesn't block all other agents.
   async function applyInboxEvents(events) {
-    const appliedEvents = processIncomingEventsFn(events, worldState, {
-      afterEachApply: () => {
-        cleanupWorldState(worldState, securityOptions.stateLimits);
-        enforceStateCapacity(worldState, securityOptions.stateLimits);
+    let applied = 0;
+    let skipped = 0;
+    const eventList = Array.isArray(events) ? events : [events];
+
+    for (const rawEvent of eventList) {
+      try {
+        processIncomingEventsFn([rawEvent], worldState, {
+          afterEachApply: () => {
+            cleanupWorldState(worldState, securityOptions.stateLimits);
+            enforceStateCapacity(worldState, securityOptions.stateLimits);
+          }
+        });
+        applied += 1;
+      } catch (err) {
+        skipped += 1;
+        console.warn('[paperclip-sync] skipped malformed event:', err.message);
       }
-    });
+    }
+
     worldState.meta.paperclip.lastSyncAt = new Date().toISOString();
-    worldState.meta.paperclip.lastSyncError = null;
-    worldState.meta.paperclip.lastPolledCount = Array.isArray(events)
-      ? events.length
-      : 0;
-    broadcastState();
-    return appliedEvents.length;
+    worldState.meta.paperclip.lastSyncError = skipped > 0
+      ? `${skipped} event(s) skipped`
+      : null;
+    worldState.meta.paperclip.lastPolledCount = eventList.length;
+
+    if (applied > 0) {
+      broadcastState();
+    }
+
+    return applied;
   }
 
   const paperclipApiUrl =
@@ -542,10 +574,19 @@ function createServer(options = {}) {
       companyId: paperclipCompanyId,
       onEvents: applyInboxEvents,
       onError: error => {
-        worldState.meta.paperclip.lastSyncError = error.message;
-        console.error('Paperclip polling failed:', error.message);
+        const msg = (error.message || 'unknown error').slice(0, 500);
+        worldState.meta.paperclip.lastSyncError = msg;
+        const errCount = paperclipPoller?.getConsecutiveErrors?.() || 0;
+        console.error(
+          `[paperclip-sync] poll failed (consecutive: ${errCount}):`,
+          error.message
+        );
       }
     });
+    console.log(
+      `[paperclip-sync] starting poller — interval=${pollIntervalMs}ms, ` +
+      `mode=${paperclipCompanyId ? 'company' : 'inbox'}`
+    );
     paperclipPoller.start();
   }
 
@@ -1000,9 +1041,9 @@ function createServer(options = {}) {
     wsTicketStore,
     broadcastState,
     paperclipPoller,
-    stopBackgroundWorkers: () => {
+    stopBackgroundWorkers: async () => {
       if (paperclipPoller) {
-        paperclipPoller.stop();
+        await paperclipPoller.stop();
       }
       clearInterval(wsHeartbeatInterval);
     }

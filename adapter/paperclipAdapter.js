@@ -842,7 +842,7 @@ function applyPaperclipEvent(event, worldState) {
   const run = ensureRun(worldState, event.runId);
 
   const agentName = pickString(event.payload, ['agent_name', 'agentName']);
-  if (agentName && !agent.name) {
+  if (agentName) {
     agent.name = agentName;
   }
 
