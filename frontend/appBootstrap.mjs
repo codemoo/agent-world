@@ -8,6 +8,7 @@ export function createFrontendApp({
   WebSocketImpl,
   WorldMapClass,
   WorldEditorClass = null,
+  CompanySelectorClass = null,
   connectionConfigOptions = {},
   connectionConfigFactory = createConnectionConfig
 } = {}) {
@@ -59,6 +60,17 @@ export function createFrontendApp({
     });
   }
 
+  // Company selector — shows a dropdown to pick which Paperclip company
+  // the world syncs with. Only visible when paperclip sync is enabled.
+  let companySelector = null;
+  if (CompanySelectorClass && resolvedDocument.body) {
+    companySelector = new CompanySelectorClass({
+      apiBaseUrl,
+      authToken,
+      fetchImpl: resolvedFetch
+    });
+  }
+
   let socket = null;
   let reconnectTimer = null;
   let isDestroyed = false;
@@ -83,6 +95,10 @@ export function createFrontendApp({
     }
 
     worldMap.setWorldState(rawMessage.data || null);
+
+    if (companySelector && rawMessage.data?.meta) {
+      companySelector.updateFromState(rawMessage.data.meta);
+    }
   }
 
   async function fetchInitialState() {
@@ -98,6 +114,9 @@ export function createFrontendApp({
       const payload = await response.json();
       if (payload?.data) {
         worldMap.setWorldState(payload.data);
+        if (companySelector && payload.data.meta) {
+          companySelector.updateFromState(payload.data.meta);
+        }
       }
     } catch (error) {
       console.error(error);

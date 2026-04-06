@@ -14,11 +14,13 @@ Promise.all([
   import(`./appBootstrap.mjs?v=${v}`),
   import(`./components/WorldMap.js?v=${v}`),
   import(`./components/WorldEditor.js?v=${v}`),
+  import(`./components/CompanySelector.js?v=${v}`),
   import(`./connectionConfig.mjs?v=${v}`)
-]).then(([boot, wm, we, cc]) => {
+]).then(([boot, wm, we, cs, cc]) => {
   boot.bootstrapFrontendApp({
     WorldMapClass: wm.default,
     WorldEditorClass: we.default,
+    CompanySelectorClass: cs.default,
     connectionConfigOptions: runtimeConfig,
     connectionConfigFactory: cc.createConnectionConfig
   });

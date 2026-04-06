@@ -79,6 +79,13 @@
       }
       #assets-link:hover { background: rgba(30, 58, 74, 0.9); }
 
+      #company-selector select {
+        background-image: none;
+      }
+      #company-selector:hover {
+        background: rgba(30, 58, 74, 0.9) !important;
+      }
+
       /* Mobile adjustments — compact buttons on narrow screens */
       @media (max-width: 600px) {
         #connection-status {
@@ -103,6 +110,15 @@
           padding: 4px 8px !important;
           top: 8px !important;
           right: 150px !important;
+        }
+        #company-selector {
+          font-size: 10px !important;
+          top: 8px !important;
+          left: 8px !important;
+        }
+        #company-selector select {
+          font-size: 10px !important;
+          padding: 4px 8px !important;
         }
       }
     </style>
