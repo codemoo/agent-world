@@ -33,7 +33,7 @@ const SELECT_STYLE = {
   fontFamily: 'inherit', fontSize: '12px', cursor: 'pointer',
   outline: 'none', padding: '6px 10px', appearance: 'none',
   WebkitAppearance: 'none', MozAppearance: 'none',
-  paddingRight: '20px'
+  paddingRight: '24px'
 };
 
 export default class CompanySelector {
@@ -48,6 +48,9 @@ export default class CompanySelector {
     this.currentCompanyId = null;
     this.enabled = false;
     this.loading = false;
+    this.error = null;
+    this.switching = false;
+    this._fetchAbort = null;
 
     this._buildUI();
   }
@@ -56,12 +59,14 @@ export default class CompanySelector {
     this.container = h('div', { id: 'company-selector', style: BADGE_STYLE });
 
     this.select = h('select', {
+      'aria-label': 'Select Paperclip company',
       style: SELECT_STYLE,
       onchange: () => this._handleChange()
     });
 
-    // Dropdown arrow indicator
-    const arrow = h('span', {
+    // Dropdown arrow indicator (purely decorative)
+    this.arrow = h('span', {
+      'aria-hidden': 'true',
       style: {
         position: 'absolute', right: '8px', top: '50%',
         transform: 'translateY(-50%)', pointerEvents: 'none',
@@ -69,22 +74,19 @@ export default class CompanySelector {
       }
     }, '\u25BC');
 
-    this.container.style.position = 'absolute';
-    this.container.style.display = 'none';
     this.container.appendChild(this.select);
-    this.container.appendChild(arrow);
+    this.container.appendChild(this.arrow);
 
     document.body.appendChild(this.container);
   }
 
-  // Called on every world state update from WebSocket.
+  // Called on every world state update from WebSocket / initial fetch.
   updateFromState(meta) {
     const pc = meta?.paperclip;
     if (!pc) return;
 
     const wasEnabled = this.enabled;
     this.enabled = Boolean(pc.enabled);
-    this.currentCompanyId = pc.companyId || null;
 
     if (!this.enabled) {
       this.container.style.display = 'none';
@@ -93,48 +95,94 @@ export default class CompanySelector {
 
     this.container.style.display = 'flex';
 
+    // Don't overwrite currentCompanyId while a switch is in flight —
+    // the server broadcast may arrive before our PUT response.
+    if (!this.switching) {
+      this.currentCompanyId = pc.companyId || null;
+    }
+
     // Fetch companies list on first enable
     if (!wasEnabled && this.companies.length === 0) {
       this._fetchCompanies();
     }
 
-    // Update selection to match server state
-    if (this.select.value !== (this.currentCompanyId || '')) {
+    // Update selection to match server state (skip during switch)
+    if (!this.switching && this.select.value !== (this.currentCompanyId || '')) {
       this.select.value = this.currentCompanyId || '';
     }
   }
 
   async _fetchCompanies() {
     if (this.loading) return;
+
+    // Cancel any in-flight fetch
+    if (this._fetchAbort) {
+      this._fetchAbort.abort();
+      this._fetchAbort = null;
+    }
+
     this.loading = true;
+    this.error = null;
+    this.select.disabled = true;
+
+    const abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    this._fetchAbort = abort;
 
     try {
       const headers = this.authToken
         ? { authorization: `Bearer ${this.authToken}` }
         : {};
+      const fetchOpts = { headers };
+      if (abort) fetchOpts.signal = abort.signal;
+
       const res = await this.fetch(
         `${this.apiBaseUrl}/sync/paperclip/companies`,
-        { headers }
+        fetchOpts
       );
-      if (!res.ok) throw new Error(`${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
       this.companies = data.companies || [];
       this.currentCompanyId = data.currentCompanyId || null;
+      this.error = null;
       this._renderOptions();
     } catch (err) {
+      if (err.name === 'AbortError') return;
+      this.error = err.message;
       console.warn('[CompanySelector] failed to fetch companies:', err.message);
+      this._renderOptions();
     } finally {
       this.loading = false;
+      this.select.disabled = false;
+      this._fetchAbort = null;
     }
   }
 
   _renderOptions() {
     this.select.innerHTML = '';
 
+    if (this.error) {
+      this.select.appendChild(
+        h('option', { value: '', disabled: true }, `Load failed — click to retry`)
+      );
+      // One-shot click to retry
+      const retryHandler = () => {
+        this.select.removeEventListener('mousedown', retryHandler);
+        this._fetchCompanies();
+      };
+      this.select.addEventListener('mousedown', retryHandler);
+      return;
+    }
+
     this.select.appendChild(
-      h('option', { value: '' }, `Inbox mode (all)`)
+      h('option', { value: '' }, 'Inbox mode (all)')
     );
+
+    if (this.companies.length === 0) {
+      this.select.appendChild(
+        h('option', { value: '', disabled: true }, 'No companies found')
+      );
+    }
 
     for (const c of this.companies) {
       const label = c.agentCount != null
@@ -150,12 +198,17 @@ export default class CompanySelector {
   }
 
   async _handleChange() {
+    if (this.switching) return;
+
+    const prevCompanyId = this.currentCompanyId;
     const companyId = this.select.value || null;
     const company = this.companies.find(c => c.id === companyId);
     const companyName = company?.name || null;
 
-    // Optimistic UI
+    this.switching = true;
     this.currentCompanyId = companyId;
+    this.select.disabled = true;
+    this.container.style.opacity = '0.6';
 
     try {
       const headers = {
@@ -170,17 +223,23 @@ export default class CompanySelector {
           body: JSON.stringify({ companyId, companyName })
         }
       );
-      if (!res.ok) throw new Error(`${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
+      this.currentCompanyId = result.companyId || null;
       console.log(
         `[CompanySelector] switched to ${result.companyName || 'inbox'} (${result.mode})`
       );
       this.onSwitch(result);
     } catch (err) {
       console.error('[CompanySelector] switch failed:', err.message);
-      // Revert
-      this.select.value = this.currentCompanyId || '';
+      // Revert to previous state
+      this.currentCompanyId = prevCompanyId;
+      this.select.value = prevCompanyId || '';
+    } finally {
+      this.switching = false;
+      this.select.disabled = false;
+      this.container.style.opacity = '1';
     }
   }
 
@@ -188,6 +247,16 @@ export default class CompanySelector {
   refresh() {
     if (this.enabled) {
       this._fetchCompanies();
+    }
+  }
+
+  destroy() {
+    if (this._fetchAbort) {
+      this._fetchAbort.abort();
+      this._fetchAbort = null;
+    }
+    if (this.container.parentNode) {
+      this.container.parentNode.removeChild(this.container);
     }
   }
 }

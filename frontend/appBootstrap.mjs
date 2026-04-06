@@ -186,6 +186,8 @@ export function createFrontendApp({
 
         socket.addEventListener('open', () => {
           setConnectionStatus('Live', 'live');
+          // Refresh company list after reconnect — server state may have changed.
+          if (companySelector) companySelector.refresh();
         });
 
         socket.addEventListener('message', event => {
@@ -239,6 +241,10 @@ export function createFrontendApp({
 
     if (typeof worldMap.destroy === 'function') {
       worldMap.destroy();
+    }
+
+    if (companySelector && typeof companySelector.destroy === 'function') {
+      companySelector.destroy();
     }
   }
 
