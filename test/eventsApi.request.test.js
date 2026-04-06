@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   getJson,
   postJson,
+  putJson,
   startTestServer,
   stopTestServer
 } = require('./helpers/testServer');
@@ -627,5 +628,225 @@ test('Paperclip 수동 동기화 실패 시 meta.lastSyncError에 원인 메시�
     );
   } finally {
     await stopTestServer(syncFailRuntime);
+  }
+});
+
+test('GET /sync/paperclip/companies는 Paperclip에서 컴퍼니 목록을 조회한다', async () => {
+  const companiesRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async (url) => {
+        if (url.includes('/api/companies') && !url.includes('/agents') && !url.includes('/issues')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              { id: 'company-1', name: 'Alpha Corp', agentCount: 3 },
+              { id: 'company-2', name: 'Beta Inc', agentCount: 1 }
+            ]
+          };
+        }
+        return { ok: true, status: 200, json: async () => [] };
+      }
+    }
+  });
+
+  try {
+    await new Promise(r => setTimeout(r, 50));
+
+    const result = await getJson(companiesRuntime.baseUrl, '/sync/paperclip/companies');
+    assert.equal(result.response.status, 200);
+    assert.equal(result.json.status, 'ok');
+    assert.equal(result.json.companies.length, 2);
+    assert.equal(result.json.companies[0].id, 'company-1');
+    assert.equal(result.json.companies[0].name, 'Alpha Corp');
+    assert.equal(result.json.companies[1].id, 'company-2');
+    assert.equal(result.json.currentCompanyId, null);
+  } finally {
+    await stopTestServer(companiesRuntime);
+  }
+});
+
+test('PUT /sync/paperclip/company로 동기화 대상 컴퍼니를 전환할 수 있다', async () => {
+  let fetchCallUrls = [];
+  const switchRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async (url) => {
+        fetchCallUrls.push(url);
+        if (url.includes('/api/companies/company-new/agents')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              { id: 'agent-new', name: 'New Agent', status: 'working' }
+            ]
+          };
+        }
+        if (url.includes('/api/companies/company-new/issues')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'task-new',
+                identifier: 'NEW-1',
+                title: '새 회사 태스크',
+                status: 'in_progress',
+                assigneeAgentId: 'agent-new',
+                updatedAt: '2026-04-06T10:00:00.000Z'
+              }
+            ]
+          };
+        }
+        return { ok: true, status: 200, json: async () => [] };
+      }
+    }
+  });
+
+  try {
+    await new Promise(r => setTimeout(r, 50));
+
+    // 초기 상태 확인 — companyId가 null (inbox 모드)
+    const before = await getJson(switchRuntime.baseUrl, '/state');
+    assert.equal(before.json.data.meta.paperclip.companyId, null);
+
+    // 컴퍼니 전환
+    fetchCallUrls = [];
+    const switchResult = await putJson(
+      switchRuntime.baseUrl,
+      '/sync/paperclip/company',
+      { companyId: 'company-new', companyName: 'New Company' }
+    );
+    assert.equal(switchResult.response.status, 200);
+    assert.equal(switchResult.json.companyId, 'company-new');
+    assert.equal(switchResult.json.companyName, 'New Company');
+    assert.equal(switchResult.json.mode, 'company');
+
+    // 새 폴러가 company 모드로 동작하는지 확인
+    await new Promise(r => setTimeout(r, 100));
+    const after = await getJson(switchRuntime.baseUrl, '/state');
+    assert.equal(after.json.data.meta.paperclip.companyId, 'company-new');
+    assert.equal(after.json.data.meta.paperclip.companyName, 'New Company');
+
+    // company 엔드포인트가 호출되었는지 확인
+    const companyUrls = fetchCallUrls.filter(u => u.includes('company-new'));
+    assert.ok(companyUrls.length > 0, 'should have fetched from company endpoints');
+  } finally {
+    await stopTestServer(switchRuntime);
+  }
+});
+
+test('PUT /sync/paperclip/company에 companyId를 null로 보내면 inbox 모드로 복귀한다', async () => {
+  const inboxRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      companyId: 'company-initial',
+      fetchImpl: async (url) => {
+        if (url.includes('/agents') && !url.includes('inbox')) {
+          return { ok: true, status: 200, json: async () => [] };
+        }
+        if (url.includes('/issues')) {
+          return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: true, status: 200, json: async () => [] };
+      }
+    }
+  });
+
+  try {
+    await new Promise(r => setTimeout(r, 50));
+
+    const before = await getJson(inboxRuntime.baseUrl, '/state');
+    assert.equal(before.json.data.meta.paperclip.companyId, 'company-initial');
+
+    const result = await putJson(
+      inboxRuntime.baseUrl,
+      '/sync/paperclip/company',
+      { companyId: null }
+    );
+    assert.equal(result.response.status, 200);
+    assert.equal(result.json.companyId, null);
+    assert.equal(result.json.mode, 'inbox');
+
+    const after = await getJson(inboxRuntime.baseUrl, '/state');
+    assert.equal(after.json.data.meta.paperclip.companyId, null);
+  } finally {
+    await stopTestServer(inboxRuntime);
+  }
+});
+
+test('컴퍼니 전환 시 이전 에이전트/런 상태가 초기화된다', async () => {
+  const clearRuntime = await startTestServer({
+    paperclipSync: {
+      enabled: true,
+      intervalMs: 60000,
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'test-token',
+      fetchImpl: async (url) => {
+        if (url.includes('inbox-lite')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => [
+              {
+                id: 'task-old',
+                identifier: 'OLD-1',
+                title: '이전 태스크',
+                status: 'in_progress',
+                assigneeAgentId: 'agent-old',
+                updatedAt: '2026-04-06T09:00:00.000Z'
+              }
+            ]
+          };
+        }
+        if (url.includes('/agents')) {
+          return { ok: true, status: 200, json: async () => [] };
+        }
+        if (url.includes('/issues')) {
+          return { ok: true, status: 200, json: async () => [] };
+        }
+        return { ok: true, status: 200, json: async () => [] };
+      }
+    }
+  });
+
+  try {
+    await new Promise(r => setTimeout(r, 100));
+
+    // 기존 에이전트가 있는지 확인
+    const before = await getJson(clearRuntime.baseUrl, '/state');
+    assert.ok(before.json.data.agents['agent-old'], 'old agent should exist');
+
+    // 컴퍼니 전환
+    await putJson(
+      clearRuntime.baseUrl,
+      '/sync/paperclip/company',
+      { companyId: 'company-clean' }
+    );
+
+    // 이전 에이전트가 제거되었는지 확인
+    const after = await getJson(clearRuntime.baseUrl, '/state');
+    assert.equal(
+      Object.keys(after.json.data.agents).length,
+      0,
+      'agents should be cleared after company switch'
+    );
+    assert.equal(
+      Object.keys(after.json.data.runs).length,
+      0,
+      'runs should be cleared after company switch'
+    );
+  } finally {
+    await stopTestServer(clearRuntime);
   }
 });

@@ -376,11 +376,43 @@ function createPaperclipPoller(options = {}) {
   };
 }
 
+async function fetchPaperclipCompanies({ apiUrl, apiKey, fetchImpl = globalThis.fetch, timeoutMs = 15000 }) {
+  if (!apiUrl || !apiKey) {
+    throw new Error('fetchPaperclipCompanies requires apiUrl and apiKey.');
+  }
+
+  const headers = { authorization: `Bearer ${apiKey}`, accept: 'application/json' };
+
+  let response;
+  if (typeof AbortController !== 'undefined' && timeoutMs > 0) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), timeoutMs);
+    response = await fetchImpl(`${apiUrl}/api/companies`, { headers, signal: controller.signal })
+      .finally(() => clearTimeout(tid));
+  } else {
+    response = await fetchImpl(`${apiUrl}/api/companies`, { headers });
+  }
+
+  if (!response.ok) {
+    if (typeof response.text === 'function') await response.text().catch(() => {});
+    throw new Error(`Paperclip companies fetch failed: ${response.status}`);
+  }
+
+  const body = await response.json();
+  const companies = Array.isArray(body) ? body : (Array.isArray(body.data) ? body.data : []);
+  return companies.map(c => ({
+    id: pickString(c, ['id']) || null,
+    name: pickString(c, ['name', 'title']) || 'Unnamed',
+    agentCount: typeof c.agentCount === 'number' ? c.agentCount : (Array.isArray(c.agents) ? c.agents.length : null)
+  })).filter(c => c.id);
+}
+
 module.exports = {
   buildEventsFromAgentsList,
   buildEventsFromInboxSnapshot,
   createPaperclipPoller,
   eventFingerprint,
+  fetchPaperclipCompanies,
   mapIssueStatusToEventType,
   normalizeInboxIssue
 };

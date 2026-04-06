@@ -23,7 +23,7 @@ const {
   EventValidationError,
   processIncomingEvents
 } = require('./eventsPipeline');
-const { createPaperclipPoller } = require('./paperclipSync');
+const { createPaperclipPoller, fetchPaperclipCompanies } = require('./paperclipSync');
 const { createAssetManager } = require('./assetManager');
 const {
   DEFAULT_WS_TICKET_MAX_ENTRIES,
@@ -382,6 +382,8 @@ function createWorldState(layout = null) {
     meta: {
       paperclip: {
         enabled: false,
+        companyId: null,
+        companyName: null,
         lastSyncAt: null,
         lastSyncError: null,
         lastPolledCount: 0
@@ -560,18 +562,21 @@ function createServer(options = {}) {
     configuredPaperclipSync.apiUrl || process.env.PAPERCLIP_API_URL || null;
   const paperclipApiKey =
     configuredPaperclipSync.apiKey || process.env.PAPERCLIP_API_KEY || null;
-  const paperclipCompanyId =
+  const paperclipFetchImpl = configuredPaperclipSync.fetchImpl || undefined;
+  const paperclipEndpointPath =
+    configuredPaperclipSync.endpointPath || '/api/agents/me/inbox-lite';
+  const initialCompanyId =
     configuredPaperclipSync.companyId ??
     (options.paperclipSync ? null : (process.env.PAPERCLIP_COMPANY_ID || null));
-  if (paperclipSyncEnabled && paperclipApiUrl && paperclipApiKey) {
-    paperclipPoller = createPaperclipPoller({
+
+  function createAndStartPoller(companyId) {
+    const poller = createPaperclipPoller({
       apiUrl: paperclipApiUrl,
       apiKey: paperclipApiKey,
       intervalMs: pollIntervalMs,
-      fetchImpl: configuredPaperclipSync.fetchImpl,
-      endpointPath:
-        configuredPaperclipSync.endpointPath || '/api/agents/me/inbox-lite',
-      companyId: paperclipCompanyId,
+      fetchImpl: paperclipFetchImpl,
+      endpointPath: paperclipEndpointPath,
+      companyId,
       onEvents: applyInboxEvents,
       onError: error => {
         const msg = (error.message || 'unknown error').slice(0, 500);
@@ -585,9 +590,15 @@ function createServer(options = {}) {
     });
     console.log(
       `[paperclip-sync] starting poller — interval=${pollIntervalMs}ms, ` +
-      `mode=${paperclipCompanyId ? 'company' : 'inbox'}`
+      `mode=${companyId ? 'company' : 'inbox'}`
     );
-    paperclipPoller.start();
+    poller.start();
+    return poller;
+  }
+
+  if (paperclipSyncEnabled && paperclipApiUrl && paperclipApiKey) {
+    paperclipPoller = createAndStartPoller(initialCompanyId);
+    worldState.meta.paperclip.companyId = initialCompanyId || null;
   }
 
   app.use(
@@ -817,6 +828,84 @@ function createServer(options = {}) {
           }
         ]);
       }
+    }
+  );
+
+  // List companies available in the connected Paperclip instance.
+  app.get(
+    '/sync/paperclip/companies',
+    guardAndRateLimitHttp('paperclip_sync'),
+    async (req, res) => {
+      if (!paperclipApiUrl || !paperclipApiKey) {
+        sendError(res, 503, 'Paperclip API credentials not configured.');
+        return;
+      }
+
+      try {
+        const companies = await fetchPaperclipCompanies({
+          apiUrl: paperclipApiUrl,
+          apiKey: paperclipApiKey,
+          fetchImpl: paperclipFetchImpl
+        });
+        res.status(200).json({
+          status: 'ok',
+          companies,
+          currentCompanyId: worldState.meta.paperclip.companyId || null
+        });
+      } catch (error) {
+        sendError(res, 502, 'Failed to fetch companies from Paperclip.', [
+          { code: 'PAPERCLIP_COMPANIES_FAILED', error: error.message }
+        ]);
+      }
+    }
+  );
+
+  // Switch which company the poller syncs with. Stops the current
+  // poller, clears stale agent/run state, and starts a fresh one.
+  app.put(
+    '/sync/paperclip/company',
+    guardAndRateLimitHttp('paperclip_sync'),
+    async (req, res) => {
+      if (!paperclipSyncEnabled || !paperclipApiUrl || !paperclipApiKey) {
+        sendError(res, 503, 'Paperclip sync is not enabled.');
+        return;
+      }
+
+      const { companyId = null, companyName = null } = req.body || {};
+
+      // Stop existing poller
+      if (paperclipPoller) {
+        await paperclipPoller.stop();
+        paperclipPoller = null;
+      }
+
+      // Clear agents/runs from previous company so they don't linger
+      worldState.agents = {};
+      worldState.avatars = {};
+      worldState.runs = {};
+
+      // Update meta
+      worldState.meta.paperclip.companyId = companyId || null;
+      worldState.meta.paperclip.companyName = companyName || null;
+      worldState.meta.paperclip.lastSyncAt = null;
+      worldState.meta.paperclip.lastSyncError = null;
+      worldState.meta.paperclip.lastPolledCount = 0;
+
+      // Start new poller (or inbox mode if companyId is null)
+      paperclipPoller = createAndStartPoller(companyId);
+      broadcastState();
+
+      console.log(
+        `[paperclip-sync] switched company — ` +
+        `id=${companyId || '(inbox)'}, name=${companyName || '(none)'}`
+      );
+
+      res.status(200).json({
+        status: 'ok',
+        companyId: companyId || null,
+        companyName: companyName || null,
+        mode: companyId ? 'company' : 'inbox'
+      });
     }
   );
 

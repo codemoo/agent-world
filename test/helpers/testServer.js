@@ -53,13 +53,13 @@ async function startTestServer(options = {}) {
   };
 }
 
-function stopTestServer(runtime) {
+async function stopTestServer(runtime) {
   if (!runtime) {
-    return Promise.resolve();
+    return;
   }
   runtimeAuthRegistry.delete(runtime.baseUrl);
   if (typeof runtime.stopBackgroundWorkers === 'function') {
-    runtime.stopBackgroundWorkers();
+    await runtime.stopBackgroundWorkers();
   }
 
   return new Promise((resolve, reject) => {

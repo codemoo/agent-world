@@ -6,6 +6,7 @@ const {
   buildEventsFromInboxSnapshot,
   createPaperclipPoller,
   eventFingerprint,
+  fetchPaperclipCompanies,
   mapIssueStatusToEventType,
   normalizeInboxIssue
 } = require('../server/paperclipSync');
@@ -457,4 +458,54 @@ test('buildEventsFromInboxSnapshot includes agent_name in payload when available
 
   assert.equal(events.length, 1);
   assert.equal(events[0].payload.agent_name, 'Build Agent');
+});
+
+test('fetchPaperclipCompanies는 배열 응답에서 컴퍼니 목록을 정규화한다', async () => {
+  const companies = await fetchPaperclipCompanies({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => [
+        { id: 'c1', name: 'Alpha', agentCount: 5 },
+        { id: 'c2', title: 'Beta' },
+        { name: 'NoId' }  // id 없으면 필터됨
+      ]
+    })
+  });
+
+  assert.equal(companies.length, 2);
+  assert.equal(companies[0].id, 'c1');
+  assert.equal(companies[0].name, 'Alpha');
+  assert.equal(companies[0].agentCount, 5);
+  assert.equal(companies[1].id, 'c2');
+  assert.equal(companies[1].name, 'Beta');
+  assert.equal(companies[1].agentCount, null);
+});
+
+test('fetchPaperclipCompanies는 { data: [...] } 래핑 응답도 처리한다', async () => {
+  const companies = await fetchPaperclipCompanies({
+    apiUrl: 'http://paperclip.local',
+    apiKey: 'token',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: 'c3', name: 'Gamma' }] })
+    })
+  });
+
+  assert.equal(companies.length, 1);
+  assert.equal(companies[0].id, 'c3');
+});
+
+test('fetchPaperclipCompanies는 fetch 실패 시 예외를 던진다', async () => {
+  await assert.rejects(
+    () => fetchPaperclipCompanies({
+      apiUrl: 'http://paperclip.local',
+      apiKey: 'token',
+      fetchImpl: async () => ({ ok: false, status: 403 })
+    }),
+    /Paperclip companies fetch failed: 403/
+  );
 });
