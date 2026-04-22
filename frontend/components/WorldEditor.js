@@ -147,14 +147,14 @@ export default class WorldEditor {
     this.toggleButton = h('button', {
       id: 'world-editor-toggle',
       style: {
-        position: 'fixed', top: '12px', right: '130px', zIndex: 10,
+        position: 'fixed', top: '12px', right: '108px', zIndex: 10,
         padding: '6px 12px', borderRadius: '6px',
         background: 'rgba(15,23,42,0.85)', border: '1px solid #fbbf24',
         color: '#fde68a', fontSize: '12px', cursor: 'pointer',
         fontFamily: 'inherit'
       },
       onclick: () => this.toggle()
-    }, '✏️ Edit (E)');
+    }, '✏️ Edit');
     document.body.appendChild(this.toggleButton);
 
     this.panel = h('div', {
@@ -378,6 +378,14 @@ export default class WorldEditor {
     if (this.worldMap?.setEditorMode) {
       this.worldMap.setEditorMode(this.isEditMode, this);
     }
+    // Broadcast edit-mode state so other panels (agent roster, session
+    // detail, event log) can temporarily hide to avoid overlapping the
+    // full-height editor sidebar.
+    try {
+      window.dispatchEvent(new CustomEvent('editor-mode', {
+        detail: { active: this.isEditMode }
+      }));
+    } catch (_) { /* ignore */ }
     if (wasOff && !this.layout) {
       this._render();  // show "Loading..." immediately
       await this._fetchLayout();

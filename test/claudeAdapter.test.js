@@ -160,3 +160,51 @@ test('Waiting session gets to_info_desk intent and halo bubble', () => {
     fs.rmSync(file, { force: true });
   }
 });
+
+test('bubble: dwell holds tool line briefly when Working→Idle without new message', () => {
+  const file = tmpFile('dwell');
+  try {
+    const buildings = createBuildingAssignments(file);
+    const worldState = baseWorldState();
+    const base = sess({
+      status: STATUSES.Working,
+      tool: { name: 'Edit', inputPreview: 'f.js' }
+    });
+    applySnapshotToWorld({ snapshot: { sessions: [base] }, worldState, buildings, now: 1000 });
+    const firstText = worldState.avatars['sess-A'].bubbleText;
+    assert.match(firstText, /Edit/);
+    // Flip to Idle with an assistantSnippet 500 ms later. Within dwell
+    // window, bubble should NOT switch to the assistant snippet yet.
+    const idle = { ...base, status: STATUSES.Idle, lastAssistantSnippet: 'some reply' };
+    applySnapshotToWorld({ snapshot: { sessions: [idle] }, worldState, buildings, now: 1500 });
+    assert.equal(worldState.avatars['sess-A'].bubbleText, firstText, 'should hold tool line during dwell');
+    // After 3 s total (dwell 2.5 s exceeded), the flip is allowed.
+    applySnapshotToWorld({ snapshot: { sessions: [idle] }, worldState, buildings, now: 4000 });
+    assert.match(worldState.avatars['sess-A'].bubbleText, /reply/, 'after dwell, should switch');
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
+});
+
+test('bubble: Waiting preempts immediately regardless of dwell', () => {
+  const file = tmpFile('preempt');
+  try {
+    const buildings = createBuildingAssignments(file);
+    const worldState = baseWorldState();
+    applySnapshotToWorld({
+      snapshot: { sessions: [sess({
+        status: STATUSES.Working,
+        tool: { name: 'Bash', inputPreview: 'ls' }
+      })] },
+      worldState, buildings, now: 1000
+    });
+    // 100 ms later a Waiting status arrives — must preempt immediately.
+    applySnapshotToWorld({
+      snapshot: { sessions: [sess({ status: STATUSES.Waiting, tool: null })] },
+      worldState, buildings, now: 1100
+    });
+    assert.match(worldState.avatars['sess-A'].bubbleText, /waiting/);
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
+});

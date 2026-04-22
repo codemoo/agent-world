@@ -40,6 +40,11 @@ function injectStyles(doc) {
       transition: opacity 0.15s ease, transform 0.15s ease;
     }
     #agent-roster[data-empty="1"] { opacity: 0; pointer-events: none; transform: translateY(-4px); }
+    /* Hide roster on narrow viewports — agents are still clickable in
+       the canvas, and the DOM event log covers the list view. */
+    @media (max-width: 900px) {
+      #agent-roster { display: none; }
+    }
     #agent-roster .roster-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 9px 12px;
@@ -214,6 +219,14 @@ export default class AgentRoster {
       this._applySelection();
     };
     this.window.addEventListener('agent-selected', this._onSelected);
+
+    // Hide the roster while the world editor is open — the editor
+    // panel takes the full right edge and would visually sit on top.
+    this._onEditor = ev => {
+      const active = Boolean(ev && ev.detail && ev.detail.active);
+      if (this.root) this.root.style.display = active ? 'none' : '';
+    };
+    this.window.addEventListener('editor-mode', this._onEditor);
   }
 
   _dispatchSelect(sessionId) {
@@ -386,6 +399,7 @@ export default class AgentRoster {
   destroy() {
     if (this.tickHandle) this.window.clearInterval(this.tickHandle);
     this.window.removeEventListener('agent-selected', this._onSelected);
+    this.window.removeEventListener('editor-mode', this._onEditor);
     if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }
 }

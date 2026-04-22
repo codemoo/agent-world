@@ -1386,7 +1386,7 @@ export default class WorldMap {
     const cycle = { day: 'night', night: 'clock', clock: 'day' };
     const refresh = () => { skyBtn.textContent = skyLabels[this.skyMode]; };
     Object.assign(skyBtn.style, {
-      position: 'fixed', top: '12px', right: '232px', zIndex: 10,
+      position: 'fixed', top: '12px', right: '212px', zIndex: 10,
       padding: '6px 10px', borderRadius: '6px',
       background: 'rgba(15,23,42,0.85)', border: '1px solid #94a3b8',
       color: '#e2e8f0', fontSize: '12px', cursor: 'pointer',

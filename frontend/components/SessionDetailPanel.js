@@ -54,13 +54,14 @@ export default class SessionDetailPanel {
 
   _buildUI() {
     // Sit to the LEFT of the agent roster (240px wide at right:12) so
-    // both panels are visible together. On narrow viewports the panel
-    // shrinks via max-width to avoid overlapping the roster.
+    // both panels are visible together. 16 px gap keeps them from
+    // visually touching. On narrow viewports the panel width caps at
+    // calc(100vw - 300px) so it never bleeds into the roster.
     this.panel = h('aside', {
       id: 'session-detail-panel',
       style: {
-        position: 'fixed', top: '56px', right: '264px',
-        width: 'min(340px, calc(100vw - 280px))',
+        position: 'fixed', top: '56px', right: '268px',
+        width: 'min(340px, calc(100vw - 300px))',
         maxHeight: 'calc(100vh - 100px)',
         overflow: 'auto',
         padding: '12px 14px',

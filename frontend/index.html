@@ -86,19 +86,36 @@
         background: rgba(30, 58, 74, 0.9) !important;
       }
 
-      /* Mobile adjustments — compact buttons on narrow screens */
+      /* Intermediate viewports (< 1024px): the top-right button cluster
+         — Help (?), Day/Night, Editor, Assets → — packs tightly.
+         Force compact padding + hide the "Assets →" link so the cluster
+         stays within the viewport without overlapping the agent roster. */
+      @media (max-width: 1024px) {
+        #assets-link { display: none; }
+        #world-editor-toggle {
+          font-size: 11px !important;
+          padding: 4px 8px !important;
+          right: 96px !important;
+        }
+        #sky-mode-toggle {
+          font-size: 11px !important;
+          padding: 4px 8px !important;
+          right: 170px !important;
+        }
+        #help-button {
+          right: 232px !important;
+          width: 28px !important; height: 28px !important;
+        }
+      }
+
+      /* Mobile adjustments — compact buttons + hide non-essential UI */
       @media (max-width: 600px) {
         #connection-status {
           font-size: 10px;
           padding: 4px 8px;
           top: 8px;
         }
-        #assets-link {
-          font-size: 10px;
-          padding: 4px 8px;
-          top: 8px;
-          right: 8px;
-        }
+        #assets-link { display: none !important; }
         #world-editor-toggle {
           font-size: 10px !important;
           padding: 4px 8px !important;
@@ -110,6 +127,22 @@
           padding: 4px 8px !important;
           top: 8px !important;
           right: 150px !important;
+        }
+        #help-button {
+          top: 8px !important;
+          right: 220px !important;
+          width: 26px !important; height: 26px !important;
+        }
+        #agent-roster {
+          display: none !important;
+        }
+        #event-log {
+          width: calc(100vw - 24px) !important;
+          max-width: calc(100vw - 24px) !important;
+        }
+        #session-detail-panel {
+          right: 12px !important;
+          width: calc(100vw - 24px) !important;
         }
         #company-selector {
           font-size: 10px !important;

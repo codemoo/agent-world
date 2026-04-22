@@ -7,6 +7,27 @@ const path = require('node:path');
 const { ensureWorldState, ensureAvatar, hashString } = require('./worldModel');
 const { STATUSES } = require('../server/sessionStatus');
 
+// Minimum time the bubble must hold its current text before a lower-
+// priority signal can replace it. Waiting/Errored always preempt.
+// Prevents the "flicker between tool line and last-assistant snippet"
+// that happens when transcript writes land mid-snapshot-tick.
+const BUBBLE_MIN_DWELL_MS = 2500;
+
+// Source priority — higher wins. Waiting/Errored are "alert" sources
+// and override dwell; other sources must wait out BUBBLE_MIN_DWELL_MS
+// before they can change the displayed text. Tie goes to the newer
+// signal with a different content key.
+const BUBBLE_SOURCE_PRIORITY = Object.freeze({
+  waiting: 100,
+  errored: 90,
+  tool_active: 60,
+  assistant: 40,
+  tool_recent: 30,
+  station: 20,
+  location: 10,
+  empty: 0
+});
+
 const TOOL_ICON = Object.freeze({
   Bash: '🖥',
   Edit: '✏',
@@ -98,6 +119,91 @@ function shortenName(cwd, repoRoot) {
   if (!pick) return 'session';
   const base = path.basename(pick.replace(/\/+$/, ''));
   return base || 'session';
+}
+
+// Build the raw bubble candidate: source tag + text + a contentKey that
+// lets the stabilizer detect "meaningful" changes (new toolUseId, new
+// assistant message) vs "same signal, different tick" noise.
+function pickBubbleCandidate({ status, tool, lastAssistantSnippet, lastAssistantTs, destination }) {
+  if (status === STATUSES.Waiting) {
+    return { source: 'waiting', text: '🔒 waiting for approval', key: 'waiting' };
+  }
+  if (status === STATUSES.Errored) {
+    const line = tool?.name ? `⚠ ${formatToolLine(tool)}` : '⚠ errored';
+    return { source: 'errored', text: line, key: `errored:${tool?.name || ''}` };
+  }
+  const toolName = tool?.name || '';
+  const toolKey = toolName
+    ? `${toolName}::${tool?.inputPreview || ''}`
+    : '';
+  if (status === STATUSES.Working && toolName) {
+    return { source: 'tool_active', text: formatToolLine(tool), key: `tool_active:${toolKey}` };
+  }
+  if (lastAssistantSnippet) {
+    // Content key tracks the snippet — new messages cycle the bubble,
+    // same snippet keeps it stable even if the snapshotter re-reads.
+    const snippet = lastAssistantSnippet.slice(0, 72);
+    const stamp = lastAssistantTs || snippet;
+    return { source: 'assistant', text: `💬 ${snippet}`, key: `assistant:${stamp}` };
+  }
+  if (toolName) {
+    return { source: 'tool_recent', text: formatToolLine(tool), key: `tool_recent:${toolKey}` };
+  }
+  if (destination?.stationActivity) {
+    return { source: 'station', text: destination.stationActivity, key: `station:${destination.stationId || destination.stationLabel || ''}` };
+  }
+  if (destination) {
+    return { source: 'location', text: `at ${destination.locationName}`, key: `location:${destination.locationName}` };
+  }
+  return { source: 'empty', text: '', key: 'empty' };
+}
+
+// Apply priority + dwell hysteresis. Writes the decision back to
+// `agent.bubble` so subsequent ticks can compare. Returns the text to
+// display right now.
+function stabilizeBubble(agent, candidate, now) {
+  const prev = agent.bubble || null;
+
+  // First bubble — always accept.
+  if (!prev) {
+    agent.bubble = { text: candidate.text, source: candidate.source, key: candidate.key, changedAt: now };
+    return candidate.text;
+  }
+
+  // Same content → keep it; refresh the source label only (priority
+  // may have changed even if text didn't, but visually it's fine).
+  if (prev.text === candidate.text && prev.key === candidate.key) {
+    prev.source = candidate.source;
+    return prev.text;
+  }
+
+  const prevPri = BUBBLE_SOURCE_PRIORITY[prev.source] ?? 0;
+  const newPri = BUBBLE_SOURCE_PRIORITY[candidate.source] ?? 0;
+  const age = now - (prev.changedAt || 0);
+
+  // Upgrades to a higher-priority source always land immediately
+  // (Waiting/Errored/toolActive preempt assistant/station/empty).
+  if (newPri > prevPri) {
+    agent.bubble = { text: candidate.text, source: candidate.source, key: candidate.key, changedAt: now };
+    return candidate.text;
+  }
+
+  // Downgrades (higher → lower priority) must wait out the dwell
+  // window. During that window, keep showing the previous text so a
+  // brief Working→Idle flicker doesn't steal the tool line.
+  if (newPri < prevPri && age < BUBBLE_MIN_DWELL_MS) {
+    return prev.text;
+  }
+
+  // Same priority — allow the swap only if the content key actually
+  // changed (real new message) OR dwell window elapsed. Either way,
+  // the new text becomes current.
+  if (newPri === prevPri && prev.key === candidate.key) {
+    return prev.text;
+  }
+
+  agent.bubble = { text: candidate.text, source: candidate.source, key: candidate.key, changedAt: now };
+  return candidate.text;
 }
 
 function ensureClaudeAgent(worldState, session, now) {
@@ -288,7 +394,14 @@ function applySnapshotToWorld({
       sessionId: session.sessionId
     });
 
-    const avatar = ensureAvatar(worldState, session.sessionId);
+    // Spawn at the assigned desk when we have one — otherwise fall
+    // back to the hash-based location pool in deriveInitialAvatarPosition.
+    // Only takes effect on FIRST appearance; existing avatars keep
+    // whatever runtime-authoritative position they had.
+    const preferred = assignment && Number.isFinite(assignment.x) && Number.isFinite(assignment.y)
+      ? { x: assignment.x, y: assignment.y }
+      : null;
+    const avatar = ensureAvatar(worldState, session.sessionId, { preferredPosition: preferred });
     avatar.displayName = agent.name;
     avatar.state = agent.activity === 'working' ? 'working' : 'idle';
     avatar.moving = true;
@@ -305,33 +418,17 @@ function applySnapshotToWorld({
     avatar.destination = destination;
     avatar.intent = destination?.intent || null;
 
-    // Bubble text priority:
-    //   Waiting   → 🔒 waiting for approval
-    //   Errored   → ⚠ <tool?> or ⚠ errored
-    //   Working   → <toolIcon> <toolName>
-    //   Idle with known last tool → "✏ Edit …" (ghosted by status colour)
-    //   Idle with last assistant snippet → that snippet
-    //   fallback  → station activity / "at X"
-    if (session.status === STATUSES.Waiting) {
-      avatar.bubbleText = '🔒 waiting for approval';
-    } else if (session.status === STATUSES.Errored) {
-      avatar.bubbleText = agent.tool?.name
-        ? `⚠ ${formatToolLine(agent.tool)}`
-        : '⚠ errored';
-    } else if (session.status === STATUSES.Working && agent.tool?.name) {
-      avatar.bubbleText = formatToolLine(agent.tool);
-    } else if (agent.lastAssistantSnippet) {
-      avatar.bubbleText = `💬 ${agent.lastAssistantSnippet.slice(0, 72)}`;
-    } else if (agent.tool?.name) {
-      // Idle but we saw a tool earlier. Dimmer tone happens client-side.
-      avatar.bubbleText = formatToolLine(agent.tool);
-    } else if (destination?.stationActivity) {
-      avatar.bubbleText = destination.stationActivity;
-    } else if (destination) {
-      avatar.bubbleText = `at ${destination.locationName}`;
-    } else {
-      avatar.bubbleText = '';
-    }
+    // Compute a (source, text, contentKey) tuple describing the best
+    // bubble for this tick. The stabilizer below decides whether to
+    // actually flip the displayed text based on priority + dwell time.
+    const candidate = pickBubbleCandidate({
+      status: session.status,
+      tool: agent.tool,
+      lastAssistantSnippet: agent.lastAssistantSnippet,
+      lastAssistantTs: session.lastAssistantTs,
+      destination
+    });
+    avatar.bubbleText = stabilizeBubble(agent, candidate, now);
 
     // Expose a stable "repo label" separate from the display name, so the
     // sidebar can show both: cwd-basename (who's talking now) + repoRoot

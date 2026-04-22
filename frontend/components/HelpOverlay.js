@@ -47,7 +47,7 @@ function injectStyles(doc) {
   style.id = 'help-overlay-styles';
   style.textContent = `
     #help-button {
-      position: fixed; top: 12px; right: 312px;
+      position: fixed; top: 12px; right: 294px;
       width: 30px; height: 30px;
       background: rgba(15, 23, 42, 0.88);
       color: #fbbf24;

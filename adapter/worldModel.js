@@ -440,9 +440,24 @@ function deriveInitialAvatarPosition(agentId, world) {
   };
 }
 
-function ensureAvatar(worldState, agentId) {
+function ensureAvatar(worldState, agentId, opts = {}) {
   if (!worldState.avatars[agentId]) {
-    const position = deriveInitialAvatarPosition(agentId, worldState.world);
+    // Prefer a caller-supplied preferredPosition when the session has a
+    // known building/desk assignment. Falls back to the hash-based
+    // spawn distribution so unassigned agents don't all stack on top
+    // of each other at the plaza.
+    let position;
+    const pref = opts && opts.preferredPosition;
+    if (pref && Number.isFinite(pref.x) && Number.isFinite(pref.y)) {
+      const W = worldState.world?.width || 30;
+      const H = worldState.world?.height || 30;
+      position = {
+        x: Math.max(0, Math.min(W - 1, Math.round(pref.x))),
+        y: Math.max(0, Math.min(H - 1, Math.round(pref.y)))
+      };
+    } else {
+      position = deriveInitialAvatarPosition(agentId, worldState.world);
+    }
     worldState.avatars[agentId] = {
       id: agentId,
       agentId,

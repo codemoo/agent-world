@@ -17,8 +17,11 @@ function injectStyles(doc) {
   style.id = 'event-log-styles';
   style.textContent = `
     #event-log {
-      position: fixed; left: 12px; bottom: 12px;
-      width: 320px; max-width: calc(50vw - 24px);
+      /* Positioned above the timeline scrubber (bottom:12, h:42) with
+         a small margin so they never overlap. width clamps so it can't
+         extend into the centred scrubber on narrow viewports. */
+      position: fixed; left: 12px; bottom: 68px;
+      width: 320px; max-width: calc(100vw - 24px);
       background: rgba(15, 23, 42, 0.92);
       border: 1px solid rgba(148, 163, 184, 0.3);
       border-radius: 9px;
@@ -27,11 +30,14 @@ function injectStyles(doc) {
       font: 11px/1.4 Menlo, Monaco, monospace;
       z-index: 10;
       display: flex; flex-direction: column;
-      max-height: 280px;
+      max-height: 240px;
       overflow: hidden;
       transition: max-height 0.18s ease;
     }
     #event-log[data-collapsed="1"] { max-height: 36px; }
+    @media (max-width: 900px) {
+      #event-log { width: calc(100vw - 24px); max-height: 160px; }
+    }
     #event-log .event-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 12px;
@@ -164,6 +170,11 @@ export default class EventLog {
     });
     this._onHistoryEvent = () => this._render();
     this.window.addEventListener('history-event', this._onHistoryEvent);
+    this._onEditor = ev => {
+      const active = Boolean(ev && ev.detail && ev.detail.active);
+      if (this.root) this.root.style.display = active ? 'none' : '';
+    };
+    this.window.addEventListener('editor-mode', this._onEditor);
   }
 
   toggle() { this.collapsed = !this.collapsed; this.root.dataset.collapsed = this.collapsed ? '1' : '0'; }
@@ -217,6 +228,7 @@ export default class EventLog {
   destroy() {
     if (this._ageTick) this.window.clearInterval(this._ageTick);
     this.window.removeEventListener('history-event', this._onHistoryEvent);
+    this.window.removeEventListener('editor-mode', this._onEditor);
     if (this.root.parentNode) this.root.parentNode.removeChild(this.root);
   }
 }
