@@ -1,12 +1,19 @@
 // Playwright-based frame capture for README demos.
 //
 // Usage:
-//   node scripts/capture-frames.mjs world   [baseUrl]
-//   node scripts/capture-frames.mjs editor  [baseUrl]
-//   node scripts/capture-frames.mjs assets  [baseUrl]
+//   node scripts/capture-frames.mjs world      [baseUrl]
+//   node scripts/capture-frames.mjs editor     [baseUrl]
+//   node scripts/capture-frames.mjs assets     [baseUrl]
+//   node scripts/capture-frames.mjs ux         [baseUrl]
+//   node scripts/capture-frames.mjs minimal    [baseUrl]
+//   node scripts/capture-frames.mjs cost       [baseUrl]
+//   node scripts/capture-frames.mjs permission [baseUrl]
 //
 // Each scenario writes PNG frames to /tmp/agent-world-frames and then
 // stitches them into demo/demo-{scenario}.gif via ffmpeg.
+//
+// `cost` and `permission` additionally auth via AGENT_WORLD_API_TOKEN so
+// they can hit POST endpoints to stage data.
 
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -172,6 +179,78 @@ const SCENARIOS = {
         }
       }
     };
+  },
+
+  async cost(page) {
+    // Showcase the 💰 budget badge top-left: click to open popover showing
+    // per-session cost/tokens + world totals. Assumes the target server
+    // has live Claude sessions so the popover isn't empty.
+    console.log('Settling world (4s)…');
+    await page.waitForTimeout(4000);
+    return {
+      durationMs: 8000,
+      onCapture: async () => {
+        const badge = page.locator('#world-budget-badge .wbb-pill').first();
+        if (await badge.count()) {
+          await badge.click();
+          await page.waitForTimeout(5500);
+          await badge.click();
+          await page.waitForTimeout(800);
+        } else {
+          console.warn('[cost] #world-budget-badge not found');
+        }
+      }
+    };
+  },
+
+  async permission(page, baseUrl) {
+    // Fires a fake PreToolUse request via /api/hooks/permission-request
+    // (localhost-only, no auth). Toast renders, user clicks Allow, hook
+    // round-trip resolves.
+    console.log('Settling world (2s)…');
+    await page.waitForTimeout(2000);
+    return {
+      durationMs: 11000,
+      onCapture: async () => {
+        // Clear any stale pending from earlier runs.
+        const TOKEN = process.env.AGENT_WORLD_API_TOKEN || 'smoke';
+        try {
+          const r = await fetch(`${baseUrl}/api/permissions/pending`, {
+            headers: { authorization: `Bearer ${TOKEN}` }
+          });
+          const payload = await r.json();
+          for (const p of (payload.pending || [])) {
+            await fetch(`${baseUrl}/api/permissions/${p.requestId}/decide`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` },
+              body: JSON.stringify({ decision: 'ask', reason: 'capture cleanup' })
+            });
+          }
+        } catch (_) {}
+
+        // Fire a fake permission request in the background (blocks till decide).
+        const hookPromise = fetch(`${baseUrl}/api/hooks/permission-request`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: 'demo-perm-capture',
+            tool: 'Bash',
+            toolInput: { command: 'curl -s https://example.com | head -c 200' },
+            cwd: '/tmp/demo'
+          })
+        }).catch(() => {});
+
+        // Let the toast render, dwell, then click Allow.
+        await page.waitForTimeout(2800);
+        await page.waitForTimeout(3500);
+        await page.evaluate(() => {
+          const btn = document.querySelector('#permission-toast-stack .pt-btn-allow');
+          if (btn) btn.click();
+        });
+        await page.waitForTimeout(2000);
+        await hookPromise;
+      }
+    };
   }
 };
 
@@ -229,6 +308,16 @@ async function main() {
     viewport: { width: 960, height: 720 },
     deviceScaleFactor: 1
   });
+  const TOKEN = process.env.AGENT_WORLD_API_TOKEN;
+  if (TOKEN) {
+    await ctx.addInitScript((token) => {
+      window.__AGENT_WORLD_RUNTIME__ = {
+        environment: 'development',
+        allowDevQueryToken: true,
+        authToken: token
+      };
+    }, TOKEN);
+  }
   const page = await ctx.newPage();
   page.on('console', m => {
     const t = m.text();
@@ -236,8 +325,11 @@ async function main() {
   });
   page.on('pageerror', e => console.log('[pageerror]', e.message));
 
-  console.log(`[${scenario}] loading ${baseUrl}…`);
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  const bootUrl = TOKEN && scenario !== 'assets'
+    ? `${baseUrl}/?authToken=${TOKEN}`
+    : baseUrl;
+  console.log(`[${scenario}] loading ${bootUrl.replace(/authToken=[^&]+/, 'authToken=***')}…`);
+  await page.goto(bootUrl, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1500);
 
   const { durationMs, onCapture } = await SCENARIOS[scenario](page, baseUrl);
