@@ -90,6 +90,7 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
 | `T` | Open transcript viewer (session selected) |
 | `L` | Switch to Live PTY tab |
 | `N` | Toggle persistent name-tags (names always show on hover / selection) |
+| `M` | Toggle minimal-mode preview (procedural sprites even when pack is installed) |
 | `←` `→` | Scrub timeline ±1 s |
 | `Space` | Play / pause timeline |
 | `E` | Toggle world editor |

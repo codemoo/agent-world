@@ -244,6 +244,22 @@ export function createFrontendApp({
     resolvedWindow.addEventListener('keydown', handleNameTagToggle);
   }
 
+  // M — toggle forced minimal-mode preview. Flips drawSprite +
+  // character-variant rendering to always-miss, so the procedural
+  // fallbacks come through. State persists across reloads.
+  function handleMinimalToggle(ev) {
+    const tag = ev.target?.tagName || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key !== 'm' && ev.key !== 'M') return;
+    if (worldMap && typeof worldMap.toggleMinimalMode === 'function') {
+      worldMap.toggleMinimalMode();
+    }
+  }
+  if (typeof resolvedWindow.addEventListener === 'function') {
+    resolvedWindow.addEventListener('keydown', handleMinimalToggle);
+  }
+
   async function fetchInitialState() {
     try {
       const headers = authToken

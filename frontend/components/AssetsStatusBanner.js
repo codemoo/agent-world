@@ -44,6 +44,16 @@ const STYLES = `
     text-decoration: none;
   }
   #assets-minimal-banner a:hover { text-decoration: underline; }
+  #assets-minimal-banner code,
+  #assets-minimal-banner kbd {
+    font-family: inherit;
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fde68a;
+    border: 1px solid rgba(251, 191, 36, 0.28);
+  }
   #assets-minimal-banner .banner-close {
     float: right;
     background: none; border: none;
@@ -97,13 +107,11 @@ export default class AssetsStatusBanner {
     title.textContent = '◇ Minimal mode';
     this.banner.appendChild(title);
 
-    const body = doc.createElement('div');
-    body.className = 'banner-body';
-    body.innerHTML =
-      'Running without sprite assets. ' +
-      'For the full look, drop <b>PixyMoon Cute RPG World</b> at <code>assets/pixymoon/</code> ' +
-      '(<a href="https://pixymoon.itch.io/cute-rpg-world" target="_blank" rel="noopener">buy pack</a>) and reload.';
-    this.banner.appendChild(body);
+    this.titleEl = title;
+    this.bodyEl = doc.createElement('div');
+    this.bodyEl.className = 'banner-body';
+    this.banner.appendChild(this.bodyEl);
+    this._renderBody({ forced: false });
 
     doc.body.appendChild(this.banner);
   }
@@ -122,7 +130,7 @@ export default class AssetsStatusBanner {
     this._gatedEls.push({ el, hard, originalDisplay: el.style.display });
   }
 
-  _apply({ loaded, loadedCount = 0 }) {
+  _apply({ loaded, loadedCount = 0, forced = false }) {
     const minimal = !loaded || loadedCount === 0;
     // Gate asset-dependent UI.
     for (const entry of this._gatedEls) {
@@ -134,12 +142,35 @@ export default class AssetsStatusBanner {
         entry.el.style.display = entry.originalDisplay || '';
       }
     }
-    // Banner: visible in minimal mode, hidden when assets load (unless
-    // the user clicked ✕).
-    if (minimal && !this.dismissed) {
+    // Swap banner copy based on whether this is "pack missing" vs
+    // "user toggled preview with M".
+    this._renderBody({ forced });
+    // Title hint changes too: forced preview uses a friendly label.
+    if (this.titleEl) {
+      this.titleEl.textContent = forced ? '◇ Minimal preview (M)' : '◇ Minimal mode';
+    }
+    // Banner visibility:
+    //   • pack missing  → respect `dismissed` so reload doesn't nag
+    //   • forced toggle → ALWAYS show (user just asked for the preview)
+    if (minimal && (forced || !this.dismissed)) {
       this.banner.dataset.visible = '1';
     } else {
       this.banner.dataset.visible = '0';
+    }
+  }
+
+  _renderBody({ forced }) {
+    if (!this.bodyEl) return;
+    if (forced) {
+      this.bodyEl.innerHTML =
+        'Previewing without sprite assets. Press <kbd>M</kbd> to restore the ' +
+        '<b>PixyMoon</b> look. Your choice is remembered.';
+    } else {
+      this.bodyEl.innerHTML =
+        'Running without sprite assets. ' +
+        'For the full look, drop <b>PixyMoon Cute RPG World</b> at <code>assets/pixymoon/</code> ' +
+        '(<a href="https://pixymoon.itch.io/cute-rpg-world" target="_blank" rel="noopener">buy pack</a>) and reload. ' +
+        'Or press <kbd>M</kbd> to force this preview on any time.';
     }
   }
 

@@ -1430,6 +1430,17 @@ export default class WorldMap {
     // reads from a historical snapshot instead of the live runtime.
     this._scrubSnapshot = null;
 
+    // Forced minimal mode — when true, the renderer ignores loaded
+    // sprites and uses procedural fallbacks for everything. Useful as
+    // a preview / demo toggle even when the PixyMoon pack IS installed.
+    // Persisted to localStorage under `agent-world.minimal-mode-forced`.
+    this.minimalModeForced = false;
+    try {
+      if (window.localStorage.getItem('agent-world.minimal-mode-forced') === '1') {
+        this.minimalModeForced = true;
+      }
+    } catch (_) { /* ignore */ }
+
     this.handleResize();
 
     this.loadSprites();
@@ -1476,18 +1487,34 @@ export default class WorldMap {
 
   // Dispatches a window event so the Asset Manager link, World Editor
   // button, and minimal-mode banner can react. Called whenever the
-  // asset summary changes.
+  // asset summary changes OR the forced-minimal toggle flips.
   _broadcastAssetSummary() {
-    const loaded = Boolean(this.assetSummary && this.assetSummary.loadedCount > 0);
+    const forced = Boolean(this.minimalModeForced);
+    const loadedCount = forced ? 0 : (this.assetSummary?.loadedCount || 0);
+    const loaded = !forced && loadedCount > 0;
     try {
       window.dispatchEvent(new CustomEvent('assets-status', {
         detail: {
           loaded,
-          loadedCount: this.assetSummary?.loadedCount || 0,
+          forced,
+          loadedCount,
           missingKeys: this.assetSummary?.missingKeys || []
         }
       }));
     } catch (_) { /* jsdom may not have CustomEvent */ }
+  }
+
+  // M hotkey entry point. `on === undefined` → toggle; otherwise set.
+  // Persists to localStorage so reloads keep the preview on.
+  toggleMinimalMode(on) {
+    const next = on === undefined ? !this.minimalModeForced : Boolean(on);
+    this.minimalModeForced = next;
+    try {
+      if (next) window.localStorage.setItem('agent-world.minimal-mode-forced', '1');
+      else window.localStorage.removeItem('agent-world.minimal-mode-forced');
+    } catch (_) { /* ignore */ }
+    this._broadcastAssetSummary();
+    this.render(performance.now());
   }
 
   destroy() {
@@ -1910,6 +1937,9 @@ export default class WorldMap {
   }
 
   drawSprite(spriteKey, dx, dy, dw, dh, options = null) {
+    // Forced minimal-mode preview (M hotkey). All sprite lookups miss
+    // so every caller routes through its procedural fallback path.
+    if (this.minimalModeForced) return false;
     const sprite = this.spriteStore.getSprite(spriteKey);
     if (!sprite) {
       return false;
@@ -2252,6 +2282,7 @@ export default class WorldMap {
   }
 
   drawCharacterVariant(avatar, timestamp) {
+    if (this.minimalModeForced) return false;
     const sheets = this.spriteStore.characterSheetImages;
     if (!sheets || sheets.length === 0) return false;
 

@@ -12,7 +12,9 @@ const SECTIONS = [
       ['1–9',        'Focus agent #N · N번째 에이전트 패널 열기'],
       ['0',          'Close session panel · 세션 패널 닫기'],
       ['Esc',        'Close panels & modals · 패널/모달 닫기'],
-      ['E',          'Toggle world editor · 월드 에디터 토글'],
+      ['N',          'Toggle name tags · 이름표 토글'],
+      ['M',          'Toggle minimal sprite preview · 미니멀 프리뷰 토글'],
+      ['E',          'Toggle world editor (needs assets) · 월드 에디터 토글 (에셋 필요)'],
       ['← →',  'Scrub timeline (bottom bar) · 타임라인 이동'],
       ['Space',      'Play / pause timeline · 타임라인 재생/정지']
     ]
