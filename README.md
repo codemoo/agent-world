@@ -22,6 +22,8 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
 
 ### The world
 
+- **Zero-dep start** — `npm install && npm start` and you have a working
+  village. No paid asset pack required; optional PixyMoon upgrade path.
 - **Live session map** — every `claude` process on this Mac renders as a
   sprite with smooth sub-tile interpolation. Repo = building; cwd = desk.
   Walks to exit and fades on `SessionEnd`.
@@ -101,15 +103,30 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
 # 1) install deps
 npm install
 
-# 2) drop your PixyMoon asset pack (see Credits below)
-#    assets/pixymoon/Cute RPG World/...
-
-# 3) start the server
+# 2) start the server
 export AGENT_WORLD_API_TOKEN=$(openssl rand -hex 16)
 npm start
 
-# 4) open http://localhost:3102
+# 3) open http://localhost:3102
 ```
+
+No assets required — runs in **minimal mode** with procedural sprites
+(fallback furniture, trees, flowers, hat-coloured avatars). A banner
+in the bottom-right explains how to upgrade.
+
+![Minimal mode demo](demo/demo-minimal.gif)
+
+### Optional: upgrade to the PixyMoon look
+
+Buy **PixyMoon Cute RPG World** from
+[pixymoon.itch.io](https://pixymoon.itch.io/cute-rpg-world) and drop
+the extracted pack under `assets/pixymoon/Cute RPG World/`. The
+server picks it up automatically on the next reload — minimal mode
+banner disappears, the Assets Manager and World Editor light up, and
+all 50+ furniture sprites render as pixel art.
+
+The PixyMoon pack is **not included** in this repo (per their license
+you must purchase your own copy). See [`assets/pixymoon/README.md`](assets/pixymoon/README.md).
 
 The server reads:
 
@@ -159,6 +176,8 @@ npm run install-hooks -- --apply # actually write plugin + hook script
 | `server/ptyServer.js` | Live PTY manager for in-browser Claude sessions (spawns `claude --resume` only; cwd-guarded, one attach per session). |
 | `server/hookPluginInstaller.js` | Additive hook plugin under `~/.claude/plugins/agent-world/`. |
 | `frontend/avatarRuntime.mjs` | Client-side intent-aware A* pathing, sub-tile lerp, tool-pop / poof / productivity-burst visual channels. |
+| `frontend/fallbackSprites.js` | Procedural furniture / flora / avatar renderers used when the PixyMoon pack isn't installed. |
+| `frontend/components/AssetsStatusBanner.js` | "Minimal mode" banner + gating for Assets link + Editor toggle when sprites are missing. |
 | `frontend/components/WorldMap.js` | Canvas renderer + hover hit-test + scrub snapshot support. |
 | `frontend/components/SessionDetailPanel.js` | DOM sidebar for clicked agent. |
 | `frontend/components/TerminalTuiView.js` | Full-screen transcript + Live PTY viewer (xterm.js). |
@@ -261,14 +280,17 @@ Logs: `logs/agent-world.{stdout,stderr}.log`.
 
 ## Credits
 
-### Assets — PixyMoon
+### Assets — PixyMoon (optional)
 
-The tile sets and character sprites come from the
+When available, the tile sets and character sprites come from the
 **2D Topdown Cute RPG World** pack by
-[**PixyMoon**](https://pixymoon.itch.io/). Assets are **not** included
-in this repository; purchase the pack and drop it under
+[**PixyMoon**](https://pixymoon.itch.io/cute-rpg-world). Assets are
+**not** included in this repository; buy the pack and drop it under
 `assets/pixymoon/Cute RPG World/` (see
 [`assets/pixymoon/README.md`](assets/pixymoon/README.md)).
+
+Without the pack, `frontend/fallbackSprites.js` renders procedural
+substitutes for furniture, flora, and avatars so the app still runs.
 
 Per the PixyMoon license: usable in personal and commercial projects;
 modification allowed; credits to PixyMoon required; cannot be resold.

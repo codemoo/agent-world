@@ -15,6 +15,7 @@ export function createFrontendApp({
   HistoryBufferClass = null,
   EventLogClass = null,
   TimelineScrubberClass = null,
+  AssetsStatusBannerClass = null,
   connectionConfigOptions = {},
   connectionConfigFactory = createConnectionConfig
 } = {}) {
@@ -138,6 +139,39 @@ export function createFrontendApp({
       document: resolvedDocument,
       window: resolvedWindow
     });
+  }
+
+  // Minimal-mode banner + gating. Hides the Assets link, World Editor
+  // toggle, and (once we know) the editor-related help section when
+  // sprite assets aren't installed.
+  let assetsBanner = null;
+  if (AssetsStatusBannerClass && resolvedDocument.body) {
+    assetsBanner = new AssetsStatusBannerClass({
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+    // Best-effort: hide the top-right "Assets →" link and the World
+    // Editor toggle. Both are dead weight without a sprite pack.
+    const assetsLink = resolvedDocument.getElementById('assets-link');
+    if (assetsLink) assetsBanner.registerGated(assetsLink, { hard: true });
+    const editorToggle = resolvedDocument.getElementById('world-editor-toggle');
+    if (editorToggle) assetsBanner.registerGated(editorToggle, { hard: true });
+    // Some components create their toggle asynchronously — poll once a
+    // beat for a second, then give up.
+    let attempts = 0;
+    const rescan = resolvedWindow.setInterval(() => {
+      attempts += 1;
+      const toggle = resolvedDocument.getElementById('world-editor-toggle');
+      if (toggle && !assetsBanner._gatedEls.some(e => e.el === toggle)) {
+        assetsBanner.registerGated(toggle, { hard: true });
+        // Re-apply current state.
+        assetsBanner._apply({
+          loaded: worldMap?.assetSummary?.loadedCount > 0,
+          loadedCount: worldMap?.assetSummary?.loadedCount || 0
+        });
+      }
+      if (attempts > 5) resolvedWindow.clearInterval(rescan);
+    }, 200);
   }
 
   let socket = null;
@@ -369,6 +403,7 @@ export function createFrontendApp({
     if (eventLog && typeof eventLog.destroy === 'function') eventLog.destroy();
     if (timelineScrubber && typeof timelineScrubber.destroy === 'function') timelineScrubber.destroy();
     if (historyBuffer && typeof historyBuffer.destroy === 'function') historyBuffer.destroy();
+    if (assetsBanner && typeof assetsBanner.destroy === 'function') assetsBanner.destroy();
   }
 
   return {

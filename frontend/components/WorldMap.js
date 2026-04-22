@@ -4,6 +4,11 @@ import {
   VISUAL
 } from '../avatarRuntime.mjs';
 import { FURNITURE_SPRITES, FURNITURE_RENDER_SIZE, FURNITURE_ALIASES } from '../furnitureCatalog.mjs';
+import {
+  drawFallbackFurniture,
+  drawFallbackDecoration,
+  drawFallbackAvatarV2
+} from '../fallbackSprites.js';
 
 // Cubic easeOut — soft stop at tile center, brisk start off the previous.
 // Used by sub-tile lerp so movement doesn't look mechanical.
@@ -1454,16 +1459,35 @@ export default class WorldMap {
   async loadSprites() {
     if (!this.spriteStore.fetchImpl) {
       this.assetSummary = { loadedCount: 0, missingKeys: [] };
+      this._broadcastAssetSummary();
       return;
     }
 
     try {
       this.assetSummary = await this.spriteStore.load();
+      this._broadcastAssetSummary();
       this.render(performance.now());
     } catch (_error) {
       console.error('[WorldMap] sprite load failed:', _error);
       this.assetSummary = { loadedCount: 0, missingKeys: [] };
+      this._broadcastAssetSummary();
     }
+  }
+
+  // Dispatches a window event so the Asset Manager link, World Editor
+  // button, and minimal-mode banner can react. Called whenever the
+  // asset summary changes.
+  _broadcastAssetSummary() {
+    const loaded = Boolean(this.assetSummary && this.assetSummary.loadedCount > 0);
+    try {
+      window.dispatchEvent(new CustomEvent('assets-status', {
+        detail: {
+          loaded,
+          loadedCount: this.assetSummary?.loadedCount || 0,
+          missingKeys: this.assetSummary?.missingKeys || []
+        }
+      }));
+    } catch (_) { /* jsdom may not have CustomEvent */ }
   }
 
   destroy() {
@@ -2149,7 +2173,10 @@ export default class WorldMap {
       const flipOpt = (st.flipX || st.flipY)
         ? { flipX: Boolean(st.flipX), flipY: Boolean(st.flipY) }
         : null;
-      this.drawSprite(key, fx, fy, fw, fh, flipOpt);
+      if (!this.drawSprite(key, fx, fy, fw, fh, flipOpt)) {
+        // No PixyMoon pack installed — procedural furniture shape.
+        drawFallbackFurniture(this.context, fx, fy, fw, fh, resolvedType);
+      }
     }
   }
 
@@ -2362,17 +2389,13 @@ export default class WorldMap {
     // Apply session fade (if any) while drawing the sprite + labels.
     if (sessionFade < 1) this.context.globalAlpha = prevGlobalAlpha * sessionFade;
 
-    // Draw per-agent character variant
+    // Draw per-agent character variant — falls back to the procedural
+    // avatar (V2: direction nose, hatHue hat, branch-coloured body)
+    // when the PixyMoon character sheets aren't installed.
     const didDrawSprite = this.drawCharacterVariant(avatar, timestamp);
 
     if (!didDrawSprite) {
-      this.drawFallbackAvatar(
-        centerX,
-        centerY,
-        radius,
-        avatar.state === 'working',
-        walkPhase
-      );
+      drawFallbackAvatarV2(this.context, centerX, centerY, this.tileSize, avatar, walkPhase);
     }
 
     // --- Generative Agents-style labels ---
@@ -2583,26 +2606,9 @@ export default class WorldMap {
         if (this.drawSprite(deco.spriteKey, px, py, this.tileSize, this.tileSize)) {
           return;
         }
-        // Programmatic fallbacks for decorations without sprites
-        const t = this.tileSize;
-        if (deco.type === 'bush') {
-          this.context.fillStyle = '#4a8c3f';
-          this.context.beginPath();
-          this.context.arc(px + t * 0.5, py + t * 0.6, t * 0.22, 0, Math.PI * 2);
-          this.context.fill();
-          this.context.fillStyle = '#5aad5e';
-          this.context.beginPath();
-          this.context.arc(px + t * 0.4, py + t * 0.52, t * 0.14, 0, Math.PI * 2);
-          this.context.fill();
-        } else if (deco.type === 'pebbles') {
-          this.context.fillStyle = '#a0a5aa';
-          const offsets = [[0.35, 0.55], [0.55, 0.6], [0.45, 0.7], [0.6, 0.48]];
-          offsets.forEach(([ox, oy]) => {
-            this.context.beginPath();
-            this.context.arc(px + t * ox, py + t * oy, t * 0.06, 0, Math.PI * 2);
-            this.context.fill();
-          });
-        }
+        // No PixyMoon pack — procedural decoration (bush / pebbles /
+        // flower variants). Shared renderer in fallbackSprites.js.
+        drawFallbackDecoration(this.context, px, py, this.tileSize, deco.type);
       });
     }
 

@@ -21,8 +21,9 @@ Promise.all([
   import(`./components/HistoryBuffer.js?v=${v}`),
   import(`./components/EventLog.js?v=${v}`),
   import(`./components/TimelineScrubber.js?v=${v}`),
+  import(`./components/AssetsStatusBanner.js?v=${v}`),
   import(`./connectionConfig.mjs?v=${v}`)
-]).then(([boot, wm, we, sdp, tui, roster, help, hist, log, scrub, cc]) => {
+]).then(([boot, wm, we, sdp, tui, roster, help, hist, log, scrub, banner, cc]) => {
   boot.bootstrapFrontendApp({
     WorldMapClass: wm.default,
     WorldEditorClass: we.default,
@@ -33,6 +34,7 @@ Promise.all([
     HistoryBufferClass: hist.default,
     EventLogClass: log.default,
     TimelineScrubberClass: scrub.default,
+    AssetsStatusBannerClass: banner.default,
     connectionConfigOptions: runtimeConfig,
     connectionConfigFactory: cc.createConnectionConfig
   });

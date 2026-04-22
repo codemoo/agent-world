@@ -61,6 +61,16 @@ const SCENARIOS = {
     };
   },
 
+  async minimal(page) {
+    // Showcase the "no assets installed" path: banner + procedural
+    // sprites. Assumes the caller points baseUrl at a server whose
+    // assets/pixymoon/ doesn't contain the PixyMoon pack. Warms up a
+    // few seconds so agents move, then holds steady.
+    console.log('Settling minimal world (6s)…');
+    await page.waitForTimeout(6000);
+    return { durationMs: 8000 };
+  },
+
   async ux(page) {
     // Showcase the UX surface: roster click, hover tooltip, help overlay,
     // event log, timeline scrubber. Total ~14s.
