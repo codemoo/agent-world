@@ -10,7 +10,7 @@ const {
   stopTestServer
 } = require('./helpers/testServer');
 const { processIncomingEvents } = require('../server/eventsPipeline');
-const { applyPaperclipEvent } = require('../adapter/paperclipAdapter');
+const { applyPaperclipEvent } = require('../legacy/paperclip/paperclipAdapter');
 
 let runtime;
 

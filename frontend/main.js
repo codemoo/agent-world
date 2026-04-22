@@ -14,13 +14,25 @@ Promise.all([
   import(`./appBootstrap.mjs?v=${v}`),
   import(`./components/WorldMap.js?v=${v}`),
   import(`./components/WorldEditor.js?v=${v}`),
-  import(`./components/CompanySelector.js?v=${v}`),
+  import(`./components/SessionDetailPanel.js?v=${v}`),
+  import(`./components/TerminalTuiView.js?v=${v}`),
+  import(`./components/AgentRoster.js?v=${v}`),
+  import(`./components/HelpOverlay.js?v=${v}`),
+  import(`./components/HistoryBuffer.js?v=${v}`),
+  import(`./components/EventLog.js?v=${v}`),
+  import(`./components/TimelineScrubber.js?v=${v}`),
   import(`./connectionConfig.mjs?v=${v}`)
-]).then(([boot, wm, we, cs, cc]) => {
+]).then(([boot, wm, we, sdp, tui, roster, help, hist, log, scrub, cc]) => {
   boot.bootstrapFrontendApp({
     WorldMapClass: wm.default,
     WorldEditorClass: we.default,
-    CompanySelectorClass: cs.default,
+    SessionDetailPanelClass: sdp.default,
+    TerminalTuiViewClass: tui.default,
+    AgentRosterClass: roster.default,
+    HelpOverlayClass: help.default,
+    HistoryBufferClass: hist.default,
+    EventLogClass: log.default,
+    TimelineScrubberClass: scrub.default,
     connectionConfigOptions: runtimeConfig,
     connectionConfigFactory: cc.createConnectionConfig
   });

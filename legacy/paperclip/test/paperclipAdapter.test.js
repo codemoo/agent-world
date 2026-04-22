@@ -7,7 +7,7 @@ const {
   normalizePaperclipEvent,
   validatePaperclipEvent,
   handlePaperclipEvent
-} = require('../adapter/paperclipAdapter');
+} = require('../paperclipAdapter');
 
 function createWorldState() {
   return {

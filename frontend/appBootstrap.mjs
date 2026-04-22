@@ -8,7 +8,13 @@ export function createFrontendApp({
   WebSocketImpl,
   WorldMapClass,
   WorldEditorClass = null,
-  CompanySelectorClass = null,
+  SessionDetailPanelClass = null,
+  TerminalTuiViewClass = null,
+  AgentRosterClass = null,
+  HelpOverlayClass = null,
+  HistoryBufferClass = null,
+  EventLogClass = null,
+  TimelineScrubberClass = null,
   connectionConfigOptions = {},
   connectionConfigFactory = createConnectionConfig
 } = {}) {
@@ -60,14 +66,77 @@ export function createFrontendApp({
     });
   }
 
-  // Company selector — shows a dropdown to pick which Paperclip company
-  // the world syncs with. Only visible when paperclip sync is enabled.
-  let companySelector = null;
-  if (CompanySelectorClass && resolvedDocument.body) {
-    companySelector = new CompanySelectorClass({
+  // Terminal-style conversation viewer — full-screen overlay that polls the
+  // transcript and renders it as a scrollable TUI. Opened from the session
+  // detail panel or via the T keyboard shortcut while a sprite is selected.
+  let tuiView = null;
+  if (TerminalTuiViewClass && resolvedDocument.body) {
+    tuiView = new TerminalTuiViewClass({
       apiBaseUrl,
       authToken,
       fetchImpl: resolvedFetch
+    });
+  }
+
+  // Session detail panel — DOM sidebar showing the clicked agent's live
+  // Claude session state (git branch, PR, last message, tools, focus button).
+  let sessionDetailPanel = null;
+  if (SessionDetailPanelClass && resolvedDocument.body) {
+    sessionDetailPanel = new SessionDetailPanelClass({
+      worldMap,
+      apiBaseUrl,
+      authToken,
+      fetchImpl: resolvedFetch,
+      tuiView
+    });
+  }
+
+  // Agent roster — DOM list of live sessions. Clickable rows dispatch
+  // 'agent-selected' to drive the same flow as clicking a sprite.
+  let agentRoster = null;
+  if (AgentRosterClass && resolvedDocument.body) {
+    agentRoster = new AgentRosterClass({
+      worldMap,
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+  }
+
+  // Help overlay — "?" button + shortcut legend.
+  let helpOverlay = null;
+  if (HelpOverlayClass && resolvedDocument.body) {
+    helpOverlay = new HelpOverlayClass({
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+  }
+
+  // History buffer — 1Hz snapshots (~60s) + derived event stream.
+  // Feeds both the EventLog panel and the TimelineScrubber.
+  let historyBuffer = null;
+  if (HistoryBufferClass && resolvedDocument.body) {
+    historyBuffer = new HistoryBufferClass({
+      worldMap,
+      window: resolvedWindow
+    });
+  }
+
+  let eventLog = null;
+  if (EventLogClass && historyBuffer && resolvedDocument.body) {
+    eventLog = new EventLogClass({
+      history: historyBuffer,
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+  }
+
+  let timelineScrubber = null;
+  if (TimelineScrubberClass && historyBuffer && resolvedDocument.body) {
+    timelineScrubber = new TimelineScrubberClass({
+      worldMap,
+      history: historyBuffer,
+      document: resolvedDocument,
+      window: resolvedWindow
     });
   }
 
@@ -90,15 +159,55 @@ export function createFrontendApp({
   }
 
   function applyMessage(rawMessage) {
-    if (!rawMessage || rawMessage.type !== 'state') {
-      return;
+    if (!rawMessage) return;
+    if (rawMessage.type === 'state') {
+      worldMap.setWorldState(rawMessage.data || null);
+      if (sessionDetailPanel?.handleStateUpdate) {
+        sessionDetailPanel.handleStateUpdate(rawMessage.data);
+      }
+    } else if (rawMessage.type === 'patch' && rawMessage.patch) {
+      worldMap.applyStatePatch?.(rawMessage.patch);
+      if (sessionDetailPanel?.handleStateUpdate) {
+        sessionDetailPanel.handleStateUpdate(worldMap.state || null);
+      }
     }
+  }
 
-    worldMap.setWorldState(rawMessage.data || null);
-
-    if (companySelector && rawMessage.data?.meta) {
-      companySelector.updateFromState(rawMessage.data.meta);
+  // Keyboard 1–9: focus the Nth live session in the session detail panel.
+  // 0 closes the panel. Ignored when typing in a text field.
+  function handleSessionHotkey(ev) {
+    const tag = ev.target?.tagName || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (!/^[0-9]$/.test(ev.key)) return;
+    if (!sessionDetailPanel) return;
+    const agents = Object.values(worldMap?.state?.agents || {});
+    agents.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const idx = ev.key === '0' ? -1 : Number(ev.key) - 1;
+    if (idx === -1) {
+      sessionDetailPanel._close?.();
+    } else if (agents[idx]) {
+      sessionDetailPanel.focusSession(agents[idx].sessionId || agents[idx].id);
     }
+  }
+  if (typeof resolvedWindow.addEventListener === 'function') {
+    resolvedWindow.addEventListener('keydown', handleSessionHotkey);
+  }
+
+  // N — toggle persistent sprite name labels. Names always remain visible
+  // for hovered/selected sprites regardless of this flag.
+  function handleNameTagToggle(ev) {
+    const tag = ev.target?.tagName || '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+    if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key !== 'n' && ev.key !== 'N') return;
+    if (worldMap) {
+      worldMap.showNameTags = !worldMap.showNameTags;
+      worldMap.render?.(performance.now());
+    }
+  }
+  if (typeof resolvedWindow.addEventListener === 'function') {
+    resolvedWindow.addEventListener('keydown', handleNameTagToggle);
   }
 
   async function fetchInitialState() {
@@ -114,8 +223,8 @@ export function createFrontendApp({
       const payload = await response.json();
       if (payload?.data) {
         worldMap.setWorldState(payload.data);
-        if (companySelector && payload.data.meta) {
-          companySelector.updateFromState(payload.data.meta);
+        if (sessionDetailPanel?.handleStateUpdate) {
+          sessionDetailPanel.handleStateUpdate(payload.data);
         }
       }
     } catch (error) {
@@ -186,8 +295,6 @@ export function createFrontendApp({
 
         socket.addEventListener('open', () => {
           setConnectionStatus('Live', 'live');
-          // Refresh company list after reconnect — server state may have changed.
-          if (companySelector) companySelector.refresh();
         });
 
         socket.addEventListener('message', event => {
@@ -243,9 +350,25 @@ export function createFrontendApp({
       worldMap.destroy();
     }
 
-    if (companySelector && typeof companySelector.destroy === 'function') {
-      companySelector.destroy();
+    if (sessionDetailPanel && typeof sessionDetailPanel.destroy === 'function') {
+      sessionDetailPanel.destroy();
     }
+
+    if (tuiView && typeof tuiView.destroy === 'function') {
+      tuiView.destroy();
+    }
+
+    if (agentRoster && typeof agentRoster.destroy === 'function') {
+      agentRoster.destroy();
+    }
+
+    if (helpOverlay && typeof helpOverlay.destroy === 'function') {
+      helpOverlay.destroy();
+    }
+
+    if (eventLog && typeof eventLog.destroy === 'function') eventLog.destroy();
+    if (timelineScrubber && typeof timelineScrubber.destroy === 'function') timelineScrubber.destroy();
+    if (historyBuffer && typeof historyBuffer.destroy === 'function') historyBuffer.destroy();
   }
 
   return {

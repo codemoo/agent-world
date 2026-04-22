@@ -2,6 +2,40 @@ import { buildConversation } from './agentDialogues.mjs';
 
 const BASE_MOVE_INTERVAL_MS = 380;
 
+// Visual channel tuning (consumed by WorldMap renderer).
+// Keep constants here so runtime + renderer stay coherent.
+export const VISUAL = Object.freeze({
+  // Sub-tile interpolation: ~200ms glide between tile centers. Snaps
+  // (server authority, destination change, chat start) set prev=current
+  // so the glide doesn't span the map.
+  STEP_LERP_MS: 200,
+  // Tool pop emote: when (tool.name, inputPreview) changes, pop the icon
+  // above the head for this long. Rate-limited per-agent.
+  TOOL_POP_MS: 1100,
+  TOOL_POP_MIN_GAP_MS: 800,
+  // Productivity burst: ≥N edit/write invocations within WINDOW_MS → glow.
+  EDIT_BURST_COUNT: 3,
+  EDIT_BURST_WINDOW_MS: 10_000,
+  EDIT_BURST_GLOW_MS: 4_000,
+  // Status-transition poof: short radial burst on meaningful transitions.
+  POOF_MS: 320
+});
+
+const EDIT_TOOL_NAMES = new Set(['Edit', 'Write', 'NotebookEdit']);
+
+// Transitions worth announcing with a poof burst.
+// Ignores benign Working↔Idle churn + initial-connect floods.
+function isNoteworthyTransition(prev, next) {
+  if (!prev || !next || prev === next) return false;
+  if (prev === 'Waiting' && next === 'Working') return true;
+  if (prev === 'Errored') return true;      // recovery from error
+  if (next === 'Errored') return true;      // entering error
+  if (prev === 'Idle' && next === 'Working') return true;
+  if (prev === 'IdleStale' && next === 'Working') return true;
+  if (next === 'Finished') return true;
+  return false;
+}
+
 // Ambient chat tuning — conversations are scripted by buildConversation:
 // 2 turns (short greeting exchange) or 4 turns (greeting → reply → topic
 // → reply). Both participants pause movement and turn to face each
@@ -193,6 +227,13 @@ export function syncAvatarRuntimeEntries(
     const authoritativePosition = avatar.authoritativePosition !== false && !avatar.moving;
 
     if (!runtime) {
+      // Seed lastToolKey from the first-observed tool so the next sync
+      // doesn't mistake the initial tool for a new invocation.
+      const initialTool = avatar.tool;
+      const initialToolKey = initialTool && initialTool.name
+        ? `${initialTool.name}::${initialTool.inputPreview || ''}`
+        : '';
+      const initialStatus = typeof avatar.status === 'string' ? avatar.status : undefined;
       avatarRuntime.set(avatarId, {
         ...avatar,
         authoritativePosition,
@@ -202,6 +243,27 @@ export function syncAvatarRuntimeEntries(
         pathIndex: 0,
         arrivalPauseUntil: 0,
         agentSeed: agentHashSeed(avatarId),
+        // Sub-tile interpolation state. prev* = previous discrete tile;
+        // the renderer lerps between (prev*, x/y) across STEP_LERP_MS.
+        // Starting equal to x/y means "no glide on first frame."
+        prevX: avatar.x,
+        prevY: avatar.y,
+        stepStartedAt: now - 1000,
+        // Tool-pop emote channel (see VISUAL.TOOL_POP_MS). Captures the
+        // icon that popped most recently + when. lastToolKey is seeded
+        // from the current tool so only subsequent changes trigger a pop.
+        lastToolKey: initialToolKey,
+        toolPopAt: 0,
+        toolPopIcon: '',
+        toolPopLastAt: 0,
+        // Productivity burst: timestamps of recent Edit/Write invocations.
+        editBurstTs: [],
+        productiveUntil: 0,
+        // Status-transition poof. prevServerStatus seeded from initial
+        // status so the first post-connect diff doesn't poof-storm. It
+        // still captures real subsequent transitions.
+        prevServerStatus: initialStatus,
+        poofAt: 0
       });
       return;
     }
@@ -226,23 +288,100 @@ export function syncAvatarRuntimeEntries(
     // Only snap position from server when agent is NOT moving client-side
     // (i.e. when working or when first transitioning to moving state)
     if (authoritativePosition || !prevMoving) {
+      // Detect an actual server-driven teleport. Same-tile syncs are
+      // common (state diffs) — don't break the ongoing lerp for those.
+      if (runtime.x !== avatar.x || runtime.y !== avatar.y) {
+        runtime.prevX = avatar.x;
+        runtime.prevY = avatar.y;
+        runtime.stepStartedAt = now - VISUAL.STEP_LERP_MS; // force progress=1
+      }
       runtime.x = avatar.x;
       runtime.y = avatar.y;
     }
 
-    // Update destination from server state
+    // Update destination from server state. When the server attaches an
+    // `intent` (e.g. to_info_desk, to_exit_fade), we also sync intent-only
+    // metadata so arrival behavior can differ per kind.
     if (avatar.destination && avatar.destination.x !== undefined) {
       const destChanged = !runtime.currentDestination ||
         runtime.currentDestination.x !== avatar.destination.x ||
-        runtime.currentDestination.y !== avatar.destination.y;
+        runtime.currentDestination.y !== avatar.destination.y ||
+        runtime.currentDestination.intent?.kind !== avatar.destination.intent?.kind;
       if (destChanged) {
         runtime.currentDestination = avatar.destination;
+        runtime.intent = avatar.destination.intent || null;
         runtime.path = null; // Force re-pathfind
         runtime.pathIndex = 0;
+        runtime.arrivalPauseUntil = 0; // resume pathing immediately
+        // Don't glide visually across a destination change — A* will
+        // restart from current tile. Collapse lerp.
+        runtime.prevX = runtime.x;
+        runtime.prevY = runtime.y;
+        runtime.stepStartedAt = now - VISUAL.STEP_LERP_MS;
       }
     } else if (!runtime.moving) {
       runtime.currentDestination = null;
+      runtime.intent = null;
       runtime.path = null;
+    }
+    // Top-level intent signal (falls back to destination.intent).
+    if (avatar.intent) runtime.intent = avatar.intent;
+
+    // Propagate cosmetic channels from the server (hat hue, tool icon, status).
+    if (typeof avatar.hatHue === 'number') runtime.hatHue = avatar.hatHue;
+    if (typeof avatar.status === 'string') runtime.serverStatus = avatar.status;
+    if (typeof avatar.toolIcon === 'string') runtime.toolIcon = avatar.toolIcon;
+    if (typeof avatar.model === 'string') runtime.model = avatar.model;
+
+    // Tool-pop emote: detect a *new* tool invocation by hashing the
+    // (name, inputPreview) tuple. The server rewrites avatar.tool to null
+    // between invocations, so a flicker null→{Bash}→null→{Bash} would
+    // otherwise over-fire. The tuple-based key collapses that pattern
+    // into a single real change per invocation.
+    const toolInfo = avatar.tool;
+    const toolKey = toolInfo && toolInfo.name
+      ? `${toolInfo.name}::${toolInfo.inputPreview || ''}`
+      : '';
+    if (toolKey && toolKey !== runtime.lastToolKey) {
+      // Rate-limit to 1 pop per TOOL_POP_MIN_GAP_MS per agent so Bash
+      // spam doesn't strobe the viewer.
+      if (now - runtime.toolPopLastAt > VISUAL.TOOL_POP_MIN_GAP_MS) {
+        runtime.toolPopAt = now;
+        runtime.toolPopLastAt = now;
+        runtime.toolPopIcon = toolInfo.icon || avatar.toolIcon || '⚙';
+      }
+      // Productivity burst: record Edit/Write/NotebookEdit invocations in
+      // a rolling 10s window. Three within window → 4s glow.
+      if (EDIT_TOOL_NAMES.has(toolInfo.name)) {
+        const cutoff = now - VISUAL.EDIT_BURST_WINDOW_MS;
+        runtime.editBurstTs = runtime.editBurstTs.filter(t => t > cutoff);
+        runtime.editBurstTs.push(now);
+        if (runtime.editBurstTs.length >= VISUAL.EDIT_BURST_COUNT) {
+          runtime.productiveUntil = now + VISUAL.EDIT_BURST_GLOW_MS;
+        }
+      }
+    }
+    runtime.lastToolKey = toolKey;
+
+    // Status-transition poof. Only fires on meaningful transitions, and
+    // only after we've observed at least one prior status (suppresses
+    // initial-connect storm).
+    const nextStatus = typeof avatar.status === 'string' ? avatar.status : runtime.serverStatus;
+    if (
+      runtime.prevServerStatus !== undefined &&
+      isNoteworthyTransition(runtime.prevServerStatus, nextStatus)
+    ) {
+      runtime.poofAt = now;
+    }
+    runtime.prevServerStatus = nextStatus;
+
+    // to_exit_fade — drive a fade from 1 → 0 across the intent's ttl.
+    if (runtime.intent?.kind === 'to_exit_fade') {
+      const expiresAt = runtime.intent.expiresAt || now + 30_000;
+      const remaining = Math.max(0, expiresAt - now);
+      runtime.fadeOpacity = Math.max(0.05, Math.min(1, remaining / 30_000));
+    } else {
+      runtime.fadeOpacity = 1;
     }
 
     if (authoritativePosition && (prevX !== avatar.x || prevY !== avatar.y)) {
@@ -364,6 +503,9 @@ function startConversation(a, b, timestamp, rng) {
   // Abandon in-flight paths so they don't resume stepping mid-chat.
   a.path = null; a.pathIndex = 0;
   b.path = null; b.pathIndex = 0;
+  // Collapse any in-flight lerp so facing-each-other doesn't glide.
+  a.prevX = a.x; a.prevY = a.y; a.stepStartedAt = timestamp - 1000;
+  b.prevX = b.x; b.prevY = b.y; b.stepStartedAt = timestamp - 1000;
   // Per-pair cooldown so the same duo doesn't re-chat immediately.
   const until = endAt + CHAT_PAIR_COOLDOWN_MS;
   if (!a.chatRecentPartners) a.chatRecentPartners = {};
@@ -501,17 +643,26 @@ export function advanceAvatarRuntimeEntries(
     }
     if (runtime.arrivalPauseUntil && timestamp >= runtime.arrivalPauseUntil) {
       runtime.arrivalPauseUntil = 0;
-      // Release the previously claimed station (if any) before re-picking
-      const prevStationId = runtime.currentDestination?.stationId || null;
-      if (prevStationId) {
-        claimedStationIds.delete(prevStationId);
-      }
-      const newDest = pickDestination(runtime, prevStationId);
-      if (newDest) {
-        runtime.currentDestination = newDest;
-        runtime.path = null;
-        runtime.pathIndex = 0;
-        runtime.bubbleText = formatStationBubble(newDest, runtime.state, 'heading to');
+      const intentKind = runtime.intent?.kind;
+      // Sticky intents: don't auto-repick. Server will update destination
+      // when the session's status changes (e.g. permission granted).
+      const stickyIntents = new Set(['to_info_desk', 'to_tavern', 'to_exit_fade', 'frozen', 'at_desk']);
+      if (stickyIntents.has(intentKind) && runtime.currentDestination) {
+        // Extend the pause so the sprite keeps "sitting" at the spot.
+        runtime.arrivalPauseUntil = timestamp + 8000 + Math.floor(rng() * 4000);
+      } else {
+        // Release the previously claimed station (if any) before re-picking.
+        const prevStationId = runtime.currentDestination?.stationId || null;
+        if (prevStationId) {
+          claimedStationIds.delete(prevStationId);
+        }
+        const newDest = pickDestination(runtime, prevStationId);
+        if (newDest) {
+          runtime.currentDestination = newDest;
+          runtime.path = null;
+          runtime.pathIndex = 0;
+          runtime.bubbleText = formatStationBubble(newDest, runtime.state, 'heading to');
+        }
       }
     }
 
@@ -572,6 +723,18 @@ export function advanceAvatarRuntimeEntries(
           runtime.direction = resolveDirection(dx, dy, runtime.direction);
         }
 
+        // Capture lerp start BEFORE updating x/y. Teleports (|dx|+|dy|>1)
+        // shouldn't glide; collapse prev=next for those.
+        if (Math.abs(dx) + Math.abs(dy) > 1) {
+          runtime.prevX = nextStep.x;
+          runtime.prevY = nextStep.y;
+          runtime.stepStartedAt = timestamp - VISUAL.STEP_LERP_MS;
+        } else {
+          runtime.prevX = runtime.x;
+          runtime.prevY = runtime.y;
+          runtime.stepStartedAt = timestamp;
+        }
+
         runtime.x = nextStep.x;
         runtime.y = nextStep.y;
         runtime.pathIndex++;
@@ -609,6 +772,9 @@ export function advanceAvatarRuntimeEntries(
 
     if (nextX !== runtime.x || nextY !== runtime.y) {
       runtime.direction = DIRECTION_BY_MOVE[`${dx},${dy}`] || runtime.direction;
+      runtime.prevX = runtime.x;
+      runtime.prevY = runtime.y;
+      runtime.stepStartedAt = timestamp;
     }
 
     runtime.x = nextX;

@@ -5,7 +5,7 @@ const {
   EventValidationError,
   processIncomingEvents
 } = require('../server/eventsPipeline');
-const { applyPaperclipEvent } = require('../adapter/paperclipAdapter');
+const { applyPaperclipEvent } = require('../legacy/paperclip/paperclipAdapter');
 
 function createWorldState() {
   return {

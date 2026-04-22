@@ -1,8 +1,60 @@
 import {
   advanceAvatarRuntimeEntries,
-  syncAvatarRuntimeEntries
+  syncAvatarRuntimeEntries,
+  VISUAL
 } from '../avatarRuntime.mjs';
 import { FURNITURE_SPRITES, FURNITURE_RENDER_SIZE, FURNITURE_ALIASES } from '../furnitureCatalog.mjs';
+
+// Cubic easeOut — soft stop at tile center, brisk start off the previous.
+// Used by sub-tile lerp so movement doesn't look mechanical.
+function easeOutCubic(t) {
+  const u = 1 - t;
+  return 1 - u * u * u;
+}
+
+// HTML escape for hover tooltip content. We build innerHTML so coloured
+// runs render properly — user-provided names/cwds must be sanitized.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Read the interpolated render position for an avatar. Caller should use
+// these in place of (avatar.x, avatar.y) for every pixel-space computation.
+// Callers that need the discrete logical tile (bubble z-ordering, hit
+// tests, station ownership, etc.) should keep reading avatar.x/y.
+function renderTilePos(avatar, timestamp) {
+  const hasLerp = typeof avatar.prevX === 'number' && typeof avatar.prevY === 'number'
+    && typeof avatar.stepStartedAt === 'number';
+  if (!hasLerp) return { rx: avatar.x, ry: avatar.y };
+  const span = VISUAL.STEP_LERP_MS || 200;
+  const progress = Math.max(0, Math.min(1, (timestamp - avatar.stepStartedAt) / span));
+  const t = easeOutCubic(progress);
+  const rx = avatar.prevX + (avatar.x - avatar.prevX) * t;
+  const ry = avatar.prevY + (avatar.y - avatar.prevY) * t;
+  return { rx, ry };
+}
+
+// In-place RFC 7396 JSON Merge Patch — null values delete keys.
+function mergePatchMutable(target, patch) {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return patch;
+  if (!target || typeof target !== 'object' || Array.isArray(target)) target = {};
+  for (const k of Object.keys(patch)) {
+    const v = patch[k];
+    if (v === null) delete target[k];
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      target[k] = mergePatchMutable(target[k], v);
+    } else {
+      target[k] = v;
+    }
+  }
+  return target;
+}
 
 function resolveFurnitureKey(type) {
   const raw = `furniture.${type}`;
@@ -1347,13 +1399,56 @@ export default class WorldMap {
     this.handleClick = this.handleClick.bind(this);
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseLeave = this.handleMouseLeave.bind(this);
     window.addEventListener('resize', this.handleResize);
     this.canvas.addEventListener('click', this.handleClick);
     this.canvas.addEventListener('mousedown', this.handleMouseDown);
+    this.canvas.addEventListener('mousemove', this.handleMouseMove);
+    this.canvas.addEventListener('mouseleave', this.handleMouseLeave);
     this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+
+    // Hover state — id of sprite / building under the cursor. Reset on
+    // mouseleave. Canvas redraws every rAF tick so we just stash the
+    // last pointer position and let the render pass resolve hover.
+    this.hoveredAgentId = null;
+    this.hoveredBuildingId = null;
+    this._pointerX = null;
+    this._pointerY = null;
+    // Persistent name-tag toggle (N key). Defaults to ON so the existing
+    // experience is preserved; pressing N gives a clean ambient view that
+    // still shows names on hover/selection.
+    this.showNameTags = true;
+    this._buildHoverTooltip();
+
+    // Scrub state — when the timeline scrubber is dragged, the renderer
+    // reads from a historical snapshot instead of the live runtime.
+    this._scrubSnapshot = null;
+
     this.handleResize();
 
     this.loadSprites();
+  }
+
+  // DOM tooltip — shared between sprite + building hover. Positioned in
+  // fixed viewport coords so it doesn't need to fight canvas transforms.
+  _buildHoverTooltip() {
+    const tt = document.createElement('div');
+    tt.id = 'world-hover-tooltip';
+    tt.style.cssText = `
+      position: fixed; pointer-events: none; z-index: 20;
+      background: rgba(15, 23, 42, 0.95); color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 6px;
+      padding: 6px 9px;
+      font: 11px/1.4 Menlo, Monaco, monospace;
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      display: none;
+      max-width: 320px;
+    `;
+    document.body.appendChild(tt);
+    this._hoverTooltip = tt;
   }
 
   async loadSprites() {
@@ -1376,7 +1471,12 @@ export default class WorldMap {
     window.removeEventListener('resize', this.handleResize);
     this.canvas.removeEventListener('click', this.handleClick);
     this.canvas.removeEventListener('mousedown', this.handleMouseDown);
+    this.canvas.removeEventListener('mousemove', this.handleMouseMove);
+    this.canvas.removeEventListener('mouseleave', this.handleMouseLeave);
     this.canvas.removeEventListener('touchstart', this.handleTouchStart);
+    if (this._hoverTooltip && this._hoverTooltip.parentNode) {
+      this._hoverTooltip.parentNode.removeChild(this._hoverTooltip);
+    }
   }
 
   handleTouchStart(event) {
@@ -1430,6 +1530,97 @@ export default class WorldMap {
     this.editor.onCanvasMouseDown(tileX, tileY, this.state, event);
   }
 
+  // Scrub mode — when set, the renderer draws avatars from a historical
+  // snapshot (from HistoryBuffer) instead of the live runtime. Clearing
+  // it (passing null) resumes live rendering. Physics advance still ticks
+  // during scrub (runtime keeps evolving), but the draw pass ignores it.
+  setScrubSnapshot(snap) {
+    this._scrubSnapshot = snap || null;
+    // Also hide the sprite hover tooltip while scrubbing to avoid stale
+    // data from a frozen tile.
+    if (this._hoverTooltip) this._hoverTooltip.style.display = 'none';
+    this.hoveredAgentId = null;
+    this.render(performance.now());
+  }
+
+  // Synthesize draw-ready avatar objects from a scrub snapshot. We fabricate
+  // the minimum fields drawAvatar + drawCharacterVariant consume — prev*
+  // equals current to skip lerp, toolPop/poof are zeroed so we don't
+  // replay animations that never happened at the scrub timestamp.
+  *_iterScrubAvatars(_timestamp) {
+    const snap = this._scrubSnapshot;
+    if (!snap || !snap.agents) return;
+    const agents = snap.agents;
+    for (const id of Object.keys(agents)) {
+      const a = agents[id];
+      yield {
+        id,
+        sessionId: a.sessionId || id,
+        x: a.x == null ? 0 : a.x,
+        y: a.y == null ? 0 : a.y,
+        prevX: a.x == null ? 0 : a.x,
+        prevY: a.y == null ? 0 : a.y,
+        stepStartedAt: 0,
+        direction: a.direction || 'down',
+        displayName: a.name,
+        state: a.status === 'Working' ? 'working' : 'idle',
+        serverStatus: a.status || 'Idle',
+        moving: false,
+        seated: a.status === 'Working',
+        talking: false,
+        toolIcon: a.toolIcon || null,
+        toolPopAt: 0,
+        toolPopIcon: '',
+        poofAt: 0,
+        productiveUntil: a.productiveUntil || 0,
+        fadeOpacity: typeof a.fadeOpacity === 'number' ? a.fadeOpacity : 1,
+        bubbleText: a.bubble || '',
+        chat: null,
+        hatHue: a.hatHue
+      };
+    }
+  }
+
+  // Shared hit-test for click + hover. Uses the same radius so the
+  // hovered sprite is always clickable (no "hover highlight but click
+  // misses" divergence). Walks avatarRuntime by logical tile position,
+  // not the interpolated one, so a sprite mid-step is still a valid
+  // target at its *next* tile center for the whole step window.
+  _hitTestAgent(canvasX, canvasY) {
+    let closest = null;
+    let closestDist = Infinity;
+    const hitRadius = this.tileSize * 0.8;
+    this.avatarRuntime.forEach(avatar => {
+      // Use interpolated position so the hover highlight tracks the
+      // visible sprite, not the logical tile. Click uses the same.
+      const rx = typeof avatar.prevX === 'number'
+        ? avatar.x  // logical tile always a valid target
+        : avatar.x;
+      const ax = this.offsetX + rx * this.tileSize + this.tileSize / 2;
+      const ay = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
+      const dist = Math.sqrt((canvasX - ax) ** 2 + (canvasY - ay) ** 2);
+      if (dist < hitRadius && dist < closestDist) {
+        closestDist = dist;
+        closest = avatar;
+      }
+    });
+    return closest;
+  }
+
+  // Building hit-test — simple tile bbox check.
+  _hitTestBuilding(canvasX, canvasY) {
+    const layout = this.sceneLayout;
+    if (!layout || !Array.isArray(layout.buildings)) return null;
+    const tx = Math.floor((canvasX - this.offsetX) / this.tileSize);
+    const ty = Math.floor((canvasY - this.offsetY) / this.tileSize);
+    for (const b of layout.buildings) {
+      if (tx >= b.x && tx < b.x + (b.w || 5) && ty >= b.y && ty < b.y + (b.h || 4)) {
+        return b;
+      }
+    }
+    return null;
+  }
+
   handleClick(event) {
     // In editor mode, mousedown already handled selection/placement;
     // suppress the subsequent click handler (which would select an agent).
@@ -1439,22 +1630,113 @@ export default class WorldMap {
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    // Check if click is on an agent
-    let closestAgent = null;
-    let closestDist = Infinity;
-    const hitRadius = this.tileSize * 0.8;
-
-    this.avatarRuntime.forEach(avatar => {
-      const ax = this.offsetX + avatar.x * this.tileSize + this.tileSize / 2;
-      const ay = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
-      const dist = Math.sqrt((clickX - ax) ** 2 + (clickY - ay) ** 2);
-      if (dist < hitRadius && dist < closestDist) {
-        closestDist = dist;
-        closestAgent = avatar;
-      }
-    });
-
+    const closestAgent = this._hitTestAgent(clickX, clickY);
     this.selectedAgent = closestAgent;
+    // Emit a DOM event so DOM sidebars (SessionDetailPanel) can react.
+    const sessionId = closestAgent?.id || closestAgent?.sessionId || null;
+    this.canvas.dispatchEvent(new CustomEvent('agent-selected', {
+      bubbles: true,
+      detail: { sessionId, avatar: closestAgent }
+    }));
+  }
+
+  handleMouseMove(event) {
+    if (this.editor) return;
+    const rect = this.canvas.getBoundingClientRect();
+    this._pointerX = event.clientX - rect.left;
+    this._pointerY = event.clientY - rect.top;
+    const agent = this._hitTestAgent(this._pointerX, this._pointerY);
+    const building = agent ? null : this._hitTestBuilding(this._pointerX, this._pointerY);
+    const prevAgent = this.hoveredAgentId;
+    const prevBuilding = this.hoveredBuildingId;
+    this.hoveredAgentId = agent ? (agent.id || agent.sessionId) : null;
+    this.hoveredBuildingId = building ? building.id : null;
+    // Cursor reflects the hit: pointer over agents, help over buildings
+    // (they don't navigate anywhere, just show info), default otherwise.
+    if (agent) this.canvas.style.cursor = 'pointer';
+    else if (building) this.canvas.style.cursor = 'help';
+    else this.canvas.style.cursor = 'default';
+    this._updateHoverTooltip(event.clientX, event.clientY, agent, building);
+    if (prevAgent !== this.hoveredAgentId || prevBuilding !== this.hoveredBuildingId) {
+      // Force a re-render now so the highlight ring appears on hover,
+      // even if the render loop is temporarily paused.
+      this.render(performance.now());
+    }
+  }
+
+  handleMouseLeave() {
+    this.hoveredAgentId = null;
+    this.hoveredBuildingId = null;
+    this._pointerX = null;
+    this._pointerY = null;
+    if (this._hoverTooltip) this._hoverTooltip.style.display = 'none';
+    this.canvas.style.cursor = 'default';
+    this.render(performance.now());
+  }
+
+  _updateHoverTooltip(clientX, clientY, agent, building) {
+    const tt = this._hoverTooltip;
+    if (!tt) return;
+    if (!agent && !building) {
+      tt.style.display = 'none';
+      return;
+    }
+    const lines = [];
+    if (agent) {
+      const id = agent.id || agent.sessionId;
+      const serverAgent = this.state?.agents?.[id] || null;
+      const name = agent.displayName || serverAgent?.name || id;
+      const status = agent.serverStatus || serverAgent?.status || '—';
+      const tool = serverAgent?.tool;
+      const toolLine = tool ? `${tool.icon || '⚙'} ${tool.name || ''}` : null;
+      const cwd = serverAgent?.cwd || '';
+      const branch = serverAgent?.gitBranch || '';
+      const short = cwd ? cwd.split('/').slice(-2).join('/') : '';
+      lines.push(`<b style="color:#fbbf24">${escapeHtml(name)}</b> <span style="color:#94a3b8">· ${escapeHtml(status)}</span>`);
+      if (toolLine) lines.push(`<span style="color:#38bdf8">${escapeHtml(toolLine)}</span>`);
+      if (short) lines.push(`<span style="color:#94a3b8">📁 ${escapeHtml(short)}${branch ? ' · ' + escapeHtml(branch) : ''}</span>`);
+      lines.push(`<span style="color:#64748b; font-size: 10px">click · open details</span>`);
+    } else if (building) {
+      const label = building.label || building.name || building.id;
+      // Count agents physically inside the building's tile rect — works
+      // regardless of buildingKey vs locationId mismatches.
+      const bx0 = building.x, by0 = building.y;
+      const bx1 = bx0 + (building.w || 5), by1 = by0 + (building.h || 4);
+      const inside = [];
+      this.avatarRuntime.forEach(av => {
+        if (av.x >= bx0 && av.x < bx1 && av.y >= by0 && av.y < by1) inside.push(av);
+      });
+      lines.push(`<b style="color:#fbbf24">${escapeHtml(label)}</b>`);
+      lines.push(`<span style="color:#94a3b8">${inside.length} session${inside.length === 1 ? '' : 's'} here</span>`);
+      if (inside.length > 0) {
+        const names = inside.map(a => a.displayName || a.id).slice(0, 4).join(', ');
+        lines.push(`<span style="color:#cbd5e1">${escapeHtml(names)}</span>`);
+      }
+    }
+    tt.innerHTML = lines.join('<br>');
+    // Position tooltip near cursor, staying on-screen.
+    const pad = 12;
+    tt.style.display = 'block';
+    const w = tt.offsetWidth;
+    const h = tt.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = clientX + pad;
+    let y = clientY + pad;
+    if (x + w + 4 > vw) x = clientX - w - pad;
+    if (y + h + 4 > vh) y = clientY - h - pad;
+    tt.style.left = `${Math.max(4, x)}px`;
+    tt.style.top = `${Math.max(4, y)}px`;
+  }
+
+  // Apply a RFC 7396 JSON Merge Patch to the world state. Used by the
+  // stateDiffBroadcast path; falls back to a full re-render.
+  applyStatePatch(patch) {
+    if (!this.state || !patch || typeof patch !== 'object') return;
+    this.state = mergePatchMutable(this.state, patch);
+    this._refreshSceneLayout();
+    this.syncRuntime();
+    this.render(performance.now());
   }
 
   setEditorMode(on, editor) {
@@ -1972,8 +2254,9 @@ export default class WorldMap {
     const sx = (baseCol + frameCol) * cellW;
     const sy = (baseRow + dirRow) * cellH;
 
-    const centerX = this.offsetX + avatar.x * this.tileSize + this.tileSize / 2;
-    const centerY = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
+    const { rx, ry } = renderTilePos(avatar, timestamp);
+    const centerX = this.offsetX + rx * this.tileSize + this.tileSize / 2;
+    const centerY = this.offsetY + ry * this.tileSize + this.tileSize / 2;
 
     // When seated, nudge the sprite down + slightly smaller so the agent
     // visually settles into the chair / bed they're paused at.
@@ -2008,16 +2291,62 @@ export default class WorldMap {
   }
 
   drawAvatar(avatar, timestamp) {
-    const centerX = this.offsetX + avatar.x * this.tileSize + this.tileSize / 2;
-    const centerY = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
+    const { rx, ry } = renderTilePos(avatar, timestamp);
+    const centerX = this.offsetX + rx * this.tileSize + this.tileSize / 2;
+    const centerY = this.offsetY + ry * this.tileSize + this.tileSize / 2;
     const radius = Math.max(4, Math.floor(this.tileSize * 0.3));
     const walkPhase = avatar.moving
       ? Math.floor(timestamp / WALK_FRAME_INTERVAL_MS) % 2
       : null;
 
+    // Session-fade opacity (runtime.fadeOpacity set when intent=to_exit_fade).
+    const sessionFade = typeof avatar.fadeOpacity === 'number' ? avatar.fadeOpacity : 1;
+    const prevGlobalAlpha = this.context.globalAlpha;
+
+    // Waiting halo — pulse amber ring under the feet before drawing shadow.
+    if (avatar.serverStatus === 'Waiting') {
+      const pulse = 0.55 + 0.35 * Math.sin(timestamp / 220);
+      const prev = this.context.globalAlpha;
+      this.context.globalAlpha = 0.6 * pulse * sessionFade;
+      this.context.strokeStyle = '#fbbf24';
+      this.context.lineWidth = Math.max(2, Math.floor(this.tileSize * 0.12));
+      this.context.beginPath();
+      this.context.ellipse(centerX, centerY + this.tileSize * 0.50, this.tileSize * 0.44 * pulse, this.tileSize * 0.16 * pulse, 0, 0, Math.PI * 2);
+      this.context.stroke();
+      this.context.globalAlpha = prev;
+    }
+
+    // Productivity burst glow — warm gold underglow while the agent is
+    // on a streak (≥3 Edit/Write within 10s). Drawn under the shadow so
+    // the sprite still reads cleanly on top.
+    if (avatar.productiveUntil && timestamp < avatar.productiveUntil) {
+      const remaining = avatar.productiveUntil - timestamp;
+      // Fade in over first 400ms, out over last 800ms.
+      const totalMs = VISUAL.EDIT_BURST_GLOW_MS || 4000;
+      const elapsed = totalMs - remaining;
+      const fadeIn = Math.min(1, elapsed / 400);
+      const fadeOut = Math.min(1, remaining / 800);
+      const strength = Math.min(fadeIn, fadeOut);
+      // Gentle pulse so the glow feels alive.
+      const pulse = 0.7 + 0.3 * Math.sin(timestamp / 260);
+      const prev = this.context.globalAlpha;
+      this.context.globalAlpha = 0.55 * strength * pulse * sessionFade;
+      const gx = centerX;
+      const gy = centerY + this.tileSize * 0.45;
+      const grad = this.context.createRadialGradient(gx, gy, 0, gx, gy, this.tileSize * 0.95);
+      grad.addColorStop(0, 'rgba(253, 224, 71, 0.85)');
+      grad.addColorStop(0.55, 'rgba(251, 146, 60, 0.35)');
+      grad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+      this.context.fillStyle = grad;
+      this.context.beginPath();
+      this.context.ellipse(gx, gy, this.tileSize * 0.95, this.tileSize * 0.55, 0, 0, Math.PI * 2);
+      this.context.fill();
+      this.context.globalAlpha = prev;
+    }
+
     // Subtle shadow under the agent for depth
     const prevAlpha = this.context.globalAlpha;
-    this.context.globalAlpha = 0.25;
+    this.context.globalAlpha = 0.25 * sessionFade;
     this.context.fillStyle = '#000';
     this.context.beginPath();
     this.context.ellipse(
@@ -2029,6 +2358,9 @@ export default class WorldMap {
     );
     this.context.fill();
     this.context.globalAlpha = prevAlpha;
+
+    // Apply session fade (if any) while drawing the sprite + labels.
+    if (sessionFade < 1) this.context.globalAlpha = prevGlobalAlpha * sessionFade;
 
     // Draw per-agent character variant
     const didDrawSprite = this.drawCharacterVariant(avatar, timestamp);
@@ -2053,8 +2385,20 @@ export default class WorldMap {
     const rawBubble = (avatar.bubbleText || '').trim();
     const chatText = avatar.chat && avatar.chat.expiresAt > timestamp
       ? avatar.chat.text : '';
-    const activityText = rawBubble ||
-      (avatar.state === 'working' ? 'working...' : '');
+    // Thinking indicator: working + no tool → cycling dots appended to
+    // whatever activity text we already show. Avoids a 4th stacked layer.
+    const thinking = avatar.serverStatus === 'Working' && !avatar.toolIcon && !avatar.toolPopIcon;
+    const dotPhase = thinking
+      ? ['', '.', '..', '...'][Math.floor(timestamp / 380) % 4]
+      : '';
+    const baseActivity = rawBubble ||
+      (avatar.state === 'working' ? 'thinking' : '');
+    // If baseActivity already ends with a trailing ellipsis / dots, don't
+    // double-append. Strip trailing dots before adding the animated ones.
+    const baseNoTail = baseActivity.replace(/[.·]+\s*$/, '').trim();
+    const activityText = thinking
+      ? (baseNoTail ? `${baseNoTail}${dotPhase}` : `thinking${dotPhase}`)
+      : baseActivity;
     const chatBubbleY = centerY - this.tileSize * 0.7 - 6;
     // When a chat bubble is showing we lift the activity bubble above
     // it and mute its appearance so focus stays on the conversation.
@@ -2080,22 +2424,119 @@ export default class WorldMap {
     }
 
     // Name label below the agent — outlined text (no background box), so
-    // the character sprite stays the visual focal point.
-    const nameFontSize = Math.max(9, Math.floor(this.tileSize * 0.36));
+    // the character sprite stays the visual focal point. Suppressed when
+    // showNameTags is false AND this sprite isn't selected/hovered, so
+    // the user can press N for a clean ambient view.
     const isWorking = avatar.state === 'working';
-    this.context.font = `600 ${nameFontSize}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
-    this.context.textAlign = 'center';
-    this.context.textBaseline = 'alphabetic';
-    const nameY = centerY + this.tileSize * 0.62 + 12;
+    const isSelectedOrHovered =
+      (this.selectedAgent && this.selectedAgent.id === avatar.id) ||
+      this.hoveredAgentId === avatar.id;
+    if (this.showNameTags || isSelectedOrHovered) {
+      const nameFontSize = Math.max(9, Math.floor(this.tileSize * 0.36));
+      this.context.font = `600 ${nameFontSize}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'alphabetic';
+      const nameY = centerY + this.tileSize * 0.62 + 12;
 
-    // Dark outline for legibility over any background
-    this.context.strokeStyle = COLORS.nameOutline;
-    this.context.lineWidth = 3;
-    this.context.lineJoin = 'round';
-    this.context.strokeText(displayName, centerX, nameY);
+      // Dark outline for legibility over any background
+      this.context.strokeStyle = COLORS.nameOutline;
+      this.context.lineWidth = 3;
+      this.context.lineJoin = 'round';
+      this.context.strokeText(displayName, centerX, nameY);
 
-    this.context.fillStyle = isWorking ? COLORS.nameTextWorking : COLORS.nameText;
-    this.context.fillText(displayName, centerX, nameY);
+      this.context.fillStyle = isWorking ? COLORS.nameTextWorking : COLORS.nameText;
+      this.context.fillText(displayName, centerX, nameY);
+    }
+
+    // Tool-pop emote — floats above the steady icon on a new tool
+    // invocation and fades over TOOL_POP_MS. While popping is strong,
+    // the steady icon is hidden so the two don't visually overlap.
+    const popMs = VISUAL.TOOL_POP_MS || 1100;
+    const popAge = timestamp - (avatar.toolPopAt || 0);
+    const popActive = avatar.toolPopIcon && popAge >= 0 && popAge < popMs;
+    const popT = popActive ? popAge / popMs : 1;
+    const popFade = popActive ? Math.max(0, 1 - popT) : 0;
+
+    // Steady tool icon — drawn unless a pop is dominating the head area.
+    if (avatar.toolIcon && popFade < 0.5) {
+      const iconSize = Math.max(12, Math.floor(this.tileSize * 0.5));
+      const iconY = centerY - this.tileSize * 0.95;
+      this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      // When pop is fading out (popFade ∈ [0, 0.5)), cross-fade the
+      // steady icon back in so the transition doesn't snap.
+      const steadyAlpha = popActive
+        ? prevGlobalAlpha * sessionFade * Math.max(0, 1 - popFade * 2)
+        : prevGlobalAlpha * sessionFade;
+      this.context.globalAlpha = steadyAlpha;
+      this.context.fillText(avatar.toolIcon, centerX, iconY);
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
+    if (popActive) {
+      const baseY = centerY - this.tileSize * 0.95;
+      // Ease out: starts fast, settles. rise ∈ [0, -22px tile-relative].
+      const rise = this.tileSize * 0.55 * easeOutCubic(popT);
+      // Slight overshoot scale for snap: 1.35 → 1.0.
+      const scale = 1 + (1 - popT) * 0.35;
+      const popSize = Math.max(14, Math.floor(this.tileSize * 0.56 * scale));
+      this.context.save();
+      this.context.globalAlpha = prevGlobalAlpha * sessionFade * (0.15 + popFade);
+      this.context.font = `${popSize}px "Segoe UI Emoji", system-ui, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      // Soft shadow under the pop icon for readability against bright tiles.
+      this.context.shadowColor = 'rgba(0,0,0,0.35)';
+      this.context.shadowBlur = 6;
+      this.context.fillText(avatar.toolPopIcon, centerX, baseY - rise);
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
+    // Status-transition poof — short radial ring on meaningful transitions.
+    const poofMs = VISUAL.POOF_MS || 320;
+    const poofAge = timestamp - (avatar.poofAt || 0);
+    if (avatar.poofAt && poofAge >= 0 && poofAge < poofMs) {
+      const poofT = poofAge / poofMs;
+      const radius = this.tileSize * (0.22 + 0.55 * poofT);
+      const width = Math.max(1.5, 4 * (1 - poofT));
+      this.context.save();
+      this.context.globalAlpha = prevGlobalAlpha * sessionFade * (1 - poofT) * 0.85;
+      this.context.strokeStyle = '#ffffff';
+      this.context.lineWidth = width;
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      this.context.stroke();
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
+    // Hover highlight — drawn BEFORE selection so the selected agent's
+    // cyan ring wins on z-order. Subtle gold ring + slight lift.
+    if (this.hoveredAgentId && this.hoveredAgentId === avatar.id
+        && (!this.selectedAgent || this.selectedAgent.id !== avatar.id)) {
+      this.context.save();
+      this.context.globalAlpha = 0.85 * sessionFade;
+      this.context.strokeStyle = '#fde68a';
+      this.context.lineWidth = 2;
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, this.tileSize * 0.50, 0, Math.PI * 2);
+      this.context.stroke();
+      this.context.restore();
+    }
+
+    // Highlight the selected agent (drawn last so it sits on top).
+    if (this.selectedAgent && this.selectedAgent.id === avatar.id) {
+      this.context.globalAlpha = 0.85 * sessionFade;
+      this.context.strokeStyle = '#38bdf8';
+      this.context.lineWidth = 2;
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, this.tileSize * 0.52, 0, Math.PI * 2);
+      this.context.stroke();
+    }
+
+    this.context.globalAlpha = prevGlobalAlpha;
   }
 
   render(timestamp = performance.now()) {
@@ -2170,15 +2611,28 @@ export default class WorldMap {
       this.drawBuildingInterior(building);
     });
 
+    // Layer 2.5: Night window glow — warm lamp-light spill inside building
+    // interiors once the sky overlay is dark enough. Drawn over interiors
+    // but under agents so seated sprites aren't washed out.
+    this.drawNightWindowGlow(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
     });
 
-    // Layer 4: Agents (on top of interiors but below roofs)
-    this.avatarRuntime.forEach(avatar => {
-      this.drawAvatar(avatar, timestamp);
-    });
+    // Layer 4: Agents (on top of interiors but below roofs).
+    // Source: live avatarRuntime OR the scrub snapshot when the user is
+    // dragging the timeline. See setScrubSnapshot().
+    if (this._scrubSnapshot) {
+      for (const avatar of this._iterScrubAvatars(timestamp)) {
+        this.drawAvatar(avatar, timestamp);
+      }
+    } else {
+      this.avatarRuntime.forEach(avatar => {
+        this.drawAvatar(avatar, timestamp);
+      });
+    }
 
     // Layer 5: Roofs intentionally omitted — interiors are always visible so
     // agents can be seen working at stations. Walls are drawn as part of
@@ -2197,9 +2651,10 @@ export default class WorldMap {
     // Layer 6.5: Day/night sky tint over the world
     this.drawSkyOverlay();
 
-    // Layer 7: UI overlays — time display and agent roster
+    // Layer 7: UI overlays — time display only.
+    // Roster moved to DOM (frontend/components/AgentRoster.js) for
+    // clickable rows + spinners + proper accessibility.
     this.drawTimeDisplay(timestamp);
-    this.drawAgentRoster(timestamp);
 
     // Layer 8: Selected agent profile panel
     if (this.selectedAgent) {
@@ -2485,6 +2940,81 @@ export default class WorldMap {
 
   // Day/night color tint. In 'clock' mode keyframes follow the real
   // clock; 'night' pins the midnight tint; 'day' renders no overlay.
+  // Compute a 0..1 "night factor" — how dark the sky overlay currently is.
+  // Mirrors drawSkyOverlay's keyframe interp, but returns only the alpha
+  // channel so drawNightWindowGlow can decide whether to paint.
+  skyNightFactor(now = new Date()) {
+    if (this.skyMode === 'day') return 0;
+    const h = this.skyMode === 'night'
+      ? 0
+      : now.getHours() + now.getMinutes() / 60;
+    const KEYFRAMES = [
+      [0,  0.45], [5,  0.38], [6,  0.22], [7,  0.08],
+      [9,  0.00], [16, 0.00], [17, 0.10], [18, 0.22],
+      [19, 0.34], [20, 0.40], [22, 0.45], [24, 0.45]
+    ];
+    let prev = KEYFRAMES[0], next = KEYFRAMES[KEYFRAMES.length - 1];
+    for (let i = 0; i < KEYFRAMES.length - 1; i++) {
+      if (h >= KEYFRAMES[i][0] && h <= KEYFRAMES[i + 1][0]) {
+        prev = KEYFRAMES[i]; next = KEYFRAMES[i + 1]; break;
+      }
+    }
+    const span = next[0] - prev[0] || 1;
+    const t = (h - prev[0]) / span;
+    return prev[1] + (next[1] - prev[1]) * t;
+  }
+
+  // Warm window-light spill inside each building interior. Only paints
+  // once the sky is dark enough to notice (skyNightFactor > 0.28). ~30%
+  // of buildings flicker (hash-seeded); the rest are steady for ambience.
+  drawNightWindowGlow(timestamp) {
+    const alpha = this.skyNightFactor();
+    if (alpha < 0.28) return;
+    const layout = this.sceneLayout;
+    if (!layout || !Array.isArray(layout.buildings)) return;
+
+    // Strength ramps with how dark the night is, capped at 0.28. Peak
+    // night (alpha≈0.45) maps to ~0.28 strength so window light is
+    // clearly visible but still ambient, not stage lighting.
+    const maxA = 0.28;
+    const strength = Math.min(maxA, (alpha - 0.28) * 1.6);
+    if (strength <= 0.01) return;
+
+    const ctx = this.context;
+    const prevComp = ctx.globalCompositeOperation;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (const b of layout.buildings) {
+      if (!Array.isArray(b.stations) || b.stations.length === 0) continue;
+      const px = this.offsetX + b.x * this.tileSize;
+      const py = this.offsetY + b.y * this.tileSize;
+      const w = this.tileSize * (b.w || 5);
+      const h = this.tileSize * (b.h || 4);
+
+      // ~30% of buildings flicker, seeded on building id. Others are steady.
+      const seed = hashString(b.id || `${b.x},${b.y}`);
+      const shouldFlicker = (seed % 10) < 3;
+      const phase = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+      const flick = shouldFlicker
+        ? 0.82 + 0.18 * Math.sin(timestamp / 380 + phase)
+        : 1;
+
+      const cx = px + w / 2;
+      const cy = py + h / 2;
+      const rad = Math.max(w, h) * 0.55;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0, `rgba(255, 222, 140, ${strength * flick})`);
+      grad.addColorStop(0.6, `rgba(255, 180, 90, ${strength * 0.45 * flick})`);
+      grad.addColorStop(1, 'rgba(255, 160, 80, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(px - 4, py - 4, w + 8, h + 8);
+    }
+
+    ctx.globalCompositeOperation = prevComp;
+    ctx.globalAlpha = prevAlpha;
+  }
+
   drawSkyOverlay(now = new Date()) {
     if (this.skyMode === 'day') return;
     const h = this.skyMode === 'night'
@@ -2571,72 +3101,6 @@ export default class WorldMap {
 
     context.fillStyle = COLORS.timeText;
     context.fillText(timeStr, boxX + padX, boxY + boxH - padY - 1);
-  }
-
-  drawAgentRoster(timestamp) {
-    const agents = Array.from(this.avatarRuntime.values());
-    if (agents.length === 0) return;
-
-    const context = this.context;
-    const canvasWidth = Number.parseInt(this.canvas.style.width || '0', 10) || 0;
-
-    const panelW = Math.min(240, canvasWidth * 0.28);
-    const lineH = 28;
-    const headerH = 30;
-    const panelH = headerH + agents.length * lineH + 8;
-    const panelX = canvasWidth - panelW - 8;
-    const panelY = 44;
-
-    // Panel background
-    context.fillStyle = COLORS.panelBg;
-    context.beginPath();
-    drawRoundedRect(context, panelX, panelY, panelW, panelH, 6);
-    context.fill();
-
-    // Panel border
-    context.strokeStyle = COLORS.panelBorder;
-    context.lineWidth = 1;
-    context.stroke();
-
-    // Header
-    context.fillStyle = COLORS.panelHighlight;
-    context.font = 'bold 12px Menlo, monospace';
-    context.textAlign = 'left';
-    context.fillText(`Agents (${agents.length})`, panelX + 10, panelY + 20);
-
-    // Divider
-    context.strokeStyle = COLORS.panelBorder;
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(panelX + 8, panelY + headerH);
-    context.lineTo(panelX + panelW - 8, panelY + headerH);
-    context.stroke();
-
-    // Agent list with cleaner layout
-    agents.forEach((agent, i) => {
-      const y = panelY + headerH + 4 + i * lineH;
-
-      // Status dot — yellow for working, green for idle/moving
-      const dotColor = agent.state === 'working' ? '#fbbf24' : '#34d399';
-      context.fillStyle = dotColor;
-      context.beginPath();
-      context.arc(panelX + 14, y + 9, 4, 0, Math.PI * 2);
-      context.fill();
-
-      // Name (bold)
-      context.font = 'bold 10px Menlo, monospace';
-      context.fillStyle = COLORS.panelText;
-      const name = (agent.displayName || agent.id || '').slice(0, 16);
-      context.fillText(name, panelX + 24, y + 12);
-
-      // Activity on second line (lighter, smaller)
-      context.font = '9px Menlo, monospace';
-      const activity = (agent.bubbleText || (agent.state === 'working' ? 'working...' : '')).slice(0, 24);
-      if (activity) {
-        context.fillStyle = agent.state === 'working' ? 'rgba(251, 191, 36, 0.8)' : 'rgba(148, 163, 184, 0.7)';
-        context.fillText(activity, panelX + 24, y + 24);
-      }
-    });
   }
 
   drawAgentProfile(agent, timestamp) {

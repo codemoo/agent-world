@@ -18,7 +18,7 @@ const {
   OUTDOOR_STATIONS,
   WORLD_WIDTH,
   WORLD_HEIGHT
-} = require('../adapter/paperclipAdapter');
+} = require('../adapter/worldModel');
 const { generateTrees } = require('../adapter/treeGenerator');
 
 function tmpPath(label) {

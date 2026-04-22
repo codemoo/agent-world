@@ -2,7 +2,7 @@ const {
   normalizePaperclipEvent,
   validatePaperclipEvent,
   applyPaperclipEvent
-} = require('../adapter/paperclipAdapter');
+} = require('../legacy/paperclip/paperclipAdapter');
 
 class EventValidationError extends Error {
   constructor(message, details = []) {

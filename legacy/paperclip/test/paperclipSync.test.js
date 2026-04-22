@@ -9,7 +9,7 @@ const {
   fetchPaperclipCompanies,
   mapIssueStatusToEventType,
   normalizeInboxIssue
-} = require('../server/paperclipSync');
+} = require('../paperclipSync');
 
 test('inbox 항목을 정규화할 때 run/agent/task 필드를 추출한다', () => {
   const issue = normalizeInboxIssue({

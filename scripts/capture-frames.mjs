@@ -61,6 +61,84 @@ const SCENARIOS = {
     };
   },
 
+  async ux(page) {
+    // Showcase the UX surface: roster click, hover tooltip, help overlay,
+    // event log, timeline scrubber. Total ~14s.
+    console.log('Warming up (2.5s)…');
+    await page.waitForTimeout(2500);
+    return {
+      durationMs: 14000,
+      onCapture: async () => {
+        // 1. Click a row in the DOM roster → open SessionDetailPanel.
+        const row = page.locator('#agent-roster .roster-row').first();
+        if (await row.count()) {
+          await row.click();
+          await page.waitForTimeout(1500);
+        }
+
+        // 2. Move mouse over a sprite → trigger hover tooltip. Read a
+        //    live avatar position and hover directly at its pixel center.
+        const hover = await page.evaluate(() => {
+          const ws = window.__agentWorldApp?.getWorldState?.();
+          const canvas = document.querySelector('canvas');
+          if (!ws || !canvas) return null;
+          const avatars = Object.values(ws.avatars || {});
+          const target = avatars[Math.min(2, avatars.length - 1)];
+          if (!target) return null;
+          const rect = canvas.getBoundingClientRect();
+          const tile = Math.min(rect.width, rect.height) / 30;
+          const ox = (rect.width - tile * 30) / 2;
+          const oy = (rect.height - tile * 30) / 2;
+          return {
+            cx: rect.left + ox + (target.x + 0.5) * tile,
+            cy: rect.top + oy + (target.y + 0.5) * tile
+          };
+        });
+        if (hover) {
+          await page.mouse.move(hover.cx, hover.cy);
+          await page.waitForTimeout(1700);
+        }
+
+        // 3. Close session panel then open help overlay via the "?" button.
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+        const helpBtn = page.locator('#help-button');
+        if (await helpBtn.count()) {
+          await helpBtn.click();
+          await page.waitForTimeout(2200);
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(500);
+        }
+
+        // 4. Click an event log row → selects that agent.
+        const ev = page.locator('#event-log .event-row').first();
+        if (await ev.count()) {
+          await ev.click();
+          await page.waitForTimeout(1500);
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(400);
+        }
+
+        // 5. Drag the timeline scrubber thumb a few steps back, then Live.
+        const thumb = page.locator('#timeline-scrubber .ts-thumb');
+        if (await thumb.count()) {
+          const box = await thumb.boundingBox();
+          if (box) {
+            const startX = box.x + box.width / 2;
+            const y = box.y + box.height / 2;
+            await page.mouse.move(startX, y);
+            await page.mouse.down();
+            await page.mouse.move(startX - 100, y, { steps: 8 });
+            await page.waitForTimeout(700);
+            await page.mouse.move(startX, y, { steps: 8 });
+            await page.mouse.up();
+            await page.waitForTimeout(400);
+          }
+        }
+      }
+    };
+  },
+
   async assets(page, baseUrl) {
     await page.goto(`${baseUrl}/assets-manager`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);

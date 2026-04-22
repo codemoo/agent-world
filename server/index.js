@@ -10,7 +10,7 @@ const {
   OUTDOOR_STATIONS,
   WORLD_WIDTH,
   WORLD_HEIGHT
-} = require('../adapter/paperclipAdapter');
+} = require('../adapter/worldModel');
 const { generateTrees } = require('../adapter/treeGenerator');
 const {
   loadOrSeed,
@@ -23,7 +23,11 @@ const {
   EventValidationError,
   processIncomingEvents
 } = require('./eventsPipeline');
-const { createPaperclipPoller, fetchPaperclipCompanies } = require('./paperclipSync');
+const { createClaudeSnapshotter } = require('./claudeSnapshotter');
+const { createBuildingAssignments } = require('./buildingAssignments');
+const { applySnapshotToWorld } = require('../adapter/claudeAdapter');
+const { createStateDiffBroadcast } = require('./stateDiffBroadcast');
+const { createPtyManager } = require('./ptyServer');
 const { createAssetManager } = require('./assetManager');
 const {
   DEFAULT_WS_TICKET_MAX_ENTRIES,
@@ -380,13 +384,10 @@ function createWorldState(layout = null) {
     zones: {},
     runs: {},
     meta: {
-      paperclip: {
+      claude: {
         enabled: false,
-        companyId: null,
-        companyName: null,
-        lastSyncAt: null,
-        lastSyncError: null,
-        lastPolledCount: 0
+        sessionsObserved: 0,
+        lastSnapshotAt: null
       }
     }
   };
@@ -444,17 +445,6 @@ function createServer(options = {}) {
       ? options.processIncomingEvents
       : processIncomingEvents;
   const securityOptions = resolveSecurityOptions(options);
-  const configuredPaperclipSync = options.paperclipSync || {};
-  const pollIntervalMs = Number(
-    configuredPaperclipSync.intervalMs ??
-      process.env.PAPERCLIP_SYNC_INTERVAL_MS ??
-      0
-  );
-  const paperclipSyncEnabled =
-    configuredPaperclipSync.enabled ??
-    (pollIntervalMs > 0 &&
-      Boolean(process.env.PAPERCLIP_API_URL) &&
-      Boolean(process.env.PAPERCLIP_API_KEY));
   const consumeRateLimit = createFixedWindowRateLimiter(
     securityOptions.rateLimitWindowMs,
     securityOptions.maxRequestsPerWindow
@@ -466,12 +456,19 @@ function createServer(options = {}) {
   app.set('trust proxy', true);
   const server = http.createServer(app);
   const wss = new WebSocket.Server({ noServer: true });
+  // Separate WS server for PTY streams so we can apply different framing.
+  const ptyWss = new WebSocket.Server({ noServer: true });
+  const ptyManager = createPtyManager({
+    // Pass a getter fn so the manager always sees the current snapshotter
+    // reference (it's assigned later in this function).
+    claudeSnapshotter: () => claudeSnapshotter,
+    idleTimeoutMs: options.ptyIdleTimeoutMs || undefined
+  });
   // Load persisted world layout (or seed from code defaults on first run).
   // `options.worldLayoutPath` lets tests point at an isolated file.
   const layoutPath = options.worldLayoutPath || DEFAULT_LAYOUT_PATH;
   const worldLayoutContainer = { current: loadOrSeed(seedWorldLayout, layoutPath) };
   const worldState = createWorldState(worldLayoutContainer.current);
-  worldState.meta.paperclip.enabled = Boolean(paperclipSyncEnabled);
   const wsTicketStoreFactory =
     typeof options.createWsTicketStore === 'function'
       ? options.createWsTicketStore
@@ -480,13 +477,8 @@ function createServer(options = {}) {
     ttlMs: securityOptions.wsTicketTtlMs,
     maxEntries: securityOptions.maxWsTicketEntries
   });
-  let paperclipPoller = null;
 
-  /**
-   * Broadcast the current world state to all connected clients.
-   */
-  function broadcastState() {
-    const payload = JSON.stringify({ type: 'state', data: worldState });
+  function _sendToAll(payload) {
     wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         try {
@@ -496,6 +488,23 @@ function createServer(options = {}) {
         }
       }
     });
+  }
+
+  const diffBroadcaster = createStateDiffBroadcast({
+    debounceMs: options.broadcastDebounceMs || 50,
+    sendFull: _sendToAll,
+    sendPatch: _sendToAll,
+    // Diffing is safe once the frontend applies merge-patches. Until that
+    // lands (Phase 7 — see /patch handler), keep full snapshots on each flush.
+    emitFull: options.broadcastEmitFull !== undefined ? options.broadcastEmitFull : true
+  });
+
+  /**
+   * Broadcast the current world state to all connected clients.
+   * Debounced via stateDiffBroadcast.
+   */
+  function broadcastState() {
+    diffBroadcaster.schedule(worldState);
   }
 
   function guardAndRateLimitHttp(scope) {
@@ -521,84 +530,48 @@ function createServer(options = {}) {
     };
   }
 
-  // Apply events from Paperclip polling. Unlike the /events HTTP endpoint
-  // which rejects the entire batch on validation errors, polling events
-  // are applied individually — bad events are skipped with a warning so
-  // one malformed issue doesn't block all other agents.
-  async function applyInboxEvents(events) {
-    let applied = 0;
-    let skipped = 0;
-    const eventList = Array.isArray(events) ? events : [events];
-
-    for (const rawEvent of eventList) {
+  // Claude Code session visualizer: read ~/.claude sessions and project them
+  // into the world. Sole data source as of the Paperclip cutover (Phase 6).
+  const claudeEnabled = options.claudeSync?.enabled !== false;
+  let claudeSnapshotter = null;
+  let buildingAssignments = null;
+  if (claudeEnabled) {
+    const assignmentsPath = options.claudeSync?.assignmentsPath
+      || path.join(path.resolve(__dirname, '..'), 'data', 'repoAssignments.json');
+    buildingAssignments = createBuildingAssignments(assignmentsPath);
+    claudeSnapshotter = createClaudeSnapshotter({
+      tickMs: options.claudeSync?.tickMs || 1000
+    });
+    claudeSnapshotter.on('snapshot', snap => {
       try {
-        processIncomingEventsFn([rawEvent], worldState, {
-          afterEachApply: () => {
-            cleanupWorldState(worldState, securityOptions.stateLimits);
-            enforceStateCapacity(worldState, securityOptions.stateLimits);
-          }
+        const { activeBuildingKeys } = applySnapshotToWorld({
+          snapshot: snap,
+          worldState,
+          buildings: buildingAssignments
         });
-        applied += 1;
+        buildingAssignments.tick({
+          activeBuildingKeys,
+          tickMs: options.claudeSync?.tickMs || 1000
+        });
+        worldState.meta.claude.enabled = true;
+        worldState.meta.claude.sessionsObserved = snap.sessions.length;
+        worldState.meta.claude.lastSnapshotAt = new Date(snap.takenAtMs).toISOString();
+        // Persist assignments every 30s.
+        const nowMs = Date.now();
+        if (!claudeSnapshotter._lastPersistMs || nowMs - claudeSnapshotter._lastPersistMs > 30_000) {
+          try { buildingAssignments.persist(); } catch { /* non-fatal */ }
+          claudeSnapshotter._lastPersistMs = nowMs;
+        }
+        broadcastState();
       } catch (err) {
-        skipped += 1;
-        console.warn('[paperclip-sync] skipped malformed event:', err.message);
-      }
-    }
-
-    worldState.meta.paperclip.lastSyncAt = new Date().toISOString();
-    worldState.meta.paperclip.lastSyncError = skipped > 0
-      ? `${skipped} event(s) skipped`
-      : null;
-    worldState.meta.paperclip.lastPolledCount = eventList.length;
-
-    if (applied > 0) {
-      broadcastState();
-    }
-
-    return applied;
-  }
-
-  const paperclipApiUrl =
-    configuredPaperclipSync.apiUrl || process.env.PAPERCLIP_API_URL || null;
-  const paperclipApiKey =
-    configuredPaperclipSync.apiKey || process.env.PAPERCLIP_API_KEY || null;
-  const paperclipFetchImpl = configuredPaperclipSync.fetchImpl || undefined;
-  const paperclipEndpointPath =
-    configuredPaperclipSync.endpointPath || '/api/agents/me/inbox-lite';
-  const initialCompanyId =
-    configuredPaperclipSync.companyId ??
-    (options.paperclipSync ? null : (process.env.PAPERCLIP_COMPANY_ID || null));
-
-  function createAndStartPoller(companyId) {
-    const poller = createPaperclipPoller({
-      apiUrl: paperclipApiUrl,
-      apiKey: paperclipApiKey,
-      intervalMs: pollIntervalMs,
-      fetchImpl: paperclipFetchImpl,
-      endpointPath: paperclipEndpointPath,
-      companyId,
-      onEvents: applyInboxEvents,
-      onError: error => {
-        const msg = (error.message || 'unknown error').slice(0, 500);
-        worldState.meta.paperclip.lastSyncError = msg;
-        const errCount = paperclipPoller?.getConsecutiveErrors?.() || 0;
-        console.error(
-          `[paperclip-sync] poll failed (consecutive: ${errCount}):`,
-          error.message
-        );
+        console.error('[claude-sync] apply failed:', err.message);
       }
     });
-    console.log(
-      `[paperclip-sync] starting poller — interval=${pollIntervalMs}ms, ` +
-      `mode=${companyId ? 'company' : 'inbox'}`
-    );
-    poller.start();
-    return poller;
-  }
-
-  if (paperclipSyncEnabled && paperclipApiUrl && paperclipApiKey) {
-    paperclipPoller = createAndStartPoller(initialCompanyId);
-    worldState.meta.paperclip.companyId = initialCompanyId || null;
+    claudeSnapshotter.on('error', err => {
+      console.error('[claude-sync] snapshotter error:', err.message);
+    });
+    claudeSnapshotter.start();
+    console.log('[claude-sync] started — reading ~/.claude/sessions + hook events');
   }
 
   app.use(
@@ -635,6 +608,20 @@ function createServer(options = {}) {
   });
 
   const projectRoot = path.resolve(__dirname, '..');
+  // Soft-404 for the asset manifest so pages render cleanly without the
+  // PixyMoon pack installed (see README). The WorldMap falls back to
+  // programmatic drawing when the manifest is empty.
+  app.get('/assets/pixymoon/Cute%20RPG%20World/asset-manifest.json', (req, res, next) => {
+    const full = path.join(projectRoot, 'assets', 'pixymoon', 'Cute RPG World', 'asset-manifest.json');
+    fs.access(full, fs.constants.R_OK, (err) => {
+      if (err) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200).json({ version: 1, sheets: [], sprites: [], groups: [] });
+        return;
+      }
+      next();
+    });
+  });
   app.use('/assets', express.static(path.join(projectRoot, 'assets')));
 
   const assetManager = createAssetManager({ projectRoot });
@@ -749,6 +736,146 @@ function createServer(options = {}) {
     res.status(200).json({ status: 'ok' });
   });
 
+  // Aggregated health snapshot for the Claude Code visualizer pivot.
+  app.get('/healthz', (req, res) => {
+    const snap = claudeSnapshotter?.lastSessions;
+    const sessionsObserved = snap ? snap.size : 0;
+    const memMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    res.status(200).json({
+      status: 'ok',
+      sessionsObserved,
+      buildingsActive: buildingAssignments?._state?.buildings?.length || 0,
+      tentsActive: buildingAssignments?._state?.tents?.length || 0,
+      lastSnapshotAt: worldState.meta?.claude?.lastSnapshotAt || null,
+      memMB,
+      uptimeSec: Math.round(process.uptime())
+    });
+  });
+
+  // List live Claude sessions (quick overview for the frontend).
+  app.get('/api/sessions', guardAndRateLimitHttp('sessions'), (req, res) => {
+    const snap = claudeSnapshotter?.lastSessions;
+    if (!snap) {
+      res.status(200).json({ status: 'ok', sessions: [] });
+      return;
+    }
+    const sessions = [];
+    for (const [id, s] of snap) {
+      sessions.push({
+        sessionId: id,
+        pid: s.pid,
+        status: s.status,
+        cwd: s.cwd,
+        repoRoot: s.repoRoot,
+        name: s.name,
+        lastHookEvent: s.lastHookEvent || null
+      });
+    }
+    res.status(200).json({ status: 'ok', sessions });
+  });
+
+  // Per-session detail: includes transcript preview (last msg, tool, model).
+  app.get('/api/sessions/:sessionId', guardAndRateLimitHttp('sessions'), async (req, res) => {
+    const snap = claudeSnapshotter?.lastSessions;
+    const session = snap?.get(req.params.sessionId);
+    if (!session) {
+      sendError(res, 404, 'Session not found.');
+      return;
+    }
+    let preview = null;
+    if (session.transcriptPath) {
+      try {
+        const { getTail } = require('./transcriptPreview');
+        preview = await getTail(session.transcriptPath);
+      } catch (err) {
+        console.warn('[sessions] transcript preview failed:', err.message);
+      }
+    }
+    res.status(200).json({
+      status: 'ok',
+      data: {
+        sessionId: session.sessionId,
+        pid: session.pid,
+        cwd: session.cwd,
+        repoRoot: session.repoRoot,
+        status: session.status,
+        startedAtMs: session.startedAtMs,
+        version: session.version,
+        kind: session.kind,
+        transcriptPath: session.transcriptPath,
+        lastHookEvent: session.lastHookEvent,
+        lastAssistantMessage: preview?.lastAssistantMessage || null,
+        lastUserMessage: preview?.lastUserMessage || null,
+        lastToolUse: preview?.lastToolUse || null,
+        lastModel: preview?.lastModel || null,
+        gitBranch: preview?.gitBranch || null
+      }
+    });
+  });
+
+  // Forward-slice of the transcript, normalized into render-ready entries
+  // for the in-browser TUI. Uses an opaque byte cursor for incremental polls.
+  app.get('/api/sessions/:sessionId/transcript', guardAndRateLimitHttp('sessions'), async (req, res) => {
+    const snap = claudeSnapshotter?.lastSessions;
+    const session = snap?.get(req.params.sessionId);
+    if (!session) { sendError(res, 404, 'Session not found.'); return; }
+    if (!session.transcriptPath) { sendError(res, 404, 'No transcript for this session.'); return; }
+
+    const cursorRaw = req.query?.cursor;
+    const cursor = typeof cursorRaw === 'string' && cursorRaw.length > 0 ? cursorRaw : null;
+    const limit = Math.min(500, Math.max(1, Number(req.query?.limit) || 120));
+
+    try {
+      const { getSlice } = require('./transcriptPreview');
+      const slice = await getSlice(session.transcriptPath, { cursor, limit });
+      res.setHeader('Cache-Control', 'no-store');
+      res.status(200).json({
+        status: 'ok',
+        data: {
+          sessionId: session.sessionId,
+          cwd: session.cwd,
+          mtimeMs: slice.mtimeMs,
+          size: slice.size,
+          gitBranch: slice.gitBranch,
+          model: slice.model,
+          cursor: slice.cursor,
+          truncated: slice.truncated,
+          resync: slice.resync,
+          entries: slice.entries
+        }
+      });
+    } catch (err) {
+      if (err && err.code === 'ENOENT') {
+        sendError(res, 410, 'Transcript has disappeared.', [
+          { code: 'TRANSCRIPT_GONE', error: err.message }
+        ]);
+        return;
+      }
+      sendError(res, 500, 'Failed to read transcript.', [
+        { code: 'TRANSCRIPT_SLICE_FAILED', error: err.message }
+      ]);
+    }
+  });
+
+  // Focus the terminal tab for a session. Full implementation in Phase 9;
+  // for now, return 501 with a hint.
+  app.post('/api/sessions/:sessionId/focus', guardAndRateLimitHttp('sessions'), (req, res) => {
+    try {
+      const { focusSessionTerminal } = require('./terminalFocus');
+      const snap = claudeSnapshotter?.lastSessions;
+      const session = snap?.get(req.params.sessionId);
+      if (!session) { sendError(res, 404, 'Session not found.'); return; }
+      focusSessionTerminal(session).then(
+        result => res.status(200).json({ status: 'ok', ...result }),
+        err => sendError(res, 500, 'Focus failed.', [{ code: 'FOCUS_FAILED', error: err.message }])
+      );
+    } catch (err) {
+      sendError(res, 501, 'Terminal focus not available.', [
+        { code: 'FOCUS_UNAVAILABLE', error: err.message }
+      ]);
+    }
+  });
+
   // World layout editing — GET returns current JSON, PUT saves new layout.
   // PUT rebuilds worldState.world (stations / trees) while preserving
   // agents, avatars, runs, and meta so editing doesn't reset the session.
@@ -799,115 +926,18 @@ function createServer(options = {}) {
     }
   );
 
-  app.post(
-    '/sync/paperclip',
-    guardAndRateLimitHttp('paperclip_sync'),
-    async (req, res) => {
-      if (!paperclipPoller) {
-        sendError(
-          res,
-          503,
-          'Paperclip polling is disabled. Configure PAPERCLIP_SYNC_INTERVAL_MS or createServer({ paperclipSync }).'
-        );
-        return;
-      }
-
-      try {
-        const result = await paperclipPoller.pollNow();
-        res.status(200).json({
-          status: 'ok',
-          fetched: result.fetched,
-          emitted: result.emitted
-        });
-      } catch (error) {
-        worldState.meta.paperclip.lastSyncError = error.message;
-        sendError(res, 502, 'Paperclip sync failed.', [
-          {
-            code: 'PAPERCLIP_SYNC_FAILED',
-            error: error.message
-          }
-        ]);
-      }
-    }
-  );
-
-  // List companies available in the connected Paperclip instance.
-  app.get(
-    '/sync/paperclip/companies',
-    guardAndRateLimitHttp('paperclip_sync'),
-    async (req, res) => {
-      if (!paperclipApiUrl || !paperclipApiKey) {
-        sendError(res, 503, 'Paperclip API credentials not configured.');
-        return;
-      }
-
-      try {
-        const companies = await fetchPaperclipCompanies({
-          apiUrl: paperclipApiUrl,
-          apiKey: paperclipApiKey,
-          fetchImpl: paperclipFetchImpl
-        });
-        res.status(200).json({
-          status: 'ok',
-          companies,
-          currentCompanyId: worldState.meta.paperclip.companyId || null
-        });
-      } catch (error) {
-        sendError(res, 502, 'Failed to fetch companies from Paperclip.', [
-          { code: 'PAPERCLIP_COMPANIES_FAILED', error: error.message }
-        ]);
-      }
-    }
-  );
-
-  // Switch which company the poller syncs with. Stops the current
-  // poller, clears stale agent/run state, and starts a fresh one.
-  app.put(
-    '/sync/paperclip/company',
-    guardAndRateLimitHttp('paperclip_sync'),
-    async (req, res) => {
-      if (!paperclipSyncEnabled || !paperclipApiUrl || !paperclipApiKey) {
-        sendError(res, 503, 'Paperclip sync is not enabled.');
-        return;
-      }
-
-      const { companyId = null, companyName = null } = req.body || {};
-
-      // Stop existing poller
-      if (paperclipPoller) {
-        await paperclipPoller.stop();
-        paperclipPoller = null;
-      }
-
-      // Clear agents/runs from previous company so they don't linger
-      worldState.agents = {};
-      worldState.avatars = {};
-      worldState.runs = {};
-
-      // Update meta
-      worldState.meta.paperclip.companyId = companyId || null;
-      worldState.meta.paperclip.companyName = companyName || null;
-      worldState.meta.paperclip.lastSyncAt = null;
-      worldState.meta.paperclip.lastSyncError = null;
-      worldState.meta.paperclip.lastPolledCount = 0;
-
-      // Start new poller (or inbox mode if companyId is null)
-      paperclipPoller = createAndStartPoller(companyId);
-      broadcastState();
-
-      console.log(
-        `[paperclip-sync] switched company — ` +
-        `id=${companyId || '(inbox)'}, name=${companyName || '(none)'}`
-      );
-
-      res.status(200).json({
-        status: 'ok',
-        companyId: companyId || null,
-        companyName: companyName || null,
-        mode: companyId ? 'company' : 'inbox'
-      });
-    }
-  );
+  // Paperclip integration removed in the Claude Code pivot (Phase 6).
+  // Archived source + restore instructions live at legacy/paperclip/README.md.
+  function paperclipGone(_req, res) {
+    res.status(410).json({
+      status: 'gone',
+      error: 'Paperclip sync was removed. See legacy/paperclip/README.md to restore.',
+      archivedAt: 'legacy/paperclip/'
+    });
+  }
+  app.post('/sync/paperclip', paperclipGone);
+  app.get('/sync/paperclip/companies', paperclipGone);
+  app.put('/sync/paperclip/company', paperclipGone);
 
   // --- Asset management endpoints ---
   const assetGuard = guardAndRateLimitHttp('assets');
@@ -1054,6 +1084,30 @@ function createServer(options = {}) {
       return;
     }
 
+    // Route by pathname. `/ws/pty` → PTY server; anything else → main state.
+    const urlPath = (() => {
+      try { return new URL(request.url, 'http://x').pathname; }
+      catch { return request.url || '/'; }
+    })();
+
+    if (urlPath === '/ws/pty') {
+      const u = (() => { try { return new URL(request.url, 'http://x'); } catch { return null; } })();
+      const sessionId = u?.searchParams?.get('sessionId') || '';
+      const cols = Number(u?.searchParams?.get('cols')) || undefined;
+      const rows = Number(u?.searchParams?.get('rows')) || undefined;
+      const cwd = u?.searchParams?.get('cwd') || null;
+      const mode = u?.searchParams?.get('mode') || 'claude';
+      if (!sessionId) {
+        rejectUpgrade(socket, 400, 'Bad Request');
+        return;
+      }
+      ptyWss.handleUpgrade(request, socket, head, ws => {
+        ws.authSubject = auth.subject;
+        ptyManager.attach(ws, { sessionId, cwd, cols, rows, mode });
+      });
+      return;
+    }
+
     wss.handleUpgrade(request, socket, head, ws => {
       ws.authSubject = auth.subject;
       wss.emit('connection', ws, request);
@@ -1066,7 +1120,7 @@ function createServer(options = {}) {
     const host = request?.headers?.host || 'unknown';
     console.log('[ws] connected', { subject, host, clients: wss.clients.size });
     // Send current state to new client
-    ws.send(JSON.stringify({ type: 'state', data: worldState }));
+    diffBroadcaster.emitFullNow(worldState, p => ws.send(p));
     ws.on('close', (code, reason) => {
       console.log('[ws] closed', {
         subject, code, reason: reason?.toString?.().slice(0, 80),
@@ -1126,14 +1180,19 @@ function createServer(options = {}) {
     app,
     server,
     wss,
+    ptyWss,
+    ptyManager,
     worldState,
     wsTicketStore,
     broadcastState,
-    paperclipPoller,
+    claudeSnapshotter,
+    buildingAssignments,
     stopBackgroundWorkers: async () => {
-      if (paperclipPoller) {
-        await paperclipPoller.stop();
+      if (claudeSnapshotter) claudeSnapshotter.stop();
+      if (buildingAssignments) {
+        try { buildingAssignments.persist(); } catch { /* non-fatal */ }
       }
+      if (ptyManager) ptyManager.stopAll();
       clearInterval(wsHeartbeatInterval);
     }
   };
