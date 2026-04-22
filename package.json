@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "test": "npm run test:all",
-    "test:unit": "node --test test/eventsPipeline.test.js test/frontendConnectionConfig.test.js test/avatarRuntime.test.js test/ensurePlaywrightChromium.test.js test/wsTicketStore.test.js test/worldLayout.test.js test/sessionStatus.test.js test/repoRoot.test.js test/transcriptPreview.test.js test/claudeSnapshotter.test.js test/buildingAssignments.test.js test/claudeAdapter.test.js test/stateDiffBroadcast.test.js test/hookPluginInstaller.test.js test/terminalFocus.test.js test/ptyServer.test.js",
+    "test:unit": "node --test test/eventsPipeline.test.js test/frontendConnectionConfig.test.js test/avatarRuntime.test.js test/ensurePlaywrightChromium.test.js test/wsTicketStore.test.js test/worldLayout.test.js test/sessionStatus.test.js test/repoRoot.test.js test/transcriptPreview.test.js test/claudeSnapshotter.test.js test/buildingAssignments.test.js test/claudeAdapter.test.js test/stateDiffBroadcast.test.js test/hookPluginInstaller.test.js test/terminalFocus.test.js test/ptyServer.test.js test/costTracker.test.js test/permissionStore.test.js",
     "postinstall": "node scripts/fix-pty-perms.js",
     "install-hooks": "node scripts/install-agent-world-hooks.js",
     "test:legacy": "node --test legacy/paperclip/test/paperclipAdapter.test.js legacy/paperclip/test/paperclipSync.test.js",

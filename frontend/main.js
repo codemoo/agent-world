@@ -22,8 +22,10 @@ Promise.all([
   import(`./components/EventLog.js?v=${v}`),
   import(`./components/TimelineScrubber.js?v=${v}`),
   import(`./components/AssetsStatusBanner.js?v=${v}`),
+  import(`./components/WorldBudgetBadge.js?v=${v}`),
+  import(`./components/PermissionToast.js?v=${v}`),
   import(`./connectionConfig.mjs?v=${v}`)
-]).then(([boot, wm, we, sdp, tui, roster, help, hist, log, scrub, banner, cc]) => {
+]).then(([boot, wm, we, sdp, tui, roster, help, hist, log, scrub, banner, budget, toast, cc]) => {
   boot.bootstrapFrontendApp({
     WorldMapClass: wm.default,
     WorldEditorClass: we.default,
@@ -35,6 +37,8 @@ Promise.all([
     EventLogClass: log.default,
     TimelineScrubberClass: scrub.default,
     AssetsStatusBannerClass: banner.default,
+    WorldBudgetBadgeClass: budget.default,
+    PermissionToastClass: toast.default,
     connectionConfigOptions: runtimeConfig,
     connectionConfigFactory: cc.createConnectionConfig
   });

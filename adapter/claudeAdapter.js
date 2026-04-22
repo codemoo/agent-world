@@ -374,6 +374,19 @@ function applySnapshotToWorld({
     if (typeof session.model === 'string') agent.model = session.model;
     if (typeof session.lastAssistantSnippet === 'string') agent.lastAssistantSnippet = session.lastAssistantSnippet;
     if (typeof session.lastUserSnippet === 'string') agent.lastUserSnippet = session.lastUserSnippet;
+    if (session.cost && typeof session.cost === 'object') {
+      // Strip to the shape the frontend needs — avoids leaking internal
+      // field renames into the broadcast schema.
+      agent.cost = {
+        usd: Number(session.cost.usd || 0),
+        input: session.cost.input || 0,
+        output: session.cost.output || 0,
+        cacheWrite: session.cost.cacheWrite || 0,
+        cacheRead: session.cost.cacheRead || 0,
+        messageCount: session.cost.messageCount || 0,
+        model: session.cost.model || agent.model || null
+      };
+    }
 
     // Legacy path (in case a caller still passes previewByPath).
     const preview = session.transcriptPath && previewByPath

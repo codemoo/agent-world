@@ -16,6 +16,7 @@ const path = require('node:path');
 const { classify, HOOK } = require('./sessionStatus');
 const { resolveRepoRoot, buildingIdentity } = require('./repoRoot');
 const { getTail } = require('./transcriptPreview');
+const { createCostTracker } = require('./costTracker');
 
 const SESSIONS_DIR = path.join(os.homedir(), '.claude', 'sessions');
 const CLAUDE_CONTROL_EVENTS = path.join(os.homedir(), '.claude-control', 'events');
@@ -293,6 +294,9 @@ function createClaudeSnapshotter({ tickMs = DEFAULT_TICK_MS, now = () => Date.no
   // Per-session transcript preview cache. Keyed by sessionId. Only re-read
   // when transcript mtime advances, so cost is near-zero when nothing changed.
   const previewCache = new Map(); // sessionId → { mtimeMs, tool, model, gitBranch, lastAssistant, lastUser }
+  // Cumulative token + $ accounting. Streams forward-only through each
+  // transcript so long-running sessions don't re-parse old records.
+  const costTracker = createCostTracker();
 
   async function enrichSession(session) {
     if (!session.transcriptPath) {
@@ -377,6 +381,23 @@ function createClaudeSnapshotter({ tickMs = DEFAULT_TICK_MS, now = () => Date.no
       session.lastAssistantSnippet = null;
       session.lastUserSnippet = null;
     }
+    // Cost accounting — parse any new assistant records since the last
+    // update and accumulate tokens + $ on the tracker. Cheap: offset-
+    // anchored, so only the newly-appended bytes are read.
+    try {
+      const totals = costTracker.update(session.sessionId, session.transcriptPath);
+      if (totals) {
+        session.cost = {
+          usd: totals.cost,
+          input: totals.input,
+          output: totals.output,
+          cacheWrite: totals.cacheWrite,
+          cacheRead: totals.cacheRead,
+          messageCount: totals.messageCount,
+          model: totals.model || session.model || null
+        };
+      }
+    } catch (_) { /* ignore */ }
   }
 
   async function tick() {
@@ -436,6 +457,12 @@ function createClaudeSnapshotter({ tickMs = DEFAULT_TICK_MS, now = () => Date.no
   // Define as a live getter (Object.assign would snapshot the value).
   Object.defineProperty(emitter, 'lastSessions', {
     get() { return lastSessions; },
+    enumerable: true
+  });
+  // Cumulative cost accounting, exposed so HTTP handlers / the world
+  // broadcast can read per-session + aggregate totals on demand.
+  Object.defineProperty(emitter, 'costTracker', {
+    get() { return costTracker; },
     enumerable: true
   });
   return emitter;

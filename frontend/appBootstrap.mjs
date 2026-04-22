@@ -16,6 +16,8 @@ export function createFrontendApp({
   EventLogClass = null,
   TimelineScrubberClass = null,
   AssetsStatusBannerClass = null,
+  WorldBudgetBadgeClass = null,
+  PermissionToastClass = null,
   connectionConfigOptions = {},
   connectionConfigFactory = createConnectionConfig
 } = {}) {
@@ -141,6 +143,36 @@ export function createFrontendApp({
     });
   }
 
+  // Permission toast — listens for ws-message 'permission-request'
+  // events from the server's PreToolUse hook roundtrip. Falls back to
+  // a read-only "focus terminal" toast when the hook isn't installed
+  // but the session status is still Waiting.
+  let permissionToast = null;
+  if (PermissionToastClass && resolvedDocument.body) {
+    permissionToast = new PermissionToastClass({
+      apiBaseUrl,
+      authToken,
+      fetchImpl: resolvedFetch,
+      worldMap,
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+  }
+
+  // World-wide cost badge — polls /api/cost every 5 s, shows running $
+  // in the top-left. Click expands into per-session breakdown.
+  let worldBudget = null;
+  if (WorldBudgetBadgeClass && resolvedDocument.body) {
+    worldBudget = new WorldBudgetBadgeClass({
+      apiBaseUrl,
+      authToken,
+      fetchImpl: resolvedFetch,
+      worldMap,
+      document: resolvedDocument,
+      window: resolvedWindow
+    });
+  }
+
   // Minimal-mode banner + gating. Hides the Assets link, World Editor
   // toggle, and (once we know) the editor-related help section when
   // sprite assets aren't installed.
@@ -194,16 +226,28 @@ export function createFrontendApp({
 
   function applyMessage(rawMessage) {
     if (!rawMessage) return;
+    // Fan out every message on a window event so opt-in subscribers
+    // (e.g. PermissionToast) don't need a dedicated WS connection.
+    try {
+      resolvedWindow.dispatchEvent(new CustomEvent('ws-message', { detail: rawMessage }));
+    } catch (_) { /* ignore */ }
+
     if (rawMessage.type === 'state') {
       worldMap.setWorldState(rawMessage.data || null);
       if (sessionDetailPanel?.handleStateUpdate) {
         sessionDetailPanel.handleStateUpdate(rawMessage.data);
       }
+      try {
+        resolvedWindow.dispatchEvent(new CustomEvent('world-state', { detail: rawMessage.data || null }));
+      } catch (_) { /* ignore */ }
     } else if (rawMessage.type === 'patch' && rawMessage.patch) {
       worldMap.applyStatePatch?.(rawMessage.patch);
       if (sessionDetailPanel?.handleStateUpdate) {
         sessionDetailPanel.handleStateUpdate(worldMap.state || null);
       }
+      try {
+        resolvedWindow.dispatchEvent(new CustomEvent('world-state', { detail: worldMap.state || null }));
+      } catch (_) { /* ignore */ }
     }
   }
 
@@ -420,6 +464,8 @@ export function createFrontendApp({
     if (timelineScrubber && typeof timelineScrubber.destroy === 'function') timelineScrubber.destroy();
     if (historyBuffer && typeof historyBuffer.destroy === 'function') historyBuffer.destroy();
     if (assetsBanner && typeof assetsBanner.destroy === 'function') assetsBanner.destroy();
+    if (worldBudget && typeof worldBudget.destroy === 'function') worldBudget.destroy();
+    if (permissionToast && typeof permissionToast.destroy === 'function') permissionToast.destroy();
   }
 
   return {

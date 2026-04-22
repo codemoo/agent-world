@@ -267,6 +267,33 @@ export default class SessionDetailPanel {
       ]));
     }
 
+    // Cost summary — populated by the snapshotter as the transcript
+    // grows. `detail.cost` and `agent.cost` should match; prefer the
+    // fresher per-detail payload when it's present.
+    const cost = detail?.cost || agent.cost;
+    if (cost && cost.messageCount > 0) {
+      const usd = Number(cost.usd || 0);
+      const kfmt = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+      this.body.appendChild(h('div', {
+        style: {
+          marginTop: '8px',
+          padding: '7px 9px',
+          borderRadius: '6px',
+          background: 'rgba(251, 191, 36, 0.08)',
+          border: '1px solid rgba(251, 191, 36, 0.25)',
+          fontSize: '11px',
+          lineHeight: '1.5'
+        }
+      }, [
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '2px' } }, [
+          h('span', { style: { color: '#fbbf24', fontWeight: '600' } }, '💰 session cost'),
+          h('span', { style: { color: '#fde68a', fontVariantNumeric: 'tabular-nums' } }, `$${usd.toFixed(4)}`)
+        ]),
+        h('div', { style: { color: '#94a3b8', fontSize: '10px' } },
+          `in ${kfmt(cost.input)} · out ${kfmt(cost.output)} · cache W ${kfmt(cost.cacheWrite)} R ${kfmt(cost.cacheRead)} · ${cost.messageCount} msg`)
+      ]));
+    }
+
     if (detail?.lastAssistantMessage?.message?.content) {
       const content = detail.lastAssistantMessage.message.content;
       const text = Array.isArray(content)

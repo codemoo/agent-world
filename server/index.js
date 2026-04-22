@@ -24,6 +24,7 @@ const {
   processIncomingEvents
 } = require('./eventsPipeline');
 const { createClaudeSnapshotter } = require('./claudeSnapshotter');
+const { createPermissionStore } = require('./permissionStore');
 const { createBuildingAssignments } = require('./buildingAssignments');
 const { applySnapshotToWorld } = require('../adapter/claudeAdapter');
 const { createStateDiffBroadcast } = require('./stateDiffBroadcast');
@@ -490,6 +491,18 @@ function createServer(options = {}) {
     });
   }
 
+  // Pending-permissions store — receives PreToolUse hook POSTs and
+  // pushes pending requests over WS for the browser to Allow/Deny.
+  const permissionStore = createPermissionStore({
+    timeoutMs: Number(process.env.AGENT_WORLD_PERMISSION_TIMEOUT_MS) || 90_000
+  });
+  permissionStore.events.on('permission-request', (ev) => {
+    _sendToAll(JSON.stringify({ type: 'permission-request', data: ev }));
+  });
+  permissionStore.events.on('permission-resolved', (ev) => {
+    _sendToAll(JSON.stringify({ type: 'permission-resolved', data: ev }));
+  });
+
   const diffBroadcaster = createStateDiffBroadcast({
     debounceMs: options.broadcastDebounceMs || 50,
     sendFull: _sendToAll,
@@ -791,6 +804,7 @@ function createServer(options = {}) {
         console.warn('[sessions] transcript preview failed:', err.message);
       }
     }
+    const costTotals = claudeSnapshotter?.costTracker?.get?.(session.sessionId) || null;
     res.status(200).json({
       status: 'ok',
       data: {
@@ -808,8 +822,86 @@ function createServer(options = {}) {
         lastUserMessage: preview?.lastUserMessage || null,
         lastToolUse: preview?.lastToolUse || null,
         lastModel: preview?.lastModel || null,
-        gitBranch: preview?.gitBranch || null
+        gitBranch: preview?.gitBranch || null,
+        cost: costTotals
       }
+    });
+  });
+
+  // Hook endpoint — our PreToolUse hook script POSTs here with JSON:
+  //   { sessionId, tool, toolInput, cwd }
+  // The response comes back after the browser clicks Allow/Deny or
+  // after the timeout. Decision shape:
+  //   { decision: 'allow' | 'deny' | 'ask', reason? }
+  // Hook auth: local-only; the hook runs on the same host as this
+  // server and we don't fingerprint it. We gate by `127.0.0.1` to
+  // keep remote callers out. Browser auth (bearer + ws ticket) still
+  // applies to /api/permissions/:id/decide.
+  app.post('/api/hooks/permission-request', (req, res) => {
+    // Use the raw TCP peer rather than `req.ip`, which respects
+    // X-Forwarded-For when `trust proxy` is on and can be spoofed.
+    const peer = (req.socket && req.socket.remoteAddress) || '';
+    const remote = peer.replace(/^::ffff:/, '');
+    if (remote !== '127.0.0.1' && remote !== '::1' && remote !== 'localhost') {
+      sendError(res, 403, 'Hook endpoint is localhost-only.');
+      return;
+    }
+    const body = req.body || {};
+    const payload = {
+      sessionId: String(body.sessionId || '').slice(0, 200),
+      tool: String(body.tool || 'unknown').slice(0, 100),
+      toolInput: body.toolInput || null,
+      cwd: body.cwd ? String(body.cwd).slice(0, 500) : null
+    };
+    const created = permissionStore.createRequest(payload);
+    // `createRequest` returns { requestId, promise } or a bare Promise
+    // when the queue is full (overflow fallback).
+    const promise = created && created.promise ? created.promise : created;
+    if (!promise || typeof promise.then !== 'function') {
+      res.status(200).json({ decision: 'ask', reason: 'store-unavailable' });
+      return;
+    }
+    promise.then(result => {
+      res.status(200).json(result);
+    }).catch(err => {
+      console.error('[permission] request failed:', err.message);
+      if (!res.headersSent) res.status(200).json({ decision: 'ask', reason: 'error' });
+    });
+  });
+
+  // Browser → server. Users click Allow / Deny in the toast; the
+  // server resolves the pending promise back to the hook.
+  app.post('/api/permissions/:requestId/decide', guardAndRateLimitHttp('sessions'), (req, res) => {
+    const decision = String((req.body && req.body.decision) || '').toLowerCase();
+    const reason = (req.body && req.body.reason) || null;
+    const ok = permissionStore.decide(req.params.requestId, decision, reason);
+    if (!ok) {
+      sendError(res, 404, 'No pending permission with that id.');
+      return;
+    }
+    res.status(200).json({ status: 'ok', decision });
+  });
+
+  // Debugging / observability — lists the currently-pending permission
+  // requests. The browser doesn't need this (it receives WS events),
+  // but it's useful for probes + a cold-start fallback if the client
+  // connected AFTER the request was created.
+  app.get('/api/permissions/pending', guardAndRateLimitHttp('sessions'), (req, res) => {
+    res.status(200).json({ status: 'ok', pending: permissionStore.snapshot() });
+  });
+
+  // World-wide cost aggregate — per-session breakdown + sum across all
+  // live sessions. Used by the top-left "village total" badge.
+  app.get('/api/cost', guardAndRateLimitHttp('sessions'), (req, res) => {
+    const tracker = claudeSnapshotter?.costTracker;
+    if (!tracker) {
+      res.status(200).json({ status: 'ok', worldTotals: null, bySession: {} });
+      return;
+    }
+    res.status(200).json({
+      status: 'ok',
+      worldTotals: tracker.worldTotals(),
+      bySession: tracker.snapshot()
     });
   });
 
@@ -1193,6 +1285,7 @@ function createServer(options = {}) {
         try { buildingAssignments.persist(); } catch { /* non-fatal */ }
       }
       if (ptyManager) ptyManager.stopAll();
+      if (permissionStore) permissionStore.destroy();
       clearInterval(wsHeartbeatInterval);
     }
   };
