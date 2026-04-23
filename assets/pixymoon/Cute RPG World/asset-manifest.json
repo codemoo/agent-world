@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-23T16:43:00.859Z",
+  "generator": "scripts/build-asset-manifest.js",
+  "assetRoot": "assets/pixymoon/Cute RPG World",
+  "sprites": [
+    {
+      "key": "terrain.grassA",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 1,
+        "row": 2
+      }
+    },
+    {
+      "key": "terrain.grassB",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 3,
+        "row": 2
+      }
+    },
+    {
+      "key": "prop.tree",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 576,
+        "sy": 576,
+        "sw": 48,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.alt",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 624,
+        "sy": 576,
+        "sw": 48,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.alt2",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 672,
+        "sy": 576,
+        "sw": 48,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.alt3",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 720,
+        "sy": 576,
+        "sw": 48,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.conifer",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 528,
+        "sy": 576,
+        "sw": 48,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.big",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 240,
+        "sy": 384,
+        "sw": 96,
+        "sh": 96
+      }
+    },
+    {
+      "key": "prop.tree.big.alt",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "sx": 240,
+        "sy": 576,
+        "sw": 96,
+        "sh": 96
+      }
+    },
+    {
+      "key": "deco.flower.pink",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_B.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 5,
+        "row": 4
+      }
+    },
+    {
+      "key": "deco.flower.purple",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Forest_B.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 6,
+        "row": 5
+      }
+    },
+    {
+      "key": "deco.flower.mixed",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_C.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 2,
+        "row": 9
+      }
+    },
+    {
+      "key": "deco.flower.red",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Field_B.png",
+      "frame": {
+        "mode": "grid",
+        "columns": 16,
+        "rows": 16,
+        "column": 10,
+        "row": 5
+      }
+    },
+    {
+      "key": "building.house",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C1.png",
+      "frame": {
+        "sx": 3,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.house2",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C1.png",
+      "frame": {
+        "sx": 195,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.house.green",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C2.png",
+      "frame": {
+        "sx": 3,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.house.green2",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C2.png",
+      "frame": {
+        "sx": 195,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.house.gray",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C3.png",
+      "frame": {
+        "sx": 3,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.tower",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C3.png",
+      "frame": {
+        "sx": 387,
+        "sy": 24,
+        "sw": 186,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.large",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C1.png",
+      "frame": {
+        "sx": 3,
+        "sy": 552,
+        "sw": 237,
+        "sh": 216
+      }
+    },
+    {
+      "key": "building.shop",
+      "url": "Cute RPG World (RPG Maker)/Cute RPG World - RPG Maker MZ/tilesets/CuteRPG_Houses_RPGMaker_C1.png",
+      "frame": {
+        "sx": 243,
+        "sy": 552,
+        "sw": 237,
+        "sh": 216
+      }
+    }
+  ]
+}

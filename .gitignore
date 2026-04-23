@@ -4,11 +4,16 @@ node_modules/
 # Environment variables
 .env
 
-# PixyMoon assets – these files are not checked into git.
+# PixyMoon assets – the art pack files are not checked into git.
+# The generated `asset-manifest.json` IS checked in so a fresh clone
+# has a working sprite map even before `npm run build-assets` runs.
 assets/pixymoon/*
 !assets/pixymoon/**/.gitkeep
 !assets/pixymoon/.gitkeep
 !assets/pixymoon/README.md
+!assets/pixymoon/Cute RPG World/
+/assets/pixymoon/Cute\ RPG\ World/*
+!/assets/pixymoon/Cute\ RPG\ World/asset-manifest.json
 
 # Mac and editor junk
 .DS_Store
