@@ -346,6 +346,7 @@ export function syncAvatarRuntimeEntries(
       const destChanged = !runtime.currentDestination ||
         runtime.currentDestination.x !== avatar.destination.x ||
         runtime.currentDestination.y !== avatar.destination.y ||
+        runtime.currentDestination.stationId !== avatar.destination.stationId ||
         runtime.currentDestination.intent?.kind !== avatar.destination.intent?.kind;
       if (destChanged) {
         runtime.currentDestination = avatar.destination;
@@ -1072,10 +1073,16 @@ export function advanceAvatarRuntimeEntries(
       const intentKind = runtime.intent?.kind;
       // Sticky intents: don't auto-repick. Server will update destination
       // when the session's status changes (e.g. permission granted).
-      const stickyIntents = new Set(['to_info_desk', 'to_tavern', 'to_exit_fade', 'frozen', 'at_desk']);
+      const stickyIntents = new Set(['to_info_desk', 'to_tavern', 'to_exit_fade', 'frozen', 'at_desk', 'at_leisure']);
       if (stickyIntents.has(intentKind) && runtime.currentDestination) {
         // Extend the pause so the sprite keeps "sitting" at the spot.
-        runtime.arrivalPauseUntil = timestamp + 8000 + Math.floor(rng() * 4000);
+        // at_leisure gets a longer extension so the agent visibly
+        // uses the station (30-50s). Others get the legacy 8-12s.
+        if (intentKind === 'at_leisure') {
+          runtime.arrivalPauseUntil = timestamp + 30_000 + Math.floor(rng() * 20_000);
+        } else {
+          runtime.arrivalPauseUntil = timestamp + 8000 + Math.floor(rng() * 4000);
+        }
       } else {
         // Release the previously claimed station (if any) before re-picking.
         const prevStationId = runtime.currentDestination?.stationId || null;
@@ -1100,9 +1107,17 @@ export function advanceAvatarRuntimeEntries(
       if (runtime.x === dest.x && runtime.y === dest.y) {
         // Pause at destination for a while. Keep currentDestination so the
         // station stays claimed while this agent uses it (released on pick-next).
-        const restTime =
-          runtime.state === 'working' ? 8000 + Math.floor(rng() * 8000)
-            : 4000 + Math.floor(rng() * 6000);
+        // at_leisure gets the long sticky pause so arrivals visibly
+        // use the station before the next server-driven rotation.
+        const intentKind = runtime.intent?.kind;
+        let restTime;
+        if (intentKind === 'at_leisure') {
+          restTime = 30_000 + Math.floor(rng() * 20_000);
+        } else if (runtime.state === 'working') {
+          restTime = 8000 + Math.floor(rng() * 8000);
+        } else {
+          restTime = 4000 + Math.floor(rng() * 6000);
+        }
         runtime.arrivalPauseUntil = timestamp + restTime;
         runtime.path = null;
         runtime.pathIndex = 0;

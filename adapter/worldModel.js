@@ -194,6 +194,104 @@ const OUTDOOR_STATIONS = [
   { id: 'nap_grass_s',  kind: 'rest', type: 'outdoor.napping', x: 21, y: 25, label: 'shady tree',   activity: 'dozing in the grass' }
 ];
 
+// Build a leisure-rotation pool for a session assigned to `locationId`.
+// Returns an array of candidates the agent can visibly rotate through
+// while Idle. Each entry is the shape the frontend expects in
+// `avatar.destination` so claudeAdapter can splat it directly.
+//
+// Composition:
+//   1. Building's OWN rest stations (indoor; sofas, beds, plants)
+//   2. Building's OWN primary work station (the desk — "back at work")
+//   3. Two nearest OUTDOOR_STATIONS to the building's centroid
+//   4. Plaza center (anchors chat affordance + footpath heatmap signal)
+//
+// De-dup by station id (outdoor close to building may already be in a
+// ring that overlaps with plaza, for instance).
+function buildLeisurePool(locationId) {
+  const loc = LOCATION_DEFS.find(l => l.id === locationId);
+  if (!loc) return [];
+  const cx = loc.x + Math.floor((loc.w || 5) / 2);
+  const cy = loc.y + Math.floor((loc.h || 4) / 2);
+  const pool = [];
+  const seen = new Set();
+
+  // Indoor rest stations first — "taking a break at their own building"
+  // reads as the strongest narrative of "back at base."
+  for (const st of loc.stations || []) {
+    if (st.kind !== 'rest') continue;
+    if (seen.has(st.id)) continue;
+    seen.add(st.id);
+    pool.push({
+      stationId: st.id,
+      stationLabel: st.label || '',
+      stationKind: 'rest',
+      stationType: st.type,
+      stationActivity: null,
+      locationId: loc.id,
+      locationName: loc.name,
+      x: loc.x + (st.dx || 0),
+      y: loc.y + (st.dy || 0)
+    });
+  }
+
+  // One indoor work station — signals "restless, drifting back to work."
+  const work = (loc.stations || []).find(s => s.kind === 'work' && s.type && (s.type.startsWith('table') || s.type.startsWith('counter') || s.type === 'chair'));
+  if (work && !seen.has(work.id)) {
+    seen.add(work.id);
+    pool.push({
+      stationId: work.id,
+      stationLabel: work.label || '',
+      stationKind: 'work',
+      stationType: work.type,
+      stationActivity: null,
+      locationId: loc.id,
+      locationName: loc.name,
+      x: loc.x + (work.dx || 0),
+      y: loc.y + (work.dy || 0)
+    });
+  }
+
+  // Two nearest outdoor stations by Manhattan distance.
+  const outdoorRanked = OUTDOOR_STATIONS
+    .map(st => ({ st, dist: Math.abs(st.x - cx) + Math.abs(st.y - cy) }))
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 2);
+  for (const { st } of outdoorRanked) {
+    if (seen.has(st.id)) continue;
+    seen.add(st.id);
+    pool.push({
+      stationId: st.id,
+      stationLabel: st.label,
+      stationKind: st.kind,
+      stationType: st.type,
+      stationActivity: st.activity || null,
+      locationId: null,
+      locationName: st.label,
+      x: st.x,
+      y: st.y
+    });
+  }
+
+  // Plaza as the "see-and-be-seen" anchor. Drives 1:1 chat gates.
+  const plaza = OUTDOOR_STATIONS.find(st => st.id === 'plaza_center');
+  if (plaza && !seen.has(plaza.id)) {
+    seen.add(plaza.id);
+    pool.push({
+      stationId: plaza.id,
+      stationLabel: plaza.label,
+      stationKind: plaza.kind,
+      stationType: plaza.type,
+      stationActivity: plaza.activity || null,
+      locationId: null,
+      locationName: plaza.label,
+      x: plaza.x,
+      y: plaza.y
+    });
+  }
+
+  return pool;
+}
+
 const SUB_LOCATIONS = {
   'home_nw': ['workbench', 'drafting_table', 'lounge'],
   'home_ne': ['test_station', 'monitor_wall', 'break_area'],
@@ -489,6 +587,7 @@ module.exports = {
   DEFAULT_TILE_TYPE,
   LOCATION_DEFS,
   OUTDOOR_STATIONS,
+  buildLeisurePool,
   SUB_LOCATIONS,
   ACTIVITY_TEMPLATES,
   FLOOR_WOOD,

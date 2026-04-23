@@ -4,8 +4,16 @@
 // can special-case non-station targets (info desk queue, exit fade, etc).
 
 const path = require('node:path');
-const { ensureWorldState, ensureAvatar, hashString } = require('./worldModel');
+const { ensureWorldState, ensureAvatar, hashString, buildLeisurePool } = require('./worldModel');
 const { STATUSES } = require('../server/sessionStatus');
+
+// Idle agents rotate through a building-local leisure pool on a
+// per-session dephased 90s cadence. Dephase via hash(sessionId) so
+// three sessions entering Idle within the same tick don't all rotate
+// together 90s later (cohort flipping). leisureAnchorAt lives on
+// `agent` — persisted alongside the rest of the agent dict.
+const LEISURE_SLOT_MS = 90_000;
+const LEISURE_CLEAR_AFTER_WORK_MS = 60_000;
 
 // Minimum time the bubble must hold its current text before a lower-
 // priority signal can replace it. Waiting/Errored always preempt.
@@ -77,6 +85,7 @@ const INTENT = Object.freeze({
   ToInfoDesk:   'to_info_desk',   // join the permission queue at plaza
   ToTavern:     'to_tavern',      // wander to the cafe after an error
   ToExitFade:   'to_exit_fade',   // walk to exit + fade away
+  AtLeisure:    'at_leisure',     // rotating building-local leisure rest
   Wander:       'wander',         // defer to runtime autonomy
   Frozen:       'frozen'          // pin in place (halo pulse)
 });
@@ -99,11 +108,30 @@ function intentFromStatus(status, now = Date.now()) {
     case STATUSES.Working:    return { kind: INTENT.AtDesk };
     case STATUSES.Waiting:    return { kind: INTENT.ToInfoDesk, expiresAt: now + 10 * 60_000 };
     case STATUSES.Errored:    return { kind: INTENT.ToTavern, expiresAt: now + 60_000 };
+    // Idle/IdleStale default to Wander at the status level; the adapter
+    // upgrades them to AtLeisure downstream IFF the agent has a building
+    // assignment (tent sessions keep wandering autonomously).
     case STATUSES.Idle:       return { kind: INTENT.Wander };
     case STATUSES.IdleStale:  return { kind: INTENT.Wander };
     case STATUSES.Finished:   return { kind: INTENT.ToExitFade, expiresAt: now + 30_000 };
     default:                  return { kind: INTENT.Wander };
   }
+}
+
+// Resolve which leisure-pool slot a session should be in right now.
+// slot = floor((now - anchor + phaseMs) / LEISURE_SLOT_MS)
+// phaseMs = hash(sessionId) % LEISURE_SLOT_MS — dephases per-session
+// rotation so cohorts entering Idle simultaneously don't rotate together.
+function leisureSlotIndex(sessionId, leisureAnchorAt, now) {
+  const phase = hashString(sessionId || '') % LEISURE_SLOT_MS;
+  const age = Math.max(0, now - (leisureAnchorAt || now));
+  return Math.floor((age + phase) / LEISURE_SLOT_MS);
+}
+
+function pickLeisureStation(pool, sessionId, slot) {
+  if (!Array.isArray(pool) || pool.length === 0) return null;
+  const idx = Math.abs(hashString(`${sessionId || ''}:${slot}`)) % pool.length;
+  return pool[idx];
 }
 
 function hatHueFromBranch(branch) {
@@ -247,7 +275,9 @@ function extractToolName(preview) {
 }
 
 // Infer the best destination + intent for a session's current status.
-function destinationForSession(session, assignment, queuePosition, now) {
+// `agent` is the mutable worldState agent record — we persist
+// `leisureAnchorAt` on it so rotation survives across ticks.
+function destinationForSession(session, assignment, queuePosition, now, agent = null) {
   const intent = intentFromStatus(session.status, now);
   const label = assignment?.label || shortenName(session.cwd, session.repoRoot);
 
@@ -304,10 +334,18 @@ function destinationForSession(session, assignment, queuePosition, now) {
     }
     case STATUSES.Idle:
     case STATUSES.IdleStale:
-    default:
-      // Let avatarRuntime pick autonomously — but anchor them near their
-      // building when it exists, so they don't wander the whole map.
-      if (assignment) {
+    default: {
+      // Tent sessions (no assignment.locationId) fall through to the
+      // client's wander autonomy — no known building to orbit.
+      if (!assignment || !assignment.locationId) return null;
+
+      // Building-local at_leisure rotation. Per-session dephased 90s
+      // slot; pool composed of indoor rest, indoor work (desk), two
+      // nearest outdoor stations, and plaza.
+      const pool = buildLeisurePool(assignment.locationId);
+      if (pool.length === 0) {
+        // No pool (shouldn't happen if assignment.locationId is valid)
+        // — fall back to anchoring at the desk.
         return {
           x: assignment.x, y: assignment.y,
           stationId: assignment.stationId || null,
@@ -319,7 +357,30 @@ function destinationForSession(session, assignment, queuePosition, now) {
           intent: { kind: INTENT.Wander }
         };
       }
-      return null;
+
+      // Initialise leisureAnchorAt on first Idle observation. Leave it
+      // alone on brief Idle↔Working flickers so the slot isn't reset
+      // every time an assistant message lands. The anchor is cleared
+      // upstream in applySnapshotToWorld when sustained Working is
+      // detected.
+      if (agent && !agent.leisureAnchorAt) {
+        agent.leisureAnchorAt = now;
+      }
+
+      const slot = leisureSlotIndex(session.sessionId, agent?.leisureAnchorAt || now, now);
+      const pick = pickLeisureStation(pool, session.sessionId, slot) || pool[0];
+
+      return {
+        x: pick.x, y: pick.y,
+        stationId: pick.stationId,
+        locationId: pick.locationId,
+        locationName: pick.locationName || label,
+        stationLabel: pick.stationLabel || '',
+        stationKind: pick.stationKind || 'rest',
+        stationActivity: pick.stationActivity || null,
+        intent: { kind: INTENT.AtLeisure }
+      };
+    }
   }
 }
 
@@ -426,8 +487,25 @@ function applySnapshotToWorld({
     avatar.buildingKey = session.buildingKey;
     avatar.pid = session.pid;
 
+    // Leisure anchor lifecycle — clear only after sustained Working
+    // (>60s continuous) or building change, never on brief Idle↔Working
+    // flickers. An Idle→Working transition records lastWorkingAt;
+    // when that age exceeds LEISURE_CLEAR_AFTER_WORK_MS the agent
+    // is considered "back at work for real" and the anchor resets
+    // so the next Idle spell starts a fresh rotation.
+    if (session.status === STATUSES.Working) {
+      if (!agent.firstWorkingAt) agent.firstWorkingAt = now;
+      agent.lastWorkingAt = now;
+      if (now - agent.firstWorkingAt > LEISURE_CLEAR_AFTER_WORK_MS) {
+        agent.leisureAnchorAt = null;
+      }
+    } else {
+      // Any non-Working status resets the "sustained working" streak.
+      agent.firstWorkingAt = null;
+    }
+
     const queuePos = queueIndex.has(session.sessionId) ? queueIndex.get(session.sessionId) : -1;
-    const destination = destinationForSession(session, assignment, queuePos, now);
+    const destination = destinationForSession(session, assignment, queuePos, now, agent);
     avatar.destination = destination;
     avatar.intent = destination?.intent || null;
 
