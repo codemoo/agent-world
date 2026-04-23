@@ -182,6 +182,13 @@ export default class WorldEditor {
     // Reposition floater when viewport changes.
     window.addEventListener('resize', () => this._updateFloater());
     window.addEventListener('scroll', () => this._updateFloater(), true);
+    // Re-render whenever the world's minimal-mode flag flips (M key
+    // toggle). Catalog thumbnails are baked into the DOM on
+    // `_render`, so without this the sprite-mode previews would
+    // linger after the user switched to minimal.
+    window.addEventListener('minimal-mode-changed', () => {
+      if (this.isEditMode) this._render();
+    });
   }
 
   _buildUI() {
@@ -1014,17 +1021,29 @@ export default class WorldEditor {
     ctx.fillRect(0, 0, size, size);
     const spriteKey = resolveSpriteKey(kind, type);
     const sprite = this.worldMap?.spriteStore?.getSprite(spriteKey);
-    if (!sprite || !sprite.image) {
-      // Minimal-mode fallback — draw a recognizable emoji centered in
-      // the thumbnail cell so the placement list is usable without
-      // the PixyMoon pack installed. Matches the world's procedural
-      // visual vocabulary (🌳 for trees, 🏠 for buildings, etc.).
-      const icon = pickThumbFallbackIcon(kind, type);
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = `${Math.floor(size * 0.62)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(icon, size / 2, size / 2 + 1);
+    const useMinimal =
+      this.worldMap?.minimalModeForced === true ||
+      !sprite || !sprite.image;
+    if (useMinimal) {
+      // Render the world's actual procedural fallback into the
+      // thumbnail — same tree/building/furniture/decoration drawer
+      // the canvas will use after placement, so the catalog preview
+      // matches the end state exactly (both in minimal-forced mode
+      // and when specific sprites fail to load).
+      const rendered = this.worldMap?.renderFallbackThumbnail
+        ? this.worldMap.renderFallbackThumbnail(ctx, 2, 2, size - 4, size - 4, kind, type)
+        : false;
+      if (!rendered) {
+        // Final safety net — the renderer doesn't cover this (kind,type)
+        // pair. Fall back to a recognizable emoji centered in the cell
+        // so the placement list stays readable.
+        const icon = pickThumbFallbackIcon(kind, type);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = `${Math.floor(size * 0.62)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, size / 2, size / 2 + 1);
+      }
       return canvas;
     }
     // Fit sprite into the square, preserving aspect ratio.

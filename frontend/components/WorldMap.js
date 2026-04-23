@@ -1512,6 +1512,15 @@ export default class WorldMap {
       else window.localStorage.removeItem('agent-world.minimal-mode-forced');
     } catch (_) { /* ignore */ }
     this._broadcastAssetSummary();
+    // Notify the editor (and anyone else interested) so their cached
+    // thumbnails re-render against the new minimal state. The banner
+    // already listens to `assets-status`; editors that render
+    // per-thumbnail sprite previews need this dedicated signal.
+    try {
+      window.dispatchEvent(new CustomEvent('minimal-mode-changed', {
+        detail: { forced: next }
+      }));
+    } catch (_) { /* ignore */ }
     this.render(performance.now());
   }
 
@@ -2003,6 +2012,62 @@ export default class WorldMap {
     );
   }
 
+  // Draw the procedural fallback for `(kind, type)` into an arbitrary
+  // 2D context at size (w, h). Used by the World Editor for catalog
+  // thumbnails so the preview matches what the canvas will actually
+  // render in minimal mode / when a sprite is missing. Kept on
+  // WorldMap (not fallbackSprites.js) because tree/building reuse the
+  // internal `_drawFallbackTree` / `_drawFallbackBuilding` which
+  // depend on `_tileHash`. Safe to call with a foreign ctx —
+  // temporarily swaps `this.context`.
+  renderFallbackThumbnail(ctx, x, y, w, h, kind, type) {
+    const prevCtx = this.context;
+    this.context = ctx;
+    try {
+      const size = Math.min(w, h);
+      if (kind === 'indoor') {
+        const resolvedType = resolveFurnitureType(`furniture.${type}`.replace(/^furniture\.furniture\./, 'furniture.')) || type;
+        drawFallbackFurniture(ctx, x, y, w, h, resolvedType);
+      } else if (kind === 'tree') {
+        // Pass full spriteKey-style kind so the variant picker hits.
+        const treeKind = type && type.startsWith('rock')
+          ? `prop.${type}`
+          : `prop.${type}`;
+        if (treeKind === 'prop.rock' || treeKind === 'prop.rock.small') {
+          // Rock — inline the rock geometry at thumbnail scale.
+          const cx = x + w / 2;
+          const cy = y + h * 0.62;
+          const r = size * (treeKind === 'prop.rock.small' ? 0.18 : 0.26);
+          ctx.fillStyle = '#9a9fa5';
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.beginPath();
+          ctx.ellipse(cx - r * 0.2, cy - r * 0.2, r * 0.5, r * 0.35, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#6b7280';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * 0.8, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          this._drawFallbackTree(x, y, treeKind, 0, 0, size);
+        }
+      } else if (kind === 'building') {
+        const b = { spriteKey: `building.${type}`, x: 0, y: 0 };
+        this._drawFallbackBuilding(x, y, w, h, b);
+      } else if (kind === 'deco' || kind === 'decoration') {
+        drawFallbackDecoration(ctx, x, y, size, type);
+      } else {
+        return false;
+      }
+      return true;
+    } finally {
+      this.context = prevCtx;
+    }
+  }
+
   drawSprite(spriteKey, dx, dy, dw, dh, options = null) {
     // Forced minimal-mode preview (M hotkey). All sprite lookups miss
     // so every caller routes through its procedural fallback path.
@@ -2344,8 +2409,8 @@ export default class WorldMap {
   //   prop.tree.alt2/3   → wider/fuller canopy
   //   prop.tree.conifer  → pointed triangular stack
   //   prop.tree.big(.alt)→ 2× canopy + thicker trunk
-  _drawFallbackTree(px, py, kind, tx = 0, ty = 0) {
-    const ts = this.tileSize;
+  _drawFallbackTree(px, py, kind, tx = 0, ty = 0, tsOverride = null) {
+    const ts = tsOverride != null ? tsOverride : this.tileSize;
     const ctx = this.context;
     const h = this._tileHash(tx, ty, 51);
     const big = kind === 'prop.tree.big' || kind === 'prop.tree.big.alt';
