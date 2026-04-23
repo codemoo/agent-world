@@ -43,8 +43,8 @@ for (const vp of viewports) {
 
   const ids = [
     '#connection-status', '#assets-link', '#sky-mode-toggle', '#world-editor-toggle',
-    '#help-button', '#agent-roster', '#session-detail-panel', '#event-log',
-    '#timeline-scrubber', '#assets-minimal-banner'
+    '#drama-toggle', '#help-button', '#agent-roster', '#session-detail-panel',
+    '#event-log', '#timeline-scrubber', '#assets-minimal-banner'
   ];
 
   const rects = await page.evaluate((ids) => {

@@ -1,6 +1,9 @@
 import {
   advanceAvatarRuntimeEntries,
   syncAvatarRuntimeEntries,
+  setDramaLevel,
+  getDramaLevel,
+  DRAMA_MODES,
   VISUAL
 } from '../avatarRuntime.mjs';
 import {
@@ -1323,6 +1326,42 @@ export default class WorldMap {
     refresh();
     document.body.appendChild(skyBtn);
     this.skyBtn = skyBtn;
+
+    // Drama level cycler — cycles calm → normal → lively → calm.
+    // Scales reaction cap, chat start chance, group start chance.
+    // Persisted so users can dial it down without re-setting on each
+    // page load.
+    const savedDrama = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agent-world.drama-mode') : null;
+    const initialDrama = DRAMA_MODES.includes(savedDrama) ? savedDrama : 'normal';
+    setDramaLevel(initialDrama);
+
+    const dramaBtn = document.createElement('button');
+    dramaBtn.id = 'drama-toggle';
+    dramaBtn.title = 'Cycle drama level (calm / normal / lively) — D';
+    const dramaLabels = { calm: '🧘 Calm', normal: '🎭 Normal', lively: '🎉 Lively' };
+    const dramaCycle = { calm: 'normal', normal: 'lively', lively: 'calm' };
+    const dramaRefresh = () => { dramaBtn.textContent = dramaLabels[getDramaLevel()]; };
+    Object.assign(dramaBtn.style, {
+      position: 'fixed', top: '12px', right: '336px', zIndex: 10,
+      padding: '6px 10px', borderRadius: '6px',
+      background: 'rgba(15,23,42,0.85)', border: '1px solid #94a3b8',
+      color: '#e2e8f0', fontSize: '12px', cursor: 'pointer',
+      fontFamily: 'inherit'
+    });
+    const cycleDrama = () => {
+      const next = dramaCycle[getDramaLevel()];
+      setDramaLevel(next);
+      if (typeof localStorage !== 'undefined') {
+        try { localStorage.setItem('agent-world.drama-mode', next); } catch (_) {}
+      }
+      dramaRefresh();
+    };
+    dramaBtn.addEventListener('click', cycleDrama);
+    dramaRefresh();
+    document.body.appendChild(dramaBtn);
+    this.dramaBtn = dramaBtn;
+    this._cycleDrama = cycleDrama;
 
     this.handleResize = this.handleResize.bind(this);
     this.handleClick = this.handleClick.bind(this);

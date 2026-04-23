@@ -421,6 +421,27 @@ test('Phase 2: impatient pose flips facingOverride on Waiting at queue_slot', as
   assert.equal(rt.facingOverride, 'right');
 });
 
+test('setDramaLevel: changes all three tunables + is a reversible op', async () => {
+  const { setDramaLevel, getDramaLevel } = await loadAvatarRuntime();
+  // Default is 'normal' at module load.
+  assert.equal(getDramaLevel(), 'normal');
+  assert.equal(setDramaLevel('calm'), true);
+  assert.equal(getDramaLevel(), 'calm');
+  assert.equal(setDramaLevel('lively'), true);
+  assert.equal(getDramaLevel(), 'lively');
+  // Reset for the rest of the suite.
+  setDramaLevel('normal');
+  assert.equal(getDramaLevel(), 'normal');
+});
+
+test('setDramaLevel: unknown mode returns false, state unchanged', async () => {
+  const { setDramaLevel, getDramaLevel } = await loadAvatarRuntime();
+  const before = getDramaLevel();
+  assert.equal(setDramaLevel('chaotic'), false);
+  assert.equal(setDramaLevel(null), false);
+  assert.equal(getDramaLevel(), before);
+});
+
 test('Phase 2: destination change resets consumed flags', async () => {
   const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
   const rt = {

@@ -302,6 +302,18 @@ export function createFrontendApp({
   }
   if (typeof resolvedWindow.addEventListener === 'function') {
     resolvedWindow.addEventListener('keydown', handleMinimalToggle);
+
+    // D — cycle drama level (calm / normal / lively). Same guard
+    // rules (not-in-text-field, no modifiers).
+    resolvedWindow.addEventListener('keydown', (ev) => {
+      const tag = ev.target?.tagName || '';
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      if (ev.key !== 'd' && ev.key !== 'D') return;
+      if (worldMap && typeof worldMap._cycleDrama === 'function') {
+        worldMap._cycleDrama();
+      }
+    });
   }
 
   async function fetchInitialState() {

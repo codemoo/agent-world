@@ -47,7 +47,37 @@ const CHAT_TURN_MS = 3500;          // milliseconds per line
 const CHAT_TAIL_MS = 600;           // linger on last speaker after final line
 const CHAT_COOLDOWN_MS = 6000;      // per-agent cooldown after any conversation
 const CHAT_PAIR_COOLDOWN_MS = 45000; // same pair can't re-chat for 45s
-const CHAT_START_CHANCE = 0.3;      // chance per eligible tick to start chat
+// Drama-level tunables (mutable via setDramaLevel). Defaults are the
+// Phase 2-4 shipping values ("normal").
+let CHAT_START_CHANCE = 0.3;        // chance per eligible tick to start chat
+
+export const DRAMA_MODES = Object.freeze(['calm', 'normal', 'lively']);
+
+const DRAMA_CONFIGS = Object.freeze({
+  calm:   { reactionCap: 1, chatChance: 0.10, groupChance: 0.05 },
+  normal: { reactionCap: 3, chatChance: 0.30, groupChance: 0.20 },
+  lively: { reactionCap: 5, chatChance: 0.50, groupChance: 0.35 }
+});
+
+// Applied at module init + whenever UI changes drama. No-ops on
+// unknown modes so a corrupt localStorage value can't break init.
+export function setDramaLevel(mode) {
+  const cfg = DRAMA_CONFIGS[mode];
+  if (!cfg) return false;
+  CHAT_START_CHANCE   = cfg.chatChance;
+  REACTION_MAX_ACTIVE = cfg.reactionCap;
+  GROUP_START_CHANCE  = cfg.groupChance;
+  return true;
+}
+
+export function getDramaLevel() {
+  // Reverse-lookup by cheapest discriminator (chatChance). Used by UI
+  // to render the current state after a page reload.
+  for (const mode of DRAMA_MODES) {
+    if (DRAMA_CONFIGS[mode].chatChance === CHAT_START_CHANCE) return mode;
+  }
+  return 'normal';
+}
 
 // Movement vectors — reduced idle probability (1 in 8 instead of 1 in 5)
 const MOVES = [
@@ -495,8 +525,10 @@ function buildStationLookup(stations) {
   return lookup;
 }
 
-// Phase 3 reaction tuning.
-const REACTION_MAX_ACTIVE    = 3;        // global cap
+// Phase 3 reaction tuning. REACTION_MAX_ACTIVE is drama-tunable; the
+// timing constants below stay fixed (changing them would feel buggy
+// more than "dramatic").
+let REACTION_MAX_ACTIVE      = 3;        // global cap (drama-tunable)
 const REACTION_DUR_MS        = 1600;     // default emote dwell
 const REACTION_WAVE_MS       = 1200;     // wave-goodbye emote dwell
 const REACTION_CD_ERROR_MS   = 20_000;   // per-observer-per-source
@@ -632,13 +664,13 @@ function faceDirection(dx, dy) {
   return dy > 0 ? 'down' : 'up';
 }
 
-// Phase 4 group-scene tuning.
+// Phase 4 group-scene tuning. GROUP_START_CHANCE is drama-tunable.
 const GROUP_SOCIAL_KINDS = new Set([
   'tavern', 'tavern_seat', 'plaza', 'lounge', 'break_area'
 ]);
 const GROUP_MIN_MEMBERS = 3;
 const GROUP_DUR_MS = 90_000;
-const GROUP_START_CHANCE = 0.20;        // per eligible tick
+let GROUP_START_CHANCE = 0.20;          // per eligible tick (drama-tunable)
 const GROUP_REFORM_COOLDOWN_MS = 60_000; // per-location
 
 // Form a group scene: N members at the same social location start a
