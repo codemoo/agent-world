@@ -46,6 +46,16 @@ export function resolvePose(runtime, now) {
     return { pose: POSES.LEANING, emote: '😔' };
   }
 
+  // Phase C.3 — arrival one-shots for leisure stations that otherwise
+  // have no persistent emote. Makes the "sit down" moment readable.
+  // Lower priority than farewell/stretch/errored; higher than station.
+  if (runtime && runtime.arrivalOneShotUntil && now < runtime.arrivalOneShotUntil) {
+    return {
+      pose: runtime.arrivalOneShotPose || POSES.LEANING,
+      emote: runtime.arrivalOneShotEmote || null
+    };
+  }
+
   switch (kind) {
     case 'desk':
       return {
@@ -73,12 +83,11 @@ export function resolvePose(runtime, now) {
     case 'garden':
       return { pose: POSES.LEANING, emote: null };
     case 'fishing_spot':
-      return { pose: POSES.LEANING, emote: null };
-    case 'work_outdoor':
-      // Mining/foraging — no separate type signal here, just use a
-      // generic typing body. Emote stays null (the station sprite
-      // already conveys "outdoor worker").
-      return { pose: POSES.TYPING, emote: null };
+      return { pose: POSES.WATCHING, emote: '🎣' };
+    case 'mining':
+      return { pose: POSES.TYPING, emote: '⛏' };
+    case 'foraging':
+      return { pose: POSES.TYPING, emote: '🌿' };
     case 'break_area':
       return { pose: POSES.LEANING, emote: null };
     case 'queue_slot':

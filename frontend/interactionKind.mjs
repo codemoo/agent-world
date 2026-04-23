@@ -11,11 +11,12 @@
 // station in lookup, (c) genuinely unrecognized station.type.
 
 // Outputs — documented in the plan, surfaces a pose + emote table in
-// WorldMap.js (Phase 2).
+// WorldMap.js (Phase 2) and Phase C.2 (mining/foraging split).
 export const INTERACTION_KINDS = Object.freeze([
   'desk', 'lounge', 'bed', 'tavern', 'tavern_seat', 'monitor_wall',
   'archive', 'cooking', 'break_area', 'queue_slot', 'exit', 'plaza',
-  'park_bench', 'garden', 'nap_spot', 'fishing_spot', 'work_outdoor',
+  'park_bench', 'garden', 'nap_spot', 'fishing_spot',
+  'mining', 'foraging',
   'frozen', 'wander'
 ]);
 
@@ -27,8 +28,8 @@ const OUTDOOR_TYPE_MAP = {
   'outdoor.flowers':   'garden',
   'outdoor.napping':   'nap_spot',
   'outdoor.fishing':   'fishing_spot',
-  'outdoor.mining':    'work_outdoor',
-  'outdoor.foraging':  'work_outdoor'
+  'outdoor.mining':    'mining',
+  'outdoor.foraging':  'foraging'
 };
 
 const INDOOR_SPECIFIC_TYPE_MAP = {

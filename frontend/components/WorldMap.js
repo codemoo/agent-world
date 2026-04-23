@@ -1599,7 +1599,10 @@ export default class WorldMap {
         persistentEmote: null,
         pose: null,
         farewellUntil: 0,
-        stretchUntil: 0
+        stretchUntil: 0,
+        arrivalOneShotUntil: 0,
+        arrivalOneShotPose: null,
+        arrivalOneShotEmote: null
       };
     }
   }

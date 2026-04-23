@@ -1,6 +1,7 @@
 import { buildConversation, GROUP_LINES } from './agentDialogues.mjs';
 import { interactionKindFor } from './interactionKind.mjs';
 import { resolvePose, POSES } from './poseResolver.mjs';
+import { computeStationFacing } from './stationFacing.mjs';
 
 const BASE_MOVE_INTERVAL_MS = 380;
 
@@ -981,6 +982,10 @@ export function advanceAvatarRuntimeEntries(
     if (runtime._prevDestKey !== destKey) {
       runtime.farewellConsumed = false;
       runtime.stretchConsumed = false;
+      runtime.arrivalOneShotConsumed = false;
+      runtime.arrivalOneShotUntil = 0;
+      runtime.arrivalOneShotPose = null;
+      runtime.arrivalOneShotEmote = null;
       runtime._prevDestKey = destKey;
     }
 
@@ -998,6 +1003,25 @@ export function advanceAvatarRuntimeEntries(
         !runtime.stretchConsumed) {
       runtime.stretchUntil = timestamp + 800;
       runtime.stretchConsumed = true;
+    }
+
+    // Phase C.3 — leisure arrival beats. Trimmed scope (Codex):
+    //   garden → "inspect flowers" (1200ms stretching + 🌸)
+    //   lounge → "open book"       (900ms leaning + 📖)
+    // park_bench/plaza/break_area explicitly NOT included — break_area
+    // already stretches; plaza/park_bench stay social/ambient.
+    if (arrived && !runtime.arrivalOneShotConsumed) {
+      if (runtime.interactionKind === 'garden') {
+        runtime.arrivalOneShotUntil = timestamp + 1200;
+        runtime.arrivalOneShotPose = POSES.STRETCHING;
+        runtime.arrivalOneShotEmote = '🌸';
+        runtime.arrivalOneShotConsumed = true;
+      } else if (runtime.interactionKind === 'lounge') {
+        runtime.arrivalOneShotUntil = timestamp + 900;
+        runtime.arrivalOneShotPose = POSES.LEANING;
+        runtime.arrivalOneShotEmote = '📖';
+        runtime.arrivalOneShotConsumed = true;
+      }
     }
 
     const { pose, emote } = resolvePose(runtime, timestamp);
@@ -1109,16 +1133,30 @@ export function advanceAvatarRuntimeEntries(
         // station stays claimed while this agent uses it (released on pick-next).
         // at_leisure gets the long sticky pause so arrivals visibly
         // use the station before the next server-driven rotation.
+        // Dwell policy (Phase C.4):
+        //   at_leisure  → 30–50s (server-driven rotation takes over)
+        //   working     → 20–35s (long enough to read as "at work")
+        //   idle/other  → 4–10s  (tent sessions falling through)
         const intentKind = runtime.intent?.kind;
         let restTime;
         if (intentKind === 'at_leisure') {
           restTime = 30_000 + Math.floor(rng() * 20_000);
         } else if (runtime.state === 'working') {
-          restTime = 8000 + Math.floor(rng() * 8000);
+          restTime = 20_000 + Math.floor(rng() * 15_000);
         } else {
           restTime = 4000 + Math.floor(rng() * 6000);
         }
         runtime.arrivalPauseUntil = timestamp + restTime;
+
+        // Face the station on arrival so the sprite isn't looking
+        // away from the prop it just sat down at. Null → keep the
+        // direction we were walking in (social stations).
+        const station = dest.stationId ? stationLookup[dest.stationId] : null;
+        const forcedFacing = computeStationFacing(station);
+        if (forcedFacing) {
+          runtime.direction = forcedFacing;
+        }
+
         runtime.path = null;
         runtime.pathIndex = 0;
         runtime.nextMoveAt = nextMoveTime(timestamp, rng);

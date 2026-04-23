@@ -80,8 +80,8 @@ test('every OUTDOOR_STATIONS type maps to its expected kind', async () => {
     ['outdoor.flowers',   'garden'],
     ['outdoor.napping',   'nap_spot'],
     ['outdoor.fishing',   'fishing_spot'],
-    ['outdoor.mining',    'work_outdoor'],
-    ['outdoor.foraging',  'work_outdoor']
+    ['outdoor.mining',    'mining'],
+    ['outdoor.foraging',  'foraging']
   ];
   for (const [type, expected] of cases) {
     const lookup = { 's': { id: 's', kind: 'rest', type } };

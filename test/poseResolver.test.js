@@ -119,11 +119,62 @@ test('wander / missing interactionKind → idle', async () => {
   }
 });
 
-test('work_outdoor → typing (mining/foraging body)', async () => {
+test('mining → typing + ⛏', async () => {
   const { resolvePose, POSES } = await load();
-  const out = resolvePose(
-    { interactionKind: 'work_outdoor', serverStatus: 'Working' }, 0);
+  const out = resolvePose({ interactionKind: 'mining', serverStatus: 'Working' }, 0);
   assert.equal(out.pose, POSES.TYPING);
+  assert.equal(out.emote, '⛏');
+});
+
+test('foraging → typing + 🌿', async () => {
+  const { resolvePose, POSES } = await load();
+  const out = resolvePose({ interactionKind: 'foraging', serverStatus: 'Working' }, 0);
+  assert.equal(out.pose, POSES.TYPING);
+  assert.equal(out.emote, '🌿');
+});
+
+test('arrivalOneShotUntil open → custom pose+emote (trumps station pose)', async () => {
+  const { resolvePose, POSES } = await load();
+  const out = resolvePose({
+    interactionKind: 'garden',
+    arrivalOneShotUntil: 1000,
+    arrivalOneShotPose: POSES.STRETCHING,
+    arrivalOneShotEmote: '🌸'
+  }, 500);
+  assert.equal(out.pose, POSES.STRETCHING);
+  assert.equal(out.emote, '🌸');
+});
+
+test('arrivalOneShot yields to farewell/stretch (lower priority)', async () => {
+  const { resolvePose, POSES } = await load();
+  // farewell active → farewell wins
+  const a = resolvePose({
+    interactionKind: 'lounge',
+    farewellUntil: 1000,
+    arrivalOneShotUntil: 1000,
+    arrivalOneShotEmote: '📖'
+  }, 500);
+  assert.equal(a.pose, POSES.WAVING_GOODBYE);
+  assert.equal(a.emote, '👋');
+});
+
+test('arrivalOneShot expired → station pose takes over', async () => {
+  const { resolvePose, POSES } = await load();
+  const out = resolvePose({
+    interactionKind: 'garden',
+    arrivalOneShotUntil: 100,
+    arrivalOneShotPose: POSES.STRETCHING,
+    arrivalOneShotEmote: '🌸'
+  }, 500);  // 500 > 100 → one-shot expired
+  assert.equal(out.pose, POSES.LEANING);  // garden default
+  assert.equal(out.emote, null);
+});
+
+test('fishing_spot → watching + 🎣', async () => {
+  const { resolvePose, POSES } = await load();
+  const out = resolvePose({ interactionKind: 'fishing_spot' }, 0);
+  assert.equal(out.pose, POSES.WATCHING);
+  assert.equal(out.emote, '🎣');
 });
 
 test('lounge, park_bench, plaza, garden, break_area → leaning, no emote', async () => {
