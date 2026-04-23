@@ -348,7 +348,11 @@ const FLOWER_COLORS = {
   'flower.pink':   ['#f472b6', '#f9a8d4'],
   'flower.purple': ['#c084fc', '#ddd6fe'],
   'flower.red':    ['#ef4444', '#fca5a5'],
-  'flower.mixed':  ['#fbbf24', '#f472b6', '#60a5fa']
+  'flower.mixed':  ['#fbbf24', '#f472b6', '#60a5fa'],
+  'flower.yellow': ['#facc15', '#fef08a'],
+  'flower.white':  ['#f8fafc', '#e2e8f0'],
+  'flower.blue':   ['#60a5fa', '#bfdbfe'],
+  'flower.orange': ['#fb923c', '#fed7aa']
 };
 
 export function drawFallbackDecoration(ctx, x, y, size, type) {
