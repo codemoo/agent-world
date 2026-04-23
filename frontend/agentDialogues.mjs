@@ -126,6 +126,124 @@ export const WAITING_SUPPORT_REPLIES = [
   'Clicking now.'
 ];
 
+// Reconnect pools — used when two agents who have met before cross
+// paths again. Memory is per-runtime (chatLastMetAt map). Only fires
+// if they've met in the recent past (after the pair cooldown clears
+// but within the memory-retention window).
+export const RECONNECT_OPENERS = [
+  'Back so soon?',
+  'Oh, us again.',
+  "Didn't we just talk?",
+  'Same crew.',
+  "Can't seem to get rid of me.",
+  'Round two?',
+  'Hey, again.'
+];
+
+export const RECONNECT_REPLIES = [
+  'Guess so.',
+  'Nothing wrong with it.',
+  'I was thinking the same.',
+  'Where were we?',
+  'Small village.',
+  'Might as well catch up.',
+  'Happens, huh?'
+];
+
+// Time-of-day pools — used when ctx carries an `hour` signal and the
+// default GREETINGS / CASUAL pools would otherwise fire. Keeps the
+// village's conversations contextual to when you're watching.
+export const MORNING_GREETINGS = [
+  'Morning!',
+  "Mornin'!",
+  'Up early?',
+  'Rise and shine.',
+  'Coffee first?',
+  'Ready for the day?'
+];
+
+export const MORNING_REPLIES = [
+  'Morning. Did you sleep?',
+  'Barely awake.',
+  'Yeah — big day.',
+  'Coffee helping already.',
+  'Getting there.',
+  'Let’s do this.'
+];
+
+export const LUNCH_GREETINGS = [
+  'Lunch?',
+  'Getting food?',
+  'Break time.',
+  'Starving.',
+  'Anything good in the cafe?'
+];
+
+export const LUNCH_REPLIES = [
+  'In a sec.',
+  'Join me?',
+  'Already on my way.',
+  'Yeah, I need it.',
+  'I\'ll grab something quick.'
+];
+
+export const EVENING_GREETINGS = [
+  'Evening.',
+  'Still at it?',
+  'Long day?',
+  'Winding down?',
+  'Almost home time?'
+];
+
+export const EVENING_REPLIES = [
+  'Yeah — one more thing.',
+  'Just about done.',
+  'Few minutes more.',
+  'Tired but good.',
+  'I\'ll head out soon.'
+];
+
+export const NIGHT_GREETINGS = [
+  "You're here late.",
+  'Night owl?',
+  "Can't sleep?",
+  'Everyone else is gone.',
+  'Quiet hours, huh?'
+];
+
+export const NIGHT_REPLIES = [
+  'On a roll.',
+  'Almost out.',
+  'Not for long.',
+  'One more push.',
+  'Yeah, crashing soon.'
+];
+
+// Map 0-23 → period tag used to pick greeting pools.
+export function hourToPeriod(hour) {
+  if (hour >= 5 && hour < 11)  return 'morning';
+  if (hour >= 11 && hour < 14) return 'lunch';
+  if (hour >= 14 && hour < 18) return 'afternoon';
+  if (hour >= 18 && hour < 22) return 'evening';
+  return 'night';
+}
+
+const GREETINGS_BY_PERIOD = {
+  morning:   MORNING_GREETINGS,
+  lunch:     LUNCH_GREETINGS,
+  afternoon: GREETINGS,           // default generic
+  evening:   EVENING_GREETINGS,
+  night:     NIGHT_GREETINGS
+};
+
+const GREETING_REPLIES_BY_PERIOD = {
+  morning:   MORNING_REPLIES,
+  lunch:     LUNCH_REPLIES,
+  afternoon: GREETING_REPLIES,    // default generic
+  evening:   EVENING_REPLIES,
+  night:     NIGHT_REPLIES
+};
+
 // Group scenes — 3+ agents at a tavern / lounge / plaza / break_area.
 // No strict turn order; lines work as standalone observations so
 // listeners don't need to reply-match.
@@ -222,9 +340,30 @@ export function buildConversation(ctx, rng = Math.random) {
     ];
   }
 
-  // 4. Fallback: original 2/4-turn greeting logic.
+  // 4. Reconnect — two agents who have met before cross paths again.
+  //    Skipped when they've never chatted (metBeforeMsAgo unset or 0)
+  //    and when their last meeting was literally moments ago (the
+  //    pair cooldown would have blocked re-chat anyway, so if we're
+  //    here, it's been at least CHAT_PAIR_COOLDOWN_MS).
+  const metMsAgo = (ctx && typeof ctx.metBeforeMsAgo === 'number')
+    ? ctx.metBeforeMsAgo : 0;
+  if (metMsAgo > 0) {
+    return [
+      pick(RECONNECT_OPENERS, rng),
+      pick(RECONNECT_REPLIES, rng)
+    ];
+  }
+
+  // 5. Fallback: greeting pools, optionally time-of-day-specific
+  // when ctx provides `hour`. No ctx → classic generic greetings
+  // (back-compat with tests that don't pass the hour signal).
+  const hour = (ctx && typeof ctx.hour === 'number') ? ctx.hour : null;
+  const period = hour != null ? hourToPeriod(hour) : null;
+  const greetPool = (period && GREETINGS_BY_PERIOD[period]) || GREETINGS;
+  const replyPool = (period && GREETING_REPLIES_BY_PERIOD[period]) || GREETING_REPLIES;
+
   const isLong = rng() < 0.4;
-  const lines = [pick(GREETINGS, rng), pick(GREETING_REPLIES, rng)];
+  const lines = [pick(greetPool, rng), pick(replyPool, rng)];
   if (isLong) {
     if (rng() < 0.55) {
       lines.push(pick(WORK_OPENERS, rng), pick(WORK_REPLIES, rng));

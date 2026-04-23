@@ -183,7 +183,7 @@ test('source of the error does not react to itself', async () => {
   assert.ok(obs.reactionEmote, 'but the neighbor does');
 });
 
-test('transitions require prev tracking — first-tick Errored does not fire', async () => {
+test('first-tick Errored does NOT fire (flood suppressor)', async () => {
   const { advanceAvatarRuntimeEntries } = await load();
   // No _prevSocialStatus seeded; serverStatus already 'Errored' on entry.
   const source = mkRt({ id: 'source', x: 10, y: 10, serverStatus: 'Errored' });
@@ -192,13 +192,36 @@ test('transitions require prev tracking — first-tick Errored does not fire', a
   advanceAvatarRuntimeEntries(
     runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
   );
-  // First tick sees `prev === undefined && cur === 'Errored'`, which
-  // our predicate (`prev !== 'Errored' && cur === 'Errored'`) treats as
-  // a transition. That's the current behavior; documenting it here so
-  // we notice if it ever changes. If the flood-on-connect becomes a
-  // problem we can tighten to `prev !== undefined && prev !== ...`.
+  // First observation: even though status is Errored, we haven't
+  // seen the runtime before so we don't know if this is a transition
+  // or a pre-existing state. Skip the reaction. This fixes the
+  // "page-load flood" when multiple sessions are already Errored.
+  assert.equal(obs.reactionEmote, null,
+    'first observation should not fire a reaction event');
+  // Second tick, with the status actually transitioning, fires normally.
+  source.serverStatus = 'Working';
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 5000, () => 0.5, null, [], []
+  );
+  source.serverStatus = 'Errored';
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 6000, () => 0.5, null, [], []
+  );
   assert.ok(obs.reactionEmote,
-    'first-observed Errored is treated as a transition (documented)');
+    'real transition on subsequent tick still fires');
+});
+
+test('first-tick burst (productiveUntil already set) does not fire', async () => {
+  const { advanceAvatarRuntimeEntries } = await load();
+  // Fresh runtime with productiveUntil already in the future.
+  const source = mkRt({ id: 'source', x: 10, y: 10, productiveUntil: 5000 });
+  const obs = mkRt({ id: 'obs', x: 12, y: 10 });
+  const runtimeMap = new Map([['source', source], ['obs', obs]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(obs.reactionEmote, null,
+    'first-observation productiveUntil > 0 should not fire a burst');
 });
 
 test('neighbor-error sets facingOverride independent of walking direction', async () => {

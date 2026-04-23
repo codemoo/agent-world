@@ -128,3 +128,108 @@ test('repoRoot null on one side kills same-repo route', async () => {
   }, zeroRng);
   assert.ok(GREETINGS.includes(lines[0]));
 });
+
+// ============================================================
+// Time-of-day dialog
+// ============================================================
+
+test('hourToPeriod maps the day correctly', async () => {
+  const { hourToPeriod } = await load();
+  assert.equal(hourToPeriod(5), 'morning');
+  assert.equal(hourToPeriod(10), 'morning');
+  assert.equal(hourToPeriod(11), 'lunch');
+  assert.equal(hourToPeriod(13), 'lunch');
+  assert.equal(hourToPeriod(14), 'afternoon');
+  assert.equal(hourToPeriod(17), 'afternoon');
+  assert.equal(hourToPeriod(18), 'evening');
+  assert.equal(hourToPeriod(21), 'evening');
+  assert.equal(hourToPeriod(22), 'night');
+  assert.equal(hourToPeriod(0), 'night');
+  assert.equal(hourToPeriod(4), 'night');
+});
+
+test('morning hour → MORNING_GREETINGS', async () => {
+  const { buildConversation, MORNING_GREETINGS } = await load();
+  const lines = buildConversation({ hour: 8 }, zeroRng);
+  assert.equal(lines[0], MORNING_GREETINGS[0]);
+});
+
+test('evening hour → EVENING_GREETINGS', async () => {
+  const { buildConversation, EVENING_GREETINGS } = await load();
+  const lines = buildConversation({ hour: 19 }, zeroRng);
+  assert.equal(lines[0], EVENING_GREETINGS[0]);
+});
+
+test('night hour → NIGHT_GREETINGS', async () => {
+  const { buildConversation, NIGHT_GREETINGS } = await load();
+  const lines = buildConversation({ hour: 23 }, zeroRng);
+  assert.equal(lines[0], NIGHT_GREETINGS[0]);
+});
+
+test('no hour → generic GREETINGS (back-compat)', async () => {
+  const { buildConversation, GREETINGS } = await load();
+  const lines = buildConversation({ a: {}, b: {} }, zeroRng);
+  assert.ok(GREETINGS.includes(lines[0]));
+});
+
+// ============================================================
+// Agent memory / reconnect dialog
+// ============================================================
+
+test('metBeforeMsAgo > 0 → RECONNECT pool', async () => {
+  const { buildConversation, RECONNECT_OPENERS } = await load();
+  const lines = buildConversation({
+    a: {}, b: {},
+    metBeforeMsAgo: 120_000   // met 2 minutes ago
+  }, zeroRng);
+  assert.equal(lines[0], RECONNECT_OPENERS[0]);
+});
+
+test('metBeforeMsAgo === 0 (never met) → normal greeting fallback', async () => {
+  const { buildConversation, GREETINGS } = await load();
+  const lines = buildConversation({
+    a: {}, b: {},
+    metBeforeMsAgo: 0
+  }, zeroRng);
+  assert.ok(GREETINGS.includes(lines[0]));
+});
+
+test('reconnect priority: same-repo still wins over reconnect', async () => {
+  const { buildConversation, SAME_REPO_OPENERS } = await load();
+  const lines = buildConversation({
+    a: { repoRoot: '/r', repoLabel: 'alpha' },
+    b: { repoRoot: '/r', repoLabel: 'alpha' },
+    metBeforeMsAgo: 60_000
+  }, zeroRng);
+  assert.equal(lines[0], SAME_REPO_OPENERS[0].replace('{repo}', 'alpha'));
+});
+
+test('reconnect priority: errored still wins', async () => {
+  const { buildConversation, ERROR_COMMISERATE_OPENERS } = await load();
+  const lines = buildConversation({
+    a: { serverStatus: 'Errored' },
+    b: { serverStatus: 'Working' },
+    metBeforeMsAgo: 60_000
+  }, zeroRng);
+  assert.equal(lines[0], ERROR_COMMISERATE_OPENERS[0]);
+});
+
+test('reconnect priority: reconnect beats time-of-day greeting', async () => {
+  const { buildConversation, RECONNECT_OPENERS } = await load();
+  const lines = buildConversation({
+    a: {}, b: {},
+    metBeforeMsAgo: 60_000,
+    hour: 8                 // morning, but reconnect wins
+  }, zeroRng);
+  assert.equal(lines[0], RECONNECT_OPENERS[0]);
+});
+
+test('time-of-day is ignored when a higher-priority context applies (same-repo wins)', async () => {
+  const { buildConversation, SAME_REPO_OPENERS } = await load();
+  const lines = buildConversation({
+    a: { repoRoot: '/r', repoLabel: 'alpha' },
+    b: { repoRoot: '/r', repoLabel: 'alpha' },
+    hour: 8                             // would otherwise trigger MORNING
+  }, zeroRng);
+  assert.equal(lines[0], SAME_REPO_OPENERS[0].replace('{repo}', 'alpha'));
+});

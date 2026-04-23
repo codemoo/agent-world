@@ -193,6 +193,96 @@ test('group members skip the 1:1 pair pass (chatPauseUntil keeps them out)', asy
   assert.equal(c.chatPartnerId, null);
 });
 
+test('huddle: members get renderOffset toward centroid (visual lean-in)', async () => {
+  const { advanceAvatarRuntimeEntries } = await load();
+  const stations = [
+    { id: 'cf_table', kind: 'rest', type: 'chair', locationId: 'cafe' }
+  ];
+  const a = mkRt({ id: 'a', x: 10, y: 10 });
+  const b = mkRt({ id: 'b', x: 14, y: 10 });
+  const c = mkRt({ id: 'c', x: 12, y: 13 });
+  const runtimeMap = new Map([['a', a], ['b', b], ['c', c]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, alwaysLow,
+    null, [], stations
+  );
+  assert.ok(a.groupId, 'group formed');
+  // Centroid ≈ (12, 11). 'a' at (10,10) leans toward right+down.
+  assert.ok(a.renderOffsetX > 0, 'a leans east toward centroid');
+  assert.ok(a.renderOffsetY > 0, 'a leans south toward centroid');
+  // Magnitude bounded — ~0.30 tiles.
+  const mag = Math.hypot(a.renderOffsetX, a.renderOffsetY);
+  assert.ok(mag > 0.25 && mag < 0.35, `magnitude ${mag} within ~0.30`);
+});
+
+test('huddle offset cleared on disband', async () => {
+  const { advanceAvatarRuntimeEntries } = await load();
+  const stations = [
+    { id: 'cf_table', kind: 'rest', type: 'chair', locationId: 'cafe' }
+  ];
+  const a = mkRt({ id: 'a', x: 10, y: 10 });
+  const b = mkRt({ id: 'b', x: 14, y: 10 });
+  const c = mkRt({ id: 'c', x: 12, y: 13 });
+  const runtimeMap = new Map([['a', a], ['b', b], ['c', c]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, alwaysLow,
+    null, [], stations
+  );
+  const endAt = a.chatPauseUntil;
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, endAt + 100, alwaysLow,
+    null, [], stations
+  );
+  assert.equal(a.renderOffsetX, 0);
+  assert.equal(a.renderOffsetY, 0);
+});
+
+test('outdoor plaza bucket: plaza-type agents use outdoor:plaza key', async () => {
+  const { advanceAvatarRuntimeEntries } = await load();
+  // The real worldModel has only one 'outdoor.chatting' station so
+  // three real agents cannot hold plaza simultaneously. Stub three
+  // plaza-type stations for this test to confirm that the outdoor
+  // bucket code path works when future worldModel edits add more.
+  const stations = [
+    { id: 'p1', kind: 'rest', type: 'outdoor.chatting' },
+    { id: 'p2', kind: 'rest', type: 'outdoor.chatting' },
+    { id: 'p3', kind: 'rest', type: 'outdoor.chatting' }
+  ];
+  const mk = (id, stationId, x, y) => mkRt({
+    id, x, y,
+    currentDestination: { stationId, locationId: null, x, y }
+  });
+  const a = mk('a', 'p1', 13, 13);
+  const b = mk('b', 'p2', 14, 14);
+  const c = mk('c', 'p3', 15, 13);
+  const runtimeMap = new Map([['a', a], ['b', b], ['c', c]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, alwaysLow,
+    null, [], stations
+  );
+  assert.ok(a.groupId, 'plaza-type agents form a group');
+  assert.equal(a._groupLocationId, 'outdoor:plaza');
+});
+
+test('proximity gate: members beyond centroid-5 chebyshev do NOT group', async () => {
+  const { advanceAvatarRuntimeEntries } = await load();
+  const stations = [
+    { id: 'cf_1', kind: 'rest', type: 'chair', locationId: 'cafe' }
+  ];
+  // Three cafe members, but one is far away — simulated by stretching
+  // coordinates so the centroid-radius check fails.
+  const a = mkRt({ id: 'a', x: 0, y: 0 });
+  const b = mkRt({ id: 'b', x: 5, y: 0 });
+  const c = mkRt({ id: 'c', x: 29, y: 29 });
+  const runtimeMap = new Map([['a', a], ['b', b], ['c', c]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, alwaysLow,
+    null, [], stations
+  );
+  assert.equal(a.groupId, undefined,
+    'members too far apart do not form a group');
+});
+
 test('GROUP_START_CHANCE gate: rng above threshold suppresses formation', async () => {
   const { advanceAvatarRuntimeEntries } = await load();
   const stations = [

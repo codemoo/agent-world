@@ -527,30 +527,42 @@ function updateReactions(avatarRuntime, timestamp) {
     const prevStatus = rt._prevSocialStatus;
     const curStatus  = rt.serverStatus;
 
+    // First-tick suppressor: when prevStatus is undefined this is the
+    // first time we've observed this runtime, so we cannot know it's
+    // a transition. Skip event dispatch. All transition predicates
+    // below depend on prevStatus having at least one prior value.
+    const firstObserved = prevStatus === undefined;
+
     // Errored entry → broadcast concern.
-    if (prevStatus !== 'Errored' && curStatus === 'Errored') {
+    if (!firstObserved &&
+        prevStatus !== 'Errored' && curStatus === 'Errored') {
       events.push({ kind: 'error', sourceId: id, source: rt });
     }
 
     // Waiting → Working → self-cheer (approval granted).
-    if (prevStatus === 'Waiting' && curStatus === 'Working') {
+    if (!firstObserved &&
+        prevStatus === 'Waiting' && curStatus === 'Working') {
       events.push({ kind: 'approval_self', sourceId: id, source: rt });
     }
 
     rt._prevSocialStatus = curStatus;
 
     // Productive burst: productiveUntil crossed past → future.
+    // First observation initializes _prevProductiveUntil without
+    // firing a burst event (prevents page-load flood).
+    const firstBurstObs = rt._prevProductiveUntil === undefined;
     const prevProd = rt._prevProductiveUntil || 0;
     const prod = rt.productiveUntil || 0;
-    if (prod > prevProd && prod > timestamp + 1000) {
+    if (!firstBurstObs && prod > prevProd && prod > timestamp + 1000) {
       events.push({ kind: 'burst', sourceId: id, source: rt });
     }
     rt._prevProductiveUntil = prod;
 
     // Farewell: farewellUntil freshly set → wave to neighbors.
+    const firstFareObs = rt._prevFarewellUntil === undefined;
     const prevFare = rt._prevFarewellUntil || 0;
     const fare = rt.farewellUntil || 0;
-    if (fare > prevFare && fare > timestamp) {
+    if (!firstFareObs && fare > prevFare && fare > timestamp) {
       events.push({ kind: 'farewell', sourceId: id, source: rt });
     }
     rt._prevFarewellUntil = fare;
@@ -653,6 +665,17 @@ function startGroupScene(members, timestamp, locationId, rng) {
     m._groupLocationId = locationId;
     m._groupMemberIds = members.map(x => x.id || '').filter(Boolean);
 
+    // Huddle-toward-centroid render offset: each member visually leans
+    // ~0.3 tiles toward the circle's center during the group chat.
+    // Renderer reads (renderOffsetX, renderOffsetY) and applies on top
+    // of interpolated position. Logical position unchanged → hit-test +
+    // collision unaffected.
+    const dx = cx - m.x;
+    const dy = cy - m.y;
+    const dist = Math.max(0.01, Math.hypot(dx, dy));
+    m.renderOffsetX = (dx / dist) * 0.30;
+    m.renderOffsetY = (dy / dist) * 0.30;
+
     // Turn to face the centroid; collapse any in-flight movement.
     m.direction = faceDirection(cx - m.x, cy - m.y);
     m.path = null;
@@ -676,31 +699,54 @@ function startGroupScene(members, timestamp, locationId, rng) {
   }
 }
 
+// Derive the bucket key for grouping. Indoor locations use their
+// locationId (cafe, home_nw, etc.). Outdoor plazas/gardens have
+// locationId=null but are socially equivalent — bucket them by
+// interactionKind so three agents sitting at different plaza tiles
+// can still form a group.
+function groupBucketKey(rt) {
+  const locId = rt.currentDestination?.locationId;
+  if (locId) return locId;
+  // Outdoor social kinds only — park_bench is too generic (just a
+  // seat, not a hangout spot), garden is too spread out.
+  if (rt.interactionKind === 'plaza') return 'outdoor:plaza';
+  return null;
+}
+
 // Detect + form groups. Runs BEFORE the 1:1 pair loop so in-group
 // members have chatPauseUntil set, which makes the pair loop skip
 // them naturally.
 function tryStartGroupScenes(avatarRuntime, timestamp, rng) {
-  const bucket = new Map(); // locationId → [runtime]
+  const bucket = new Map(); // bucketKey → [runtime]
   avatarRuntime.forEach(rt => {
     if (rt.chatPauseUntil && timestamp < rt.chatPauseUntil) return;
     if (rt.chatCooldownUntil && timestamp < rt.chatCooldownUntil) return;
     if (!rt.seated) return;
     if (!GROUP_SOCIAL_KINDS.has(rt.interactionKind)) return;
-    const locId = rt.currentDestination?.locationId;
-    if (!locId) return;
+    const key = groupBucketKey(rt);
+    if (!key) return;
     // Reform suppressor — per-observer-per-location (stored on
     // runtime so each member carries its own recent-dispersal
     // timestamp after being in a prior group at this location).
-    const reformUntil = rt.chatRecentGroups?.[locId] || 0;
+    const reformUntil = rt.chatRecentGroups?.[key] || 0;
     if (timestamp < reformUntil) return;
-    if (!bucket.has(locId)) bucket.set(locId, []);
-    bucket.get(locId).push(rt);
+    if (!bucket.has(key)) bucket.set(key, []);
+    bucket.get(key).push(rt);
   });
 
-  for (const [locId, members] of bucket) {
+  for (const [key, members] of bucket) {
     if (members.length < GROUP_MIN_MEMBERS) continue;
+    // Proximity gate: all members must be within Chebyshev 5 of the
+    // centroid. Keeps distant same-locationId agents (e.g. a huge
+    // building) from being grouped visually.
+    const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
+    const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
+    const tooFar = members.some(m =>
+      Math.abs(m.x - cx) > 5 || Math.abs(m.y - cy) > 5
+    );
+    if (tooFar) continue;
     if (rng() > GROUP_START_CHANCE) continue;
-    startGroupScene(members, timestamp, locId, rng);
+    startGroupScene(members, timestamp, key, rng);
   }
 }
 
@@ -726,19 +772,35 @@ function onGroupDisband(runtime, avatarRuntime, timestamp) {
   runtime._groupLocationId = null;
   runtime._groupMemberIds = null;
   runtime.inGroupUntil = 0;
+  runtime.renderOffsetX = 0;
+  runtime.renderOffsetY = 0;
 }
 
 // Pair two agents into a scripted conversation: alternating lines, both
 // paused + facing each other for the full duration.
 function startConversation(a, b, timestamp, rng) {
-  // Phase 1 context-aware dialog: pass each side's repoRoot/repoLabel/
-  // serverStatus so buildConversation can pick a same-repo / error /
-  // waiting-support pool when it applies.
+  // Phase 1 context-aware dialog + time-of-day + reconnect memory.
+  // metBeforeMsAgo = how long ago these two last met (0 = never).
+  // Checks both sides since chatLastMetAt is maintained on each
+  // runtime independently after each chat.
+  const aMet = (a.chatLastMetAt && a.chatLastMetAt[b.id]) || 0;
+  const bMet = (b.chatLastMetAt && b.chatLastMetAt[a.id]) || 0;
+  const lastMet = Math.max(aMet, bMet);
+  const metBeforeMsAgo = lastMet > 0 ? timestamp - lastMet : 0;
+
   const ctx = {
     a: { repoRoot: a.repoRoot, repoLabel: a.repoLabel, serverStatus: a.serverStatus },
-    b: { repoRoot: b.repoRoot, repoLabel: b.repoLabel, serverStatus: b.serverStatus }
+    b: { repoRoot: b.repoRoot, repoLabel: b.repoLabel, serverStatus: b.serverStatus },
+    hour: new Date().getHours(),
+    metBeforeMsAgo
   };
   const lines = buildConversation(ctx, rng);
+
+  // Record the meeting for future reconnect detection.
+  if (!a.chatLastMetAt) a.chatLastMetAt = {};
+  if (!b.chatLastMetAt) b.chatLastMetAt = {};
+  if (a.id) b.chatLastMetAt[a.id] = timestamp;
+  if (b.id) a.chatLastMetAt[b.id] = timestamp;
   const turns = lines.length; // 2 or 4
   const endAt = timestamp + CHAT_TURN_MS * turns + CHAT_TAIL_MS;
   a.chatPauseUntil = endAt;

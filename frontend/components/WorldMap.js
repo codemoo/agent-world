@@ -40,13 +40,18 @@ function escapeHtml(s) {
 function renderTilePos(avatar, timestamp) {
   const hasLerp = typeof avatar.prevX === 'number' && typeof avatar.prevY === 'number'
     && typeof avatar.stepStartedAt === 'number';
-  if (!hasLerp) return { rx: avatar.x, ry: avatar.y };
+  // renderOffsetX/Y are visual-only nudges (e.g. group huddle toward
+  // centroid). Logical x/y unchanged so hit-test + collision stay
+  // keyed on the real tile.
+  const ox = typeof avatar.renderOffsetX === 'number' ? avatar.renderOffsetX : 0;
+  const oy = typeof avatar.renderOffsetY === 'number' ? avatar.renderOffsetY : 0;
+  if (!hasLerp) return { rx: avatar.x + ox, ry: avatar.y + oy };
   const span = VISUAL.STEP_LERP_MS || 200;
   const progress = Math.max(0, Math.min(1, (timestamp - avatar.stepStartedAt) / span));
   const t = easeOutCubic(progress);
   const rx = avatar.prevX + (avatar.x - avatar.prevX) * t;
   const ry = avatar.prevY + (avatar.y - avatar.prevY) * t;
-  return { rx, ry };
+  return { rx: rx + ox, ry: ry + oy };
 }
 
 // In-place RFC 7396 JSON Merge Patch — null values delete keys.
