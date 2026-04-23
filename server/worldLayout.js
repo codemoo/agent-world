@@ -22,10 +22,18 @@ const fs = require('fs');
 const path = require('path');
 
 const LAYOUT_VERSION = 1;
-// Lives under data/ so the repo root stays clean. Each clone seeds its
-// own copy on first server start and the file is gitignored — users keep
-// their local edits without polluting git history.
-const DEFAULT_LAYOUT_PATH = path.join(__dirname, '..', 'data', 'world-layout.json');
+// Persistence path. When AGENT_WORLD_DATA_DIR is set (e.g. by the
+// npx wrapper pointing at ~/.agent-world/), user edits go there so
+// an npm-cache install doesn't get dirtied. Otherwise falls back to
+// the in-repo data/ dir (dev-mode default).
+function defaultLayoutPath() {
+  const override = process.env.AGENT_WORLD_DATA_DIR;
+  if (override && override.trim()) {
+    return path.join(override.trim(), 'world-layout.json');
+  }
+  return path.join(__dirname, '..', 'data', 'world-layout.json');
+}
+const DEFAULT_LAYOUT_PATH = defaultLayoutPath();
 
 function isRecord(v) {
   return typeof v === 'object' && v !== null && !Array.isArray(v);

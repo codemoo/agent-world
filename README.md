@@ -189,6 +189,25 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
 
 ## Quick start
 
+The fastest path — no checkout needed, just point `npx` at the github repo:
+
+```bash
+npx -y github:codemoo/agent-world
+# → prints a generated API token, boots http://localhost:3102
+# Persistence goes to ~/.agent-world/ so your npm cache stays clean.
+```
+
+Optional flags:
+
+```bash
+npx -y github:codemoo/agent-world --port 4000          # custom port
+npx -y github:codemoo/agent-world --token my-token     # pin the token
+npx -y github:codemoo/agent-world --install-hooks --apply
+                                                        # install PreToolUse hook
+```
+
+Or, for development (clone + hack):
+
 ```bash
 # 1) install deps
 npm install

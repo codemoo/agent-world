@@ -1,8 +1,33 @@
 {
   "name": "agent-world",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "commonjs",
+  "description": "Spatial RPG-style visualizer for live Claude Code CLI sessions — every claude process becomes a sprite in a village.",
+  "keywords": ["claude", "claude-code", "visualizer", "cli", "rpg", "anthropic"],
+  "homepage": "https://github.com/codemoo/agent-world",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codemoo/agent-world.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "agent-world": "bin/agent-world.js"
+  },
+  "files": [
+    "bin/",
+    "server/",
+    "adapter/",
+    "frontend/",
+    "scripts/install-agent-world-hooks.js",
+    "scripts/fix-pty-perms.js",
+    "data/world-layout.default.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/index.js",
     "test": "npm run test:all",

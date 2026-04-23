@@ -549,8 +549,11 @@ function createServer(options = {}) {
   let claudeSnapshotter = null;
   let buildingAssignments = null;
   if (claudeEnabled) {
-    const assignmentsPath = options.claudeSync?.assignmentsPath
-      || path.join(path.resolve(__dirname, '..'), 'data', 'repoAssignments.json');
+    const dataDirOverride = process.env.AGENT_WORLD_DATA_DIR;
+    const defaultAssignmentsPath = dataDirOverride && dataDirOverride.trim()
+      ? path.join(dataDirOverride.trim(), 'repoAssignments.json')
+      : path.join(path.resolve(__dirname, '..'), 'data', 'repoAssignments.json');
+    const assignmentsPath = options.claudeSync?.assignmentsPath || defaultAssignmentsPath;
     buildingAssignments = createBuildingAssignments(assignmentsPath);
     claudeSnapshotter = createClaudeSnapshotter({
       tickMs: options.claudeSync?.tickMs || 1000
