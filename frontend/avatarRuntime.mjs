@@ -336,6 +336,10 @@ export function syncAvatarRuntimeEntries(
     if (typeof avatar.status === 'string') runtime.serverStatus = avatar.status;
     if (typeof avatar.toolIcon === 'string') runtime.toolIcon = avatar.toolIcon;
     if (typeof avatar.model === 'string') runtime.model = avatar.model;
+    // Phase 1 dialog context (§5B) — repoRoot identifies same-repo
+    // conversations, repoLabel renders the {repo} placeholder.
+    if (typeof avatar.repoRoot === 'string')  runtime.repoRoot = avatar.repoRoot;
+    if (typeof avatar.repoLabel === 'string') runtime.repoLabel = avatar.repoLabel;
 
     // Tool-pop emote: detect a *new* tool invocation by hashing the
     // (name, inputPreview) tuple. The server rewrites avatar.tool to null
@@ -482,7 +486,14 @@ function faceDirection(dx, dy) {
 // Pair two agents into a scripted conversation: alternating lines, both
 // paused + facing each other for the full duration.
 function startConversation(a, b, timestamp, rng) {
-  const lines = buildConversation(rng);
+  // Phase 1 context-aware dialog: pass each side's repoRoot/repoLabel/
+  // serverStatus so buildConversation can pick a same-repo / error /
+  // waiting-support pool when it applies.
+  const ctx = {
+    a: { repoRoot: a.repoRoot, repoLabel: a.repoLabel, serverStatus: a.serverStatus },
+    b: { repoRoot: b.repoRoot, repoLabel: b.repoLabel, serverStatus: b.serverStatus }
+  };
+  const lines = buildConversation(ctx, rng);
   const turns = lines.length; // 2 or 4
   const endAt = timestamp + CHAT_TURN_MS * turns + CHAT_TAIL_MS;
   a.chatPauseUntil = endAt;

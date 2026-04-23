@@ -58,12 +58,18 @@ export function worldDimensions(worldState) {
 // See §5A in v5 plan for the canonical reader set.
 function pickRuntimeReaders(avatar) {
   const out = {};
-  if (avatar.intent !== undefined)        out.intent = avatar.intent;
-  if (typeof avatar.hatHue === 'number')  out.hatHue = avatar.hatHue;
-  if (typeof avatar.status === 'string')  out.status = avatar.status;
+  if (avatar.intent !== undefined)         out.intent = avatar.intent;
+  if (typeof avatar.hatHue === 'number')   out.hatHue = avatar.hatHue;
+  if (typeof avatar.status === 'string')   out.status = avatar.status;
   if (typeof avatar.toolIcon === 'string') out.toolIcon = avatar.toolIcon;
-  if (typeof avatar.model === 'string')   out.model = avatar.model;
-  if (isRecord(avatar.tool))              out.tool = avatar.tool;
+  if (typeof avatar.model === 'string')    out.model = avatar.model;
+  if (isRecord(avatar.tool))               out.tool = avatar.tool;
+  // §5B — added alongside the phase that needs them. Phase 1 dialog
+  // context reads both. repoLabel may be null when repoRoot hasn't
+  // resolved yet; we still pass the null through so the reader sees
+  // it as null, not missing.
+  if (typeof avatar.repoRoot === 'string')  out.repoRoot = avatar.repoRoot;
+  if (typeof avatar.repoLabel === 'string') out.repoLabel = avatar.repoLabel;
   return out;
 }
 

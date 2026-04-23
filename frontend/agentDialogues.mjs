@@ -2,6 +2,11 @@
 // Lines are grouped by category so conversations can follow a
 // coherent shape (greeting → reply → optional topic → reply) instead
 // of two random one-liners stuck next to each other.
+//
+// Phase 1 — context-aware: buildConversation(ctx, rng) selects a
+// category based on the speakers' actual situation (shared repo,
+// one is Errored, one is Waiting for a permission, etc.) so the
+// conversations read as coherent instead of purely random.
 
 export const GREETINGS = [
   'Hey!',
@@ -64,6 +69,63 @@ export const CASUAL_REPLIES = [
   "I'll join you."
 ];
 
+// Same-repo conversations — {repo} is replaced with the shared
+// repoLabel at build time. Falls back to "it" if label is null.
+export const SAME_REPO_OPENERS = [
+  'Working on {repo} too?',
+  'You on {repo}?',
+  'Same repo — what branch?',
+  'Oh nice, {repo}.',
+  'Both on {repo}, huh?',
+  'Didn’t know you had {repo} open.'
+];
+
+export const SAME_REPO_REPLIES = [
+  'Yep — finishing a branch.',
+  'Yeah, debugging something.',
+  'Small world.',
+  'Same here. Hope we don’t conflict.',
+  'Just poking around.',
+  'Getting close to a PR.'
+];
+
+// One or both agents are Errored — commiseration pool.
+export const ERROR_COMMISERATE_OPENERS = [
+  'Red build again?',
+  'Yours broke too?',
+  'Everything on fire?',
+  'Rough one?',
+  'Ugh, tests?',
+  'What this time?'
+];
+
+export const ERROR_COMMISERATE_REPLIES = [
+  'Don’t even ask.',
+  'Flaky test.',
+  'Rolling back.',
+  'Rerunning for the third time.',
+  'Yeah, nightmare.',
+  'Coffee first, fix after.'
+];
+
+// Exactly one agent is Waiting on a permission prompt — the other
+// one offers moral support.
+export const WAITING_SUPPORT_OPENERS = [
+  'Approval stuck?',
+  'Waiting on a prompt?',
+  'Permission wall?',
+  'Want me to tap something?',
+  'Is it pending?'
+];
+
+export const WAITING_SUPPORT_REPLIES = [
+  'Yeah, still pending.',
+  'Almost — should be soon.',
+  'Checking the toast.',
+  'On it.',
+  'Clicking now.'
+];
+
 // FNV-1a-ish quick hash for deterministic picks.
 function hashToInt(str) {
   let h = 2166136261;
@@ -78,12 +140,68 @@ function pick(pool, rng) {
   return pool[Math.floor(rng() * pool.length)];
 }
 
-// Returns a scripted array of lines (2 or 4 items) representing an
-// alternating A/B conversation. rng drives both length and content.
-//   2-turn: greeting → reply
-//   4-turn: greeting → reply → topic → reply
-// 40% of conversations go long, split between work-topic + casual-topic.
-export function buildConversation(rng = Math.random) {
+function formatLine(template, repo) {
+  if (typeof template !== 'string') return template;
+  return template.replace(/\{repo\}/g, repo || 'it');
+}
+
+// Context shape (all fields optional, both sides independently):
+//   ctx = { a: {repoRoot?, repoLabel?, serverStatus?}, b: same }
+// Priority order (first match wins):
+//   1. both.repoRoot non-null AND equal         → SAME_REPO  (2 turns)
+//   2. either side serverStatus === 'Errored'   → ERROR      (2 turns)
+//   3. exactly one side serverStatus==='Waiting' → WAITING   (2 turns)
+//   4. fallback                                  → original GREETING
+//                                                   (+ optional
+//                                                    work/casual topic)
+//
+// Back-compat: callers that pass rng as the first positional arg
+// (buildConversation(Math.random)) still work.
+export function buildConversation(ctx, rng = Math.random) {
+  if (typeof ctx === 'function') {
+    rng = ctx;
+    ctx = null;
+  }
+
+  const a = (ctx && ctx.a) || null;
+  const b = (ctx && ctx.b) || null;
+
+  // 1. Same repo — most specific, highest priority. Both sides must
+  //    have a non-null repoRoot AND match exactly. Same-label but
+  //    different-root (e.g. two projects each named "src") must NOT
+  //    qualify — that's the whole point of keying on root.
+  if (a && b && a.repoRoot && b.repoRoot && a.repoRoot === b.repoRoot) {
+    const repo = a.repoLabel || b.repoLabel || 'it';
+    return [
+      formatLine(pick(SAME_REPO_OPENERS, rng), repo),
+      formatLine(pick(SAME_REPO_REPLIES, rng), repo)
+    ];
+  }
+
+  // 2. Error commiseration — either side errored.
+  if (
+    (a && a.serverStatus === 'Errored') ||
+    (b && b.serverStatus === 'Errored')
+  ) {
+    return [
+      pick(ERROR_COMMISERATE_OPENERS, rng),
+      pick(ERROR_COMMISERATE_REPLIES, rng)
+    ];
+  }
+
+  // 3. Waiting support — XOR (one is, the other isn't). If both are
+  //    Waiting, fall through to greeting since neither can help the
+  //    other.
+  const aWaiting = !!(a && a.serverStatus === 'Waiting');
+  const bWaiting = !!(b && b.serverStatus === 'Waiting');
+  if (aWaiting !== bWaiting) {
+    return [
+      pick(WAITING_SUPPORT_OPENERS, rng),
+      pick(WAITING_SUPPORT_REPLIES, rng)
+    ];
+  }
+
+  // 4. Fallback: original 2/4-turn greeting logic.
   const isLong = rng() < 0.4;
   const lines = [pick(GREETINGS, rng), pick(GREETING_REPLIES, rng)];
   if (isLong) {
