@@ -263,7 +263,11 @@ export function syncAvatarRuntimeEntries(
         // status so the first post-connect diff doesn't poof-storm. It
         // still captures real subsequent transitions.
         prevServerStatus: initialStatus,
-        poofAt: 0
+        poofAt: 0,
+        // One-tick facing override for reactions (e.g. "look at neighbor
+        // who just errored"). Renderer reads facingOverride || direction.
+        // Cleared at the top of advanceAvatarRuntimeEntries every tick.
+        facingOverride: null
       });
       return;
     }
@@ -576,6 +580,13 @@ export function advanceAvatarRuntimeEntries(
 ) {
   const width = Number.isInteger(dimensions?.width) ? dimensions.width : 30;
   const height = Number.isInteger(dimensions?.height) ? dimensions.height : 30;
+
+  // Single owner for facingOverride: clear it at the start of every tick
+  // so one-tick reaction facings don't survive past the frame that set
+  // them. Reactions downstream write it freshly after this point.
+  avatarRuntime.forEach(runtime => {
+    runtime.facingOverride = null;
+  });
 
   // Ambient chat: expire stale lines + let nearby agents greet each
   // other. Runs before movement so the current-tick chat state is

@@ -3,6 +3,10 @@ import {
   syncAvatarRuntimeEntries,
   VISUAL
 } from '../avatarRuntime.mjs';
+import {
+  normalizeAvatars,
+  worldDimensions
+} from '../avatarNormalizer.mjs';
 import { FURNITURE_SPRITES, FURNITURE_RENDER_SIZE, FURNITURE_ALIASES } from '../furnitureCatalog.mjs';
 import {
   drawFallbackFurniture,
@@ -457,91 +461,6 @@ function hashString(input) {
 
 function hashCoord(seed, x, y) {
   return (seed ^ (x * 73856093) ^ (y * 19349663)) >>> 0;
-}
-
-function deriveDefaultPosition(agentId, width, height) {
-  const safeWidth = Math.max(1, width);
-  const safeHeight = Math.max(1, height);
-  const cellCount = safeWidth * safeHeight;
-  const hash = hashString(agentId || 'agent');
-  const index = hash % cellCount;
-
-  return {
-    x: index % safeWidth,
-    y: Math.floor(index / safeWidth)
-  };
-}
-
-function worldDimensions(worldState) {
-  const world = isRecord(worldState?.world) ? worldState.world : {};
-  const width = Number.isInteger(world.width) ? world.width : 25;
-  const height = Number.isInteger(world.height) ? world.height : 25;
-
-  return {
-    width: width > 0 ? width : 25,
-    height: height > 0 ? height : 25
-  };
-}
-
-function normalizeAvatars(worldState) {
-  const { width, height } = worldDimensions(worldState);
-  const sourceAvatars = isRecord(worldState?.avatars) ? worldState.avatars : {};
-  const agents = isRecord(worldState?.agents) ? worldState.agents : {};
-  const normalized = {};
-
-  Object.entries(sourceAvatars).forEach(([avatarId, avatar]) => {
-    if (!isRecord(avatar)) {
-      return;
-    }
-
-    const agentId =
-      (typeof avatar.agentId === 'string' && avatar.agentId) || avatarId;
-    const fallback = deriveDefaultPosition(agentId, width, height);
-    const matchedAgent = agents[agentId];
-    const displayName =
-      (matchedAgent && typeof matchedAgent.name === 'string' && matchedAgent.name) ||
-      agentId.slice(0, 8);
-    normalized[agentId] = {
-      id: agentId,
-      displayName,
-      x: Number.isFinite(avatar.x) ? clamp(avatar.x, 0, width - 1) : fallback.x,
-      y: Number.isFinite(avatar.y) ? clamp(avatar.y, 0, height - 1) : fallback.y,
-      authoritativePosition: avatar.moving === false,
-      moving: avatar.moving !== false,
-      state: avatar.state === 'working' ? 'working' : 'idle',
-      bubbleText:
-        typeof avatar.bubbleText === 'string' ? avatar.bubbleText.trim() : '',
-      destination: isRecord(avatar.destination) ? avatar.destination : null
-    };
-  });
-
-  Object.entries(agents).forEach(([agentId, agent]) => {
-    if (normalized[agentId]) {
-      return;
-    }
-
-    const fallback = deriveDefaultPosition(agentId, width, height);
-    const task = Array.isArray(agent?.tasks)
-      ? agent.tasks.find(item => item.status && item.status !== 'completed')
-      : null;
-    const bubbleText = task?.label || task?.id || '';
-    const displayName =
-      (agent && typeof agent.name === 'string' && agent.name) ||
-      agentId.slice(0, 8);
-    normalized[agentId] = {
-      id: agentId,
-      displayName,
-      x: fallback.x,
-      y: fallback.y,
-      authoritativePosition: false,
-      moving: !bubbleText,
-      state: bubbleText ? 'working' : 'idle',
-      bubbleText,
-      destination: null
-    };
-  });
-
-  return normalized;
 }
 
 function nextMoveTime(timestamp, rng = Math.random) {
@@ -1627,7 +1546,11 @@ export default class WorldMap {
         fadeOpacity: typeof a.fadeOpacity === 'number' ? a.fadeOpacity : 1,
         bubbleText: a.bubble || '',
         chat: null,
-        hatHue: a.hatHue
+        hatHue: a.hatHue,
+        // Scrub silences all live-only social channels (v5 plan §5g).
+        // Explicit nulls so future phases don't accidentally animate
+        // reactions/emotes against historical frames.
+        facingOverride: null
       };
     }
   }
@@ -2292,7 +2215,10 @@ export default class WorldMap {
     const sheet = sheets[sheetIndex];
     if (!sheet) return false;
 
-    const direction = avatar.direction || 'down';
+    // facingOverride wins when set (used by one-tick reactions like
+    // "turn to look at neighbor's error"). Cleared each tick start by
+    // advanceAvatarRuntimeEntries.
+    const direction = avatar.facingOverride || avatar.direction || 'down';
     // Suppress walk frames when the agent is seated (arrived at a
     // station) or talking (chat-paused). Both render the idle frame.
     const isStill = avatar.seated || avatar.talking || !avatar.moving;
@@ -2432,50 +2358,11 @@ export default class WorldMap {
     // --- Generative Agents-style labels ---
     const displayName = avatar.displayName || avatar.id;
 
-    // Two independent bubbles so conversations read clearly:
-    //   • chat bubble   → white/navy speech style, close to the head
-    //   • activity bubble → cream/brown, stacked above (muted if chat
-    //                        is active)
-    const rawBubble = (avatar.bubbleText || '').trim();
-    const chatText = avatar.chat && avatar.chat.expiresAt > timestamp
-      ? avatar.chat.text : '';
-    // Thinking indicator: working + no tool → cycling dots appended to
-    // whatever activity text we already show. Avoids a 4th stacked layer.
-    const thinking = avatar.serverStatus === 'Working' && !avatar.toolIcon && !avatar.toolPopIcon;
-    const dotPhase = thinking
-      ? ['', '.', '..', '...'][Math.floor(timestamp / 380) % 4]
-      : '';
-    const baseActivity = rawBubble ||
-      (avatar.state === 'working' ? 'thinking' : '');
-    // If baseActivity already ends with a trailing ellipsis / dots, don't
-    // double-append. Strip trailing dots before adding the animated ones.
-    const baseNoTail = baseActivity.replace(/[.·]+\s*$/, '').trim();
-    const activityText = thinking
-      ? (baseNoTail ? `${baseNoTail}${dotPhase}` : `thinking${dotPhase}`)
-      : baseActivity;
-    const chatBubbleY = centerY - this.tileSize * 0.7 - 6;
-    // When a chat bubble is showing we lift the activity bubble above
-    // it and mute its appearance so focus stays on the conversation.
-    if (activityText) {
-      if (chatText) {
-        const chatHeight = Math.max(9, Math.floor(this.tileSize * 0.34)) + 14;
-        this.drawActivityLabel(
-          centerX,
-          chatBubbleY - chatHeight - 6,
-          activityText,
-          avatar.state === 'working',
-          { muted: true }
-        );
-      } else {
-        this.drawActivityLabel(
-          centerX, chatBubbleY, activityText,
-          avatar.state === 'working'
-        );
-      }
-    }
-    if (chatText) {
-      this.drawChatLabel(centerX, chatBubbleY, chatText);
-    }
+    // Head-area render (Lane 0 = tool icon/pop, Lane 1 = chat bubble,
+    // Lane 2 = activity bubble muted above chat). Extracted into a
+    // single method so future phases (persistent station emote,
+    // reaction emote) can extend Lane 0 without scattering the logic.
+    this._drawHeadLanes(avatar, centerX, centerY, timestamp, prevGlobalAlpha, sessionFade);
 
     // Name label below the agent — outlined text (no background box), so
     // the character sprite stays the visual focal point. Suppressed when
@@ -2502,51 +2389,9 @@ export default class WorldMap {
       this.context.fillText(displayName, centerX, nameY);
     }
 
-    // Tool-pop emote — floats above the steady icon on a new tool
-    // invocation and fades over TOOL_POP_MS. While popping is strong,
-    // the steady icon is hidden so the two don't visually overlap.
-    const popMs = VISUAL.TOOL_POP_MS || 1100;
-    const popAge = timestamp - (avatar.toolPopAt || 0);
-    const popActive = avatar.toolPopIcon && popAge >= 0 && popAge < popMs;
-    const popT = popActive ? popAge / popMs : 1;
-    const popFade = popActive ? Math.max(0, 1 - popT) : 0;
-
-    // Steady tool icon — drawn unless a pop is dominating the head area.
-    if (avatar.toolIcon && popFade < 0.5) {
-      const iconSize = Math.max(12, Math.floor(this.tileSize * 0.5));
-      const iconY = centerY - this.tileSize * 0.95;
-      this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
-      this.context.textAlign = 'center';
-      this.context.textBaseline = 'middle';
-      // When pop is fading out (popFade ∈ [0, 0.5)), cross-fade the
-      // steady icon back in so the transition doesn't snap.
-      const steadyAlpha = popActive
-        ? prevGlobalAlpha * sessionFade * Math.max(0, 1 - popFade * 2)
-        : prevGlobalAlpha * sessionFade;
-      this.context.globalAlpha = steadyAlpha;
-      this.context.fillText(avatar.toolIcon, centerX, iconY);
-      this.context.globalAlpha = prevGlobalAlpha;
-    }
-
-    if (popActive) {
-      const baseY = centerY - this.tileSize * 0.95;
-      // Ease out: starts fast, settles. rise ∈ [0, -22px tile-relative].
-      const rise = this.tileSize * 0.55 * easeOutCubic(popT);
-      // Slight overshoot scale for snap: 1.35 → 1.0.
-      const scale = 1 + (1 - popT) * 0.35;
-      const popSize = Math.max(14, Math.floor(this.tileSize * 0.56 * scale));
-      this.context.save();
-      this.context.globalAlpha = prevGlobalAlpha * sessionFade * (0.15 + popFade);
-      this.context.font = `${popSize}px "Segoe UI Emoji", system-ui, sans-serif`;
-      this.context.textAlign = 'center';
-      this.context.textBaseline = 'middle';
-      // Soft shadow under the pop icon for readability against bright tiles.
-      this.context.shadowColor = 'rgba(0,0,0,0.35)';
-      this.context.shadowBlur = 6;
-      this.context.fillText(avatar.toolPopIcon, centerX, baseY - rise);
-      this.context.restore();
-      this.context.globalAlpha = prevGlobalAlpha;
-    }
+    // (Lane 0 tool icon + tool-pop moved into _drawHeadLanes above so
+    // all head-area rendering lives in one place. Future phases add
+    // persistentStationEmote + reactionEmote to Lane 0.)
 
     // Status-transition poof — short radial ring on meaningful transitions.
     const poofMs = VISUAL.POOF_MS || 320;
@@ -2771,6 +2616,102 @@ export default class WorldMap {
       ctx.font = '13px Menlo, monospace';
       ctx.textAlign = 'left';
       ctx.fillText(`Placing: ${pendingAdd.type} — click to drop, Esc to cancel`, this.offsetX + 8, this.offsetY - 14);
+    }
+  }
+
+  // Head-area render, extracted from drawAvatar so future phases can
+  // extend Lane 0 (persistentStationEmote, reactionEmote) in one spot.
+  //
+  // Painter order (back → front):
+  //   Lane 2 — activity bubble, muted when chat is showing
+  //   Lane 1 — chat bubble
+  //   Lane 0 — steady tool icon, then tool-pop overlay
+  //
+  // Phase 0 preserves exact current behavior: no visual diff against
+  // pre-refactor WorldMap.
+  _drawHeadLanes(avatar, centerX, centerY, timestamp, prevGlobalAlpha, sessionFade) {
+    // --- Lane 1 + Lane 2: activity + chat bubbles ---
+    const rawBubble = (avatar.bubbleText || '').trim();
+    const chatText = avatar.chat && avatar.chat.expiresAt > timestamp
+      ? avatar.chat.text : '';
+    // Thinking indicator: working + no tool → cycling dots appended to
+    // whatever activity text we already show. Avoids a 4th stacked layer.
+    const thinking = avatar.serverStatus === 'Working' && !avatar.toolIcon && !avatar.toolPopIcon;
+    const dotPhase = thinking
+      ? ['', '.', '..', '...'][Math.floor(timestamp / 380) % 4]
+      : '';
+    const baseActivity = rawBubble ||
+      (avatar.state === 'working' ? 'thinking' : '');
+    // If baseActivity already ends with a trailing ellipsis / dots, don't
+    // double-append. Strip trailing dots before adding the animated ones.
+    const baseNoTail = baseActivity.replace(/[.·]+\s*$/, '').trim();
+    const activityText = thinking
+      ? (baseNoTail ? `${baseNoTail}${dotPhase}` : `thinking${dotPhase}`)
+      : baseActivity;
+    const chatBubbleY = centerY - this.tileSize * 0.7 - 6;
+    if (activityText) {
+      if (chatText) {
+        const chatHeight = Math.max(9, Math.floor(this.tileSize * 0.34)) + 14;
+        this.drawActivityLabel(
+          centerX,
+          chatBubbleY - chatHeight - 6,
+          activityText,
+          avatar.state === 'working',
+          { muted: true }
+        );
+      } else {
+        this.drawActivityLabel(
+          centerX, chatBubbleY, activityText,
+          avatar.state === 'working'
+        );
+      }
+    }
+    if (chatText) {
+      this.drawChatLabel(centerX, chatBubbleY, chatText);
+    }
+
+    // --- Lane 0: steady tool icon + tool-pop overlay ---
+    const popMs = VISUAL.TOOL_POP_MS || 1100;
+    const popAge = timestamp - (avatar.toolPopAt || 0);
+    const popActive = avatar.toolPopIcon && popAge >= 0 && popAge < popMs;
+    const popT = popActive ? popAge / popMs : 1;
+    const popFade = popActive ? Math.max(0, 1 - popT) : 0;
+
+    // Steady tool icon — drawn unless a pop is dominating the head area.
+    if (avatar.toolIcon && popFade < 0.5) {
+      const iconSize = Math.max(12, Math.floor(this.tileSize * 0.5));
+      const iconY = centerY - this.tileSize * 0.95;
+      this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      // When pop is fading out (popFade ∈ [0, 0.5)), cross-fade the
+      // steady icon back in so the transition doesn't snap.
+      const steadyAlpha = popActive
+        ? prevGlobalAlpha * sessionFade * Math.max(0, 1 - popFade * 2)
+        : prevGlobalAlpha * sessionFade;
+      this.context.globalAlpha = steadyAlpha;
+      this.context.fillText(avatar.toolIcon, centerX, iconY);
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
+    if (popActive) {
+      const baseY = centerY - this.tileSize * 0.95;
+      // Ease out: starts fast, settles. rise ∈ [0, -22px tile-relative].
+      const rise = this.tileSize * 0.55 * easeOutCubic(popT);
+      // Slight overshoot scale for snap: 1.35 → 1.0.
+      const scale = 1 + (1 - popT) * 0.35;
+      const popSize = Math.max(14, Math.floor(this.tileSize * 0.56 * scale));
+      this.context.save();
+      this.context.globalAlpha = prevGlobalAlpha * sessionFade * (0.15 + popFade);
+      this.context.font = `${popSize}px "Segoe UI Emoji", system-ui, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      // Soft shadow under the pop icon for readability against bright tiles.
+      this.context.shadowColor = 'rgba(0,0,0,0.35)';
+      this.context.shadowBlur = 6;
+      this.context.fillText(avatar.toolPopIcon, centerX, baseY - rise);
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
     }
   }
 

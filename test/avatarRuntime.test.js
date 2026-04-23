@@ -303,3 +303,45 @@ test('두 에이전트는 같은 스테이션을 claim하지 않는다', async (
   assert.notEqual(a.currentDestination.stationId, b.currentDestination.stationId,
     'two agents should not share the same station claim');
 });
+
+test('syncAvatarRuntimeEntries seeds facingOverride=null on new runtime (v5 P0c)', async () => {
+  const { syncAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const runtimeMap = new Map();
+  syncAvatarRuntimeEntries(
+    runtimeMap,
+    {
+      'fresh-1': {
+        id: 'fresh-1', x: 0, y: 0,
+        moving: true, state: 'idle', bubbleText: '',
+        authoritativePosition: false
+      }
+    },
+    0,
+    () => 0.5
+  );
+  const rt = runtimeMap.get('fresh-1');
+  assert.ok(rt, 'runtime entry created');
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(rt, 'facingOverride'),
+    'facingOverride field exists on runtime'
+  );
+  assert.equal(rt.facingOverride, null);
+});
+
+test('advanceAvatarRuntimeEntries clears facingOverride at tick start', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: true, state: 'idle',
+    bubbleText: '', direction: 'down',
+    facingOverride: 'left',   // leftover from prior tick
+    nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 0, authoritativePosition: false,
+    currentDestination: null, agentSeed: 1
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.facingOverride, null,
+    'facingOverride must be cleared at the top of every tick');
+});
