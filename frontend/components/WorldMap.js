@@ -2465,6 +2465,30 @@ export default class WorldMap {
       this.context.globalAlpha = prev;
     }
 
+    // Item D — ground pulse ring on tool invocation. Thin, expanding,
+    // fading — reads as "something just happened here" (the WHERE) to
+    // complement the Lane 0 tool-pop (the WHAT). Codex-reviewed to
+    // stay low-contrast so it doesn't fight the waiting halo or
+    // productivity glow.
+    const ringMs = 700;
+    const ringAge = timestamp - (avatar.toolPopAt || 0);
+    if (avatar.toolPopAt && ringAge >= 0 && ringAge < ringMs) {
+      const t = ringAge / ringMs;
+      const radius = this.tileSize * (0.22 + 0.68 * t);
+      const alpha = Math.max(0, 0.55 * (1 - t) * sessionFade);
+      const prevA = this.context.globalAlpha;
+      this.context.globalAlpha = alpha;
+      this.context.strokeStyle = 'rgba(186, 230, 253, 0.95)';
+      this.context.lineWidth = 1.4;
+      this.context.beginPath();
+      this.context.ellipse(
+        centerX, centerY + this.tileSize * 0.35,
+        radius, radius * 0.55, 0, 0, Math.PI * 2
+      );
+      this.context.stroke();
+      this.context.globalAlpha = prevA;
+    }
+
     // Subtle shadow under the agent for depth
     const prevAlpha = this.context.globalAlpha;
     this.context.globalAlpha = 0.25 * sessionFade;
