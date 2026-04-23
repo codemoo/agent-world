@@ -567,6 +567,24 @@ const REACTION_COURIER_DUR_MS = 1200;    // ack emote dwell (shorter than defaul
 const REACTION_RADIUS_NORMAL = 4;        // chebyshev tiles
 const REACTION_RADIUS_WAVE   = 3;
 
+// Pass-by greeting — a lightweight alternative to the full scripted
+// conversation. Fires when two *moving* sprites cross within
+// PASSBY_RADIUS tiles, neither is busy (Waiting/Errored/in-chat/
+// in-reaction) and the per-pair cooldown has elapsed. Both emit 👋
+// and face each other for one tick. No chat pause, no bubble — just
+// visual texture for walking past neighbors.
+const PASSBY_RADIUS        = 1.8;        // euclidean tiles
+const PASSBY_RADIUS_SQ     = PASSBY_RADIUS * PASSBY_RADIUS;
+const PASSBY_COOLDOWN_MS   = 120_000;    // per-pair (A↔B) cooldown
+const PASSBY_GREET_DUR_MS  = 900;        // emote dwell
+const PASSBY_CHANCE        = 0.45;       // per-eligible-tick fire chance
+
+// Glance-around — while walking, sprites occasionally swing their
+// facing 90° for a single tick then snap back. Reads as "noticing
+// something" and makes straight-line walks feel less mechanical.
+const GLANCE_PROB_PER_MS   = 0.00018;    // ≈ 0.01/frame at 60fps, 1 per ~5.5s
+const GLANCE_DUR_MS        = 250;
+
 // Detect social events that just happened this tick and dispatch
 // observer emotes. Purely client-side: no server state is read.
 // Deterministic tie-break: event enumeration sorted by agent id
@@ -722,6 +740,82 @@ function updateReactions(avatarRuntime, timestamp) {
       active[i][1].reactionEmote = null;
     }
   }
+}
+
+// Pass-by greeting pass. Runs per tick before movement so the emote +
+// facing override survive to render. Cheap O(n²) pair scan — bounded
+// by live-session count which is typically <20.
+function tryPassByGreet(avatarRuntime, timestamp, rng) {
+  const entries = Array.from(avatarRuntime.values());
+  if (entries.length < 2) return;
+  for (let i = 0; i < entries.length; i++) {
+    const a = entries[i];
+    if (!a.moving) continue;
+    if (a.chatPauseUntil && timestamp < a.chatPauseUntil) continue;
+    if (a.reactionEmote && a.reactionEmote.expiresAt > timestamp) continue;
+    const aStatus = a.serverStatus;
+    if (aStatus === 'Waiting' || aStatus === 'Errored') continue;
+    for (let j = i + 1; j < entries.length; j++) {
+      const b = entries[j];
+      if (!b.moving) continue;
+      if (b.chatPauseUntil && timestamp < b.chatPauseUntil) continue;
+      if (b.reactionEmote && b.reactionEmote.expiresAt > timestamp) continue;
+      const bStatus = b.serverStatus;
+      if (bStatus === 'Waiting' || bStatus === 'Errored') continue;
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > PASSBY_RADIUS_SQ) continue;
+      if (d2 === 0) continue;
+      // Per-pair cooldown.
+      if (!a._greetCooldowns) a._greetCooldowns = {};
+      if (!b._greetCooldowns) b._greetCooldowns = {};
+      const aKey = b.id || '';
+      const bKey = a.id || '';
+      if (timestamp < (a._greetCooldowns[aKey] || 0)) continue;
+      if (rng() > PASSBY_CHANCE) continue;
+      a.reactionEmote = { icon: '👋', expiresAt: timestamp + PASSBY_GREET_DUR_MS };
+      b.reactionEmote = { icon: '👋', expiresAt: timestamp + PASSBY_GREET_DUR_MS };
+      a.facingOverride = faceDirection(b.x - a.x, b.y - a.y);
+      b.facingOverride = faceDirection(a.x - b.x, a.y - b.y);
+      a._greetCooldowns[aKey] = timestamp + PASSBY_COOLDOWN_MS;
+      b._greetCooldowns[bKey] = timestamp + PASSBY_COOLDOWN_MS;
+      break; // a greets only one per tick
+    }
+  }
+}
+
+// Glance-around pass. For each moving runtime, with low per-frame
+// probability, shove the facing to a perpendicular direction for
+// GLANCE_DUR_MS. Read as "noticing something" — makes straight walks
+// feel less robotic. Expires via _glanceUntil timer on the runtime.
+function tryGlanceAround(avatarRuntime, timestamp, rng) {
+  avatarRuntime.forEach(rt => {
+    // Active glance — release when expired.
+    if (rt._glanceUntil && timestamp >= rt._glanceUntil) {
+      rt._glanceUntil = 0;
+      rt._glanceFacing = null;
+    }
+    if (rt._glanceUntil && rt._glanceFacing) {
+      rt.facingOverride = rt._glanceFacing;
+      return;
+    }
+    if (!rt.moving) return;
+    if (rt.reactionEmote && rt.reactionEmote.expiresAt > timestamp) return;
+    if (rt.chatPauseUntil && timestamp < rt.chatPauseUntil) return;
+    // Scale probability by time since last tick, not frame count.
+    const dt = Math.max(0, Math.min(100, timestamp - (rt._glanceLastCheckAt || timestamp)));
+    rt._glanceLastCheckAt = timestamp;
+    if (dt === 0) return;
+    if (rng() > dt * GLANCE_PROB_PER_MS) return;
+    // Perpendicular to current direction.
+    const cur = rt.direction || 'down';
+    const side = rng() < 0.5 ? 'left' : 'right';
+    const perp = { up: side, down: side, left: rng() < 0.5 ? 'up' : 'down', right: rng() < 0.5 ? 'up' : 'down' }[cur] || 'down';
+    rt._glanceUntil = timestamp + GLANCE_DUR_MS;
+    rt._glanceFacing = perp;
+    rt.facingOverride = perp;
+  });
 }
 
 function faceDirection(dx, dy) {
@@ -1133,6 +1227,13 @@ export function advanceAvatarRuntimeEntries(
   // resolution (farewellUntil has just been set for exits) but
   // BEFORE movement so facingOverride survives to the render frame.
   updateReactions(avatarRuntime, timestamp);
+
+  // Pass-by greeting (👋 on crossing) + glance-around (idle facing
+  // jiggle while walking). Both run AFTER updateReactions so they
+  // yield to heavier reactions, and BEFORE the movement loop so
+  // facingOverride writes survive to the render pass.
+  tryPassByGreet(avatarRuntime, timestamp, rng);
+  tryGlanceAround(avatarRuntime, timestamp, rng);
 
   // Collect which stations are currently claimed (targeted or occupied) so
   // routing picks different ones for each agent.
