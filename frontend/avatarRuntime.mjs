@@ -2,6 +2,7 @@ import { buildConversation, GROUP_LINES } from './agentDialogues.mjs';
 import { interactionKindFor } from './interactionKind.mjs';
 import { resolvePose, POSES } from './poseResolver.mjs';
 import { computeStationFacing } from './stationFacing.mjs';
+import { computeActivityLoop } from './activityLoop.mjs';
 
 const BASE_MOVE_INTERVAL_MS = 380;
 
@@ -1027,6 +1028,29 @@ export function advanceAvatarRuntimeEntries(
     const { pose, emote } = resolvePose(runtime, timestamp);
     runtime.pose = pose;
     runtime.persistentEmote = emote;
+
+    // Phase D — seated activity beat. Overrides persistentEmote for
+    // ~200ms per loop period on a dephased cadence. Skipped when a
+    // higher-priority emote is active (arrival one-shot, farewell,
+    // stretch, errored, reaction), chat scene is active, or the agent
+    // isn't seated (in transit).
+    const hasTransient = (
+      (runtime.farewellUntil && timestamp < runtime.farewellUntil) ||
+      (runtime.stretchUntil && timestamp < runtime.stretchUntil) ||
+      (runtime.erroredPoseUntil && timestamp < runtime.erroredPoseUntil) ||
+      (runtime.arrivalOneShotUntil && timestamp < runtime.arrivalOneShotUntil)
+    );
+    const chatActive = runtime.chatPauseUntil && timestamp < runtime.chatPauseUntil;
+    if (runtime.seated && runtime.interactionKind && !hasTransient && !chatActive) {
+      const beat = computeActivityLoop(
+        runtime.interactionKind,
+        runtime.agentSeed || 0,
+        timestamp
+      );
+      if (beat.emoteOverride) {
+        runtime.persistentEmote = beat.emoteOverride;
+      }
+    }
 
     // Impatient pose: flip facingOverride left↔right every ~4s so the
     // sprite visibly "looks around" while queueing. Purely visual,
