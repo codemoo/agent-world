@@ -293,6 +293,9 @@ export function syncAvatarRuntimeEntries(
         // Productivity burst: timestamps of recent Edit/Write invocations.
         editBurstTs: [],
         productiveUntil: 0,
+        // Item E — courier-pulse trigger timestamp (Edit/Write/NotebookEdit
+        // invocations emit a 2s dashed-line pulse to same-branch peers).
+        courierPulseAt: 0,
         // Status-transition poof. prevServerStatus seeded from initial
         // status so the first post-connect diff doesn't poof-storm. It
         // still captures real subsequent transitions.
@@ -406,6 +409,9 @@ export function syncAvatarRuntimeEntries(
         if (runtime.editBurstTs.length >= VISUAL.EDIT_BURST_COUNT) {
           runtime.productiveUntil = now + VISUAL.EDIT_BURST_GLOW_MS;
         }
+        // Item E — courier pulse trigger: mark the moment so the
+        // renderer can draw dashed lines to same-repo+branch peers.
+        runtime.courierPulseAt = now;
       }
     }
     runtime.lastToolKey = toolKey;

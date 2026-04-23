@@ -1602,7 +1602,8 @@ export default class WorldMap {
         stretchUntil: 0,
         arrivalOneShotUntil: 0,
         arrivalOneShotPose: null,
-        arrivalOneShotEmote: null
+        arrivalOneShotEmote: null,
+        courierPulseAt: 0
       };
     }
   }
@@ -2663,6 +2664,10 @@ export default class WorldMap {
     // count of Working occupants per building. Stacks with night glow.
     this.drawBuildingActivityGlow(timestamp);
 
+    // Layer 2.7: Courier pulse — dashed line from emitter to up to 3
+    // nearest same-branch peers for 2s on Edit/Write/NotebookEdit.
+    this.drawCourierPulses(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3224,6 +3229,91 @@ export default class WorldMap {
   // Warm window-light spill inside each building interior. Only paints
   // once the sky is dark enough to notice (skyNightFactor > 0.28). ~30%
   // of buildings flicker (hash-seeded); the rest are steady for ambience.
+  // Item E — courier pulse. When an agent fires Edit/Write/NotebookEdit,
+  // draw a dashed line from their interpolated position to the ≤3 nearest
+  // OTHER agents sharing (repoRoot, gitBranch). Fades over 2s. A small
+  // 📨 envelope emoji rides along each line from source to peer.
+  drawCourierPulses(timestamp) {
+    const PULSE_MS = 2000;
+    // Collect live source runtimes first (cheap sweep).
+    const sources = [];
+    this.avatarRuntime.forEach(r => {
+      if (!r.courierPulseAt) return;
+      const age = timestamp - r.courierPulseAt;
+      if (age < 0 || age >= PULSE_MS) return;
+      sources.push(r);
+    });
+    if (sources.length === 0) return;
+
+    const ctx = this.context;
+    const prevComp = ctx.globalCompositeOperation;
+    const prevAlpha = ctx.globalAlpha;
+
+    for (const src of sources) {
+      const srcRepo = src.repoRoot;
+      const srcBranch = this.state?.agents?.[src.id]?.gitBranch
+        || src.gitBranch || null;
+      if (!srcRepo) continue;
+
+      // Find candidate peers: same repoRoot + same branch, not self.
+      const { rx: srx, ry: sry } = renderTilePos(src, timestamp);
+      const srcX = this.offsetX + srx * this.tileSize + this.tileSize / 2;
+      const srcY = this.offsetY + sry * this.tileSize + this.tileSize / 2;
+
+      const peers = [];
+      this.avatarRuntime.forEach(p => {
+        if (p === src) return;
+        if (p.repoRoot !== srcRepo) return;
+        const pBranch = this.state?.agents?.[p.id]?.gitBranch || p.gitBranch || null;
+        if (srcBranch && pBranch && pBranch !== srcBranch) return;
+        const { rx: prx, ry: pry } = renderTilePos(p, timestamp);
+        const px = this.offsetX + prx * this.tileSize + this.tileSize / 2;
+        const py = this.offsetY + pry * this.tileSize + this.tileSize / 2;
+        const d = (px - srcX) ** 2 + (py - srcY) ** 2;
+        peers.push({ p, px, py, d });
+      });
+      if (peers.length === 0) continue;
+      peers.sort((a, b) => a.d - b.d);
+      const top = peers.slice(0, 3);
+
+      const age = timestamp - src.courierPulseAt;
+      const t = age / PULSE_MS;
+      // Fade: fast ramp-in, slow fade-out. 0 → 1 by 0.15, then linear to 0 at 1.0.
+      const alpha = t < 0.15 ? (t / 0.15) * 0.85 : 0.85 * (1 - (t - 0.15) / 0.85);
+
+      for (const { px, py } of top) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = 'rgba(186, 230, 253, 0.95)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(srcX, srcY);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // Envelope rider: travels from src → peer along the pulse.
+        // Use eased t so it lingers near the destination.
+        const rideT = easeOutCubic ? easeOutCubic(t) : t;
+        const ex = srcX + (px - srcX) * rideT;
+        const ey = srcY + (py - srcY) * rideT;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, alpha * 1.1);
+        const env = Math.max(10, this.tileSize * 0.4);
+        ctx.font = `${env}px "Segoe UI Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📨', ex, ey);
+        ctx.restore();
+      }
+    }
+
+    ctx.globalCompositeOperation = prevComp;
+    ctx.globalAlpha = prevAlpha;
+  }
+
   // Item H — activity glow per building. Always on (not night-gated),
   // strength = min(1, working / 3) with gentle pulse. Reads as
   // "this building has people actively working" at a glance.
