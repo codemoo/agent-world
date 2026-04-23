@@ -5,8 +5,11 @@
 //   { loaded: false, loadedCount: 0 }  → show banner, hide editor/assets
 //   { loaded: true,  loadedCount: N }  → hide banner, show everything
 //
-// "Asset editor" and "Assets →" link are hidden outright in minimal
-// mode because both are useless without the PixyMoon pack installed.
+// The "Assets →" link (asset catalog browser) is hidden in minimal
+// mode because there's nothing to browse without a pack. The World
+// Editor stays accessible — it draws emoji fallback thumbnails and
+// placements render via the procedural fallback path so place/move/
+// delete works end-to-end without the PixyMoon art.
 
 const VERSION = 1;
 

@@ -182,28 +182,14 @@ export function createFrontendApp({
       document: resolvedDocument,
       window: resolvedWindow
     });
-    // Best-effort: hide the top-right "Assets →" link and the World
-    // Editor toggle. Both are dead weight without a sprite pack.
+    // Best-effort: hide the top-right "Assets →" link in minimal mode.
+    // That page browses the asset catalog — nothing to show without a
+    // pack installed. The World Editor toggle STAYS visible: the editor
+    // now draws emoji thumbnails when sprites aren't loaded and the
+    // canvas renders placements via the procedural fallback path, so
+    // the whole place/move/delete loop works fine in minimal mode.
     const assetsLink = resolvedDocument.getElementById('assets-link');
     if (assetsLink) assetsBanner.registerGated(assetsLink, { hard: true });
-    const editorToggle = resolvedDocument.getElementById('world-editor-toggle');
-    if (editorToggle) assetsBanner.registerGated(editorToggle, { hard: true });
-    // Some components create their toggle asynchronously — poll once a
-    // beat for a second, then give up.
-    let attempts = 0;
-    const rescan = resolvedWindow.setInterval(() => {
-      attempts += 1;
-      const toggle = resolvedDocument.getElementById('world-editor-toggle');
-      if (toggle && !assetsBanner._gatedEls.some(e => e.el === toggle)) {
-        assetsBanner.registerGated(toggle, { hard: true });
-        // Re-apply current state.
-        assetsBanner._apply({
-          loaded: worldMap?.assetSummary?.loadedCount > 0,
-          loadedCount: worldMap?.assetSummary?.loadedCount || 0
-        });
-      }
-      if (attempts > 5) resolvedWindow.clearInterval(rescan);
-    }, 200);
   }
 
   let socket = null;
