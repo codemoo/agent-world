@@ -2750,6 +2750,11 @@ export default class WorldMap {
     // nearest same-branch peers for 2s on Edit/Write/NotebookEdit.
     this.drawCourierPulses(timestamp);
 
+    // Layer 2.8: Permission queue overlay — groups Waiting sprites into
+    // a visible FIFO at the info desk so the approval bottleneck reads
+    // as one shared queue instead of N random amber halos.
+    this.drawInfoDeskQueue(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3415,6 +3420,152 @@ export default class WorldMap {
 
     ctx.globalCompositeOperation = prevComp;
     ctx.globalAlpha = prevAlpha;
+  }
+
+  // Permission queue overlay. When ≥1 agents have intent.to_info_desk
+  // (status Waiting), draw a desk hotspot + "N waiting" chip + per-
+  // sprite queue-position badge so the bottleneck reads as one shared
+  // FIFO, not N separate amber halos. Data already flows from the
+  // adapter: destination.stationId === `info_desk_<N>`.
+  drawInfoDeskQueue(timestamp) {
+    // Collect queued agents (extract queue index from stationId).
+    const queued = [];
+    let hotspotTile = null; // pulled from the #0 slot's destination
+    this.avatarRuntime.forEach(r => {
+      const dest = r.currentDestination || r.destination;
+      const sid = dest?.stationId || '';
+      if (!sid.startsWith('info_desk_')) return;
+      const n = Number(sid.slice('info_desk_'.length));
+      if (!Number.isFinite(n)) return;
+      queued.push({ runtime: r, n });
+      if (n === 0 && Number.isFinite(dest.x) && Number.isFinite(dest.y)) {
+        hotspotTile = { x: dest.x, y: dest.y };
+      }
+    });
+    if (queued.length === 0) return;
+    queued.sort((a, b) => a.n - b.n);
+
+    // Fallback hotspot: if nobody's at slot #0 yet (all still walking),
+    // use the earliest-queued agent's destination.
+    if (!hotspotTile) {
+      const front = queued[0];
+      const d = front.runtime.currentDestination || front.runtime.destination;
+      if (d && Number.isFinite(d.x) && Number.isFinite(d.y)) {
+        hotspotTile = { x: d.x, y: d.y };
+      }
+    }
+    if (!hotspotTile) return;
+
+    const ctx = this.context;
+    const ts = this.tileSize;
+    const hx = this.offsetX + hotspotTile.x * ts + ts / 2;
+    const hy = this.offsetY + hotspotTile.y * ts + ts / 2;
+
+    // 1) Desk pad — soft elliptical mat under the hotspot so the
+    // queue endpoint reads as a station, not a random tile.
+    ctx.save();
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.12)';
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + ts * 0.18, ts * 0.95, ts * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + ts * 0.18, ts * 0.95, ts * 0.45, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // 2) "N waiting" chip floating above the desk, gently pulsing so
+    // it doesn't get lost on a busy map. Icon scales with count.
+    const count = queued.length;
+    const pulse = 1 + 0.06 * Math.sin(timestamp / 420);
+    const chipY = hy - ts * 0.95;
+    const chipW = Math.max(ts * 1.9, ts * (1.6 + 0.12 * Math.min(9, count)));
+    const chipH = ts * 0.58;
+    ctx.save();
+    ctx.translate(hx, chipY);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+    ctx.lineWidth = 1.4;
+    this._roundedRect(ctx, -chipW / 2, -chipH / 2, chipW, chipH, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = `600 ${Math.max(10, ts * 0.36)}px "Segoe UI", Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🔒 ${count} waiting`, 0, 1);
+    ctx.restore();
+
+    // 3) Connector threads from the desk hotspot out to each queued
+    // sprite's current rendered tile. Stays within a 6-tile radius so
+    // it doesn't turn into spaghetti on busy worlds.
+    const MAX_THREADS = 6;
+    const threads = queued.slice(0, MAX_THREADS);
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    for (const { runtime, n } of threads) {
+      const { rx, ry } = renderTilePos(runtime, timestamp);
+      const sx = this.offsetX + rx * ts + ts / 2;
+      const sy = this.offsetY + ry * ts + ts / 2;
+      const d = Math.hypot(sx - hx, sy - hy);
+      if (d < ts * 0.6 || d > ts * 9) continue;
+      // Fade lines further back in the queue so only the head pair
+      // really pops.
+      const a = Math.max(0.15, 0.55 - n * 0.08);
+      ctx.strokeStyle = `rgba(251, 191, 36, ${a})`;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // 4) Tiny "#N" badge floating to the upper-left of each queued
+    // sprite. The first three are bright (head of queue = urgency),
+    // the rest fade — viewer attention flows toward the front.
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.max(9, ts * 0.28)}px "Segoe UI", Arial, sans-serif`;
+    for (const { runtime, n } of queued) {
+      const { rx, ry } = renderTilePos(runtime, timestamp);
+      const sx = this.offsetX + rx * ts + ts / 2 - ts * 0.32;
+      const sy = this.offsetY + ry * ts + ts / 2 - ts * 0.70;
+      const fade = runtime.fadeOpacity == null ? 1 : runtime.fadeOpacity;
+      const headOfQueue = n < 3;
+      const r = ts * 0.18;
+      ctx.globalAlpha = (headOfQueue ? 0.95 : 0.65) * fade;
+      ctx.fillStyle = headOfQueue ? '#fbbf24' : '#475569';
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = headOfQueue ? '#1e293b' : '#e2e8f0';
+      ctx.fillText(`#${n + 1}`, sx, sy + 0.5);
+    }
+    ctx.restore();
+  }
+
+  // Rounded-rect helper used by the info-desk queue chip. Keeps the
+  // path math in one place instead of inlined at each call site.
+  _roundedRect(ctx, x, y, w, h, r) {
+    const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.lineTo(x + w - rad, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+    ctx.lineTo(x + w, y + h - rad);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+    ctx.lineTo(x + rad, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+    ctx.lineTo(x, y + rad);
+    ctx.quadraticCurveTo(x, y, x + rad, y);
+    ctx.closePath();
   }
 
   // Footpath heatmap — accumulate per-tile step weight from the live
