@@ -2758,11 +2758,28 @@ export default class WorldMap {
     // in Lane 0. Renders as a bright emote at the same anchor as the
     // steady tool icon. When it expires, Lane 0 reverts to the
     // tool-pop-on-steady logic.
+    //
+    // Layered-lane anchor: when a chat bubble is active, push Lane 0
+    // above the bubble (and above the muted activity label when both
+    // are showing) so the emote doesn't cover the speech bubble. One
+    // unit of `chatHeight` is a bubble's full height incl. tail.
+    const baseLaneSize = Math.max(14, Math.floor(this.tileSize * 0.56));
+    const chatHeight = Math.max(9, Math.floor(this.tileSize * 0.34)) + 14;
+    const laneClearance = 4;
+    const laneBaseY = centerY - this.tileSize * 0.95;
+    let lane0Y = laneBaseY;
+    if (chatText) {
+      // chat bubble occupies ~chatHeight upward from chatBubbleY.
+      // With muted activity above, stack is 2 * chatHeight + 6.
+      const stackAbove = activityText ? (chatHeight * 2 + 6) : chatHeight;
+      lane0Y = Math.min(laneBaseY, chatBubbleY - stackAbove - baseLaneSize / 2 - laneClearance);
+    }
+
     const reaction = avatar.reactionEmote;
     const reactionActive = reaction && reaction.expiresAt > timestamp;
     if (reactionActive) {
       const iconSize = Math.max(14, Math.floor(this.tileSize * 0.56));
-      const iconY = centerY - this.tileSize * 0.95;
+      const iconY = lane0Y;
       this.context.save();
       this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
       this.context.textAlign = 'center';
@@ -2789,7 +2806,7 @@ export default class WorldMap {
     const steadyIcon = avatar.toolIcon || avatar.persistentEmote || null;
     if (steadyIcon && popFade < 0.5) {
       const iconSize = Math.max(12, Math.floor(this.tileSize * 0.5));
-      const iconY = centerY - this.tileSize * 0.95;
+      const iconY = lane0Y;
       this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
       this.context.textAlign = 'center';
       this.context.textBaseline = 'middle';
@@ -2804,7 +2821,7 @@ export default class WorldMap {
     }
 
     if (popActive) {
-      const baseY = centerY - this.tileSize * 0.95;
+      const baseY = lane0Y;
       // Ease out: starts fast, settles. rise ∈ [0, -22px tile-relative].
       const rise = this.tileSize * 0.55 * easeOutCubic(popT);
       // Slight overshoot scale for snap: 1.35 → 1.0.
