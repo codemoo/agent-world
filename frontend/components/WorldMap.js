@@ -1273,6 +1273,13 @@ export default class WorldMap {
     // evicted on each frame's sweep so memory stays flat.
     this._footHeat = new Map();        // key "x,y" → {v:number, t:number}
     this._footHeatLastUpdate = 0;
+    // Cloud, fountain, and bird-flock ambient state. Kept here (not
+    // in a separate subsystem) to avoid threading timestamp through a
+    // new module — they're pure render-loop embellishments.
+    this._cloudDriftStartMs = 0;
+    this._fountainStartMs = 0;
+    this._flockStartMs = -1;      // -1 = no active flock; schedule picks next
+    this._flockNextAt = 0;         // wall-clock ms when the next flyover begins
     this.frameId = null;
     this.tileSize = 24;
     this.offsetX = 0;
@@ -2760,6 +2767,18 @@ export default class WorldMap {
     // watching the desk sprite. Aggregates recent toolPop* per building.
     this.drawBuildingToolEchoes(timestamp);
 
+    // Layer 2.9: Drifting cloud shadows — slow dark patches crossing
+    // the ground so the world feels outdoors even on a still viewport.
+    this.drawCloudShadows(timestamp);
+
+    // Layer 2.92: Fountain splash over plaza_center — visible reward
+    // for sprites that took the plaza-detour path. Small water dots.
+    this.drawFountainSplash(timestamp);
+
+    // Layer 2.95: Bird flock flyover — rare emoji-bird sprite crossing
+    // the map. Ambient wildlife, no interaction.
+    this.drawBirdFlock(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3712,6 +3731,173 @@ export default class WorldMap {
       ctx.beginPath();
       ctx.ellipse(cx, cy, ts * 0.48, ts * 0.30, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Drifting cloud shadows — three soft dark ellipses slowly crossing
+  // the map at different speeds/sizes so their overlap pattern is
+  // never repeating. Skipped at night (sky overlay is dark, shadows
+  // would stack noisily). Coordinates in WORLD TILE SPACE so the
+  // shadow size scales with tileSize.
+  drawCloudShadows(timestamp) {
+    const layout = this.sceneLayout;
+    if (!layout) return;
+    const night = this.skyNightFactor();
+    if (night > 0.3) return;
+    if (!this._cloudDriftStartMs) this._cloudDriftStartMs = timestamp;
+    const t = (timestamp - this._cloudDriftStartMs) / 1000;
+
+    // Three clouds: different horizontal speeds + vertical drift + sizes.
+    // Loop each cloud through 2× world-width so they re-enter from the left
+    // indefinitely.
+    const W = layout.width;
+    const H = layout.height;
+    const clouds = [
+      { speed: 0.55, y: H * 0.22, phase: 0.0, rx: W * 0.28, ry: H * 0.12, alpha: 0.09 },
+      { speed: 0.35, y: H * 0.55, phase: W * 0.7, rx: W * 0.22, ry: H * 0.10, alpha: 0.07 },
+      { speed: 0.80, y: H * 0.82, phase: W * 1.3, rx: W * 0.18, ry: H * 0.08, alpha: 0.06 }
+    ];
+    const ctx = this.context;
+    const ts = this.tileSize;
+    // Daylight attenuation: fade shadows toward sunset so they don't
+    // clash with the warm evening tint.
+    const daylight = 1 - night / 0.3;
+    ctx.save();
+    for (const c of clouds) {
+      const xTile = ((c.phase + t * c.speed) % (W * 2)) - W * 0.5;
+      const cx = this.offsetX + xTile * ts;
+      const cy = this.offsetY + c.y * ts;
+      const rx = c.rx * ts;
+      const ry = c.ry * ts;
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry));
+      const a = c.alpha * daylight;
+      grad.addColorStop(0,    `rgba(15, 23, 42, ${a})`);
+      grad.addColorStop(0.75, `rgba(15, 23, 42, ${a * 0.35})`);
+      grad.addColorStop(1,    'rgba(15, 23, 42, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Fountain splash at plaza_center (14,14). Deterministic particle
+  // system — three droplets arcing upward on a 1.6s loop, dephased
+  // so at least one is always visible. Purely cosmetic; no pooling
+  // or allocation inside the loop.
+  drawFountainSplash(timestamp) {
+    const ctx = this.context;
+    const ts = this.tileSize;
+    const cx = this.offsetX + 14 * ts + ts / 2;
+    const cy = this.offsetY + 14 * ts + ts / 2;
+
+    // Base pool — a small pale blue ellipse so the fountain tile reads
+    // as "water" even when droplets are low in the arc.
+    ctx.save();
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.45)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + ts * 0.18, ts * 0.42, ts * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Three droplets, dephased by 1/3 of the loop.
+    const LOOP_MS = 1600;
+    const t0 = (timestamp % LOOP_MS) / LOOP_MS;
+    for (let i = 0; i < 3; i++) {
+      const t = (t0 + i / 3) % 1;
+      // Parabolic arc: rise then fall. Start at pool center, peak
+      // at t=0.5, back to pool at t=1.
+      const rise = Math.sin(t * Math.PI) * ts * 0.9;
+      const lateral = Math.sin(t * Math.PI * 2 + i) * ts * 0.2;
+      const dx = cx + lateral;
+      const dy = cy + ts * 0.15 - rise;
+      const alpha = 0.85 * (1 - Math.abs(t - 0.5) * 1.4);
+      if (alpha <= 0.02) continue;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#bae6fd';
+      ctx.beginPath();
+      ctx.arc(dx, dy, Math.max(1.5, ts * 0.08), 0, Math.PI * 2);
+      ctx.fill();
+      // Highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(dx - ts * 0.02, dy - ts * 0.025, Math.max(0.6, ts * 0.03), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Bird flock flyover. Scheduled: when no flock is active, roll a
+  // next-flyover time 35–90s out. A flyover lasts 5.5s and crosses
+  // the map horizontally with a mild sine wobble. 3–5 birds spaced
+  // 0.6–1.1 tiles apart. Renders as 🕊️ emoji, size-scaled to tile.
+  drawBirdFlock(timestamp) {
+    // Schedule next flyover on first call.
+    if (this._flockNextAt === 0) {
+      this._flockNextAt = timestamp + 15000 + Math.random() * 20000;
+    }
+    if (this._flockStartMs < 0) {
+      if (timestamp < this._flockNextAt) return;
+      // Begin a flyover.
+      this._flockStartMs = timestamp;
+      // Deterministic-per-flock params (fresh random each time is fine).
+      this._flockParams = {
+        count: 3 + Math.floor(Math.random() * 3),
+        y: 2 + Math.random() * 6,          // tiles from top
+        direction: Math.random() < 0.5 ? 1 : -1,
+        wobbleAmp: 0.35 + Math.random() * 0.4,
+        wobbleFreq: 0.9 + Math.random() * 0.7,
+        durationMs: 5500
+      };
+    }
+
+    const params = this._flockParams;
+    const elapsed = timestamp - this._flockStartMs;
+    if (elapsed > params.durationMs) {
+      // End of this flyover — schedule next.
+      this._flockStartMs = -1;
+      this._flockNextAt = timestamp + 35000 + Math.random() * 55000;
+      return;
+    }
+
+    const layout = this.sceneLayout;
+    if (!layout) return;
+    const ts = this.tileSize;
+    const W = layout.width;
+    const t = elapsed / params.durationMs; // 0 → 1
+    // Travel across 120% of world width so birds enter from off-screen
+    // and exit off-screen.
+    const travelTiles = W * 1.2;
+    // Leading bird x position.
+    const leadX = params.direction > 0
+      ? -W * 0.1 + t * travelTiles
+      : W * 1.1 - t * travelTiles;
+
+    const ctx = this.context;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.max(11, ts * 0.42)}px "Segoe UI Emoji", sans-serif`;
+    // Soft shadow so birds are readable over bright grass.
+    for (let i = 0; i < params.count; i++) {
+      // Each subsequent bird is slightly behind (trailing).
+      const offTiles = (i * (0.7 + ((i * 37) % 9) / 30)) * params.direction * -1;
+      const bx = leadX + offTiles;
+      // Vertical wobble per bird, dephased.
+      const wob = Math.sin(elapsed / 1000 * params.wobbleFreq + i * 0.9) * params.wobbleAmp;
+      const by = params.y + wob;
+      const px = this.offsetX + bx * ts;
+      const py = this.offsetY + by * ts;
+      ctx.globalAlpha = 0.82;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+      ctx.fillText('🕊️', px + 1, py + 2);
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('🕊️', px, py);
     }
     ctx.restore();
   }

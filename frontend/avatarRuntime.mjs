@@ -104,12 +104,37 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function nextMoveTime(timestamp, rng = Math.random) {
+function nextMoveTime(timestamp, rng = Math.random, urgent = false) {
+  // Urgent sprites (Waiting status, heading to info desk) step roughly
+  // twice as fast: base 180ms + ≤180ms jitter vs the usual 380+380.
+  // Visual cadence reads as "running" without rewriting A* or the
+  // step-lerp lerp duration.
+  if (urgent) {
+    return timestamp + 180 + Math.floor(rng() * 180);
+  }
   return (
     timestamp +
     BASE_MOVE_INTERVAL_MS +
     Math.floor(rng() * BASE_MOVE_INTERVAL_MS)
   );
+}
+
+// An agent is "urgent" (running) while Waiting for a permission AND
+// still in transit to the info desk. Pinned agents already at a desk
+// slot read as standing in line, not running.
+function isUrgent(runtime) {
+  if (!runtime || !runtime.moving) return false;
+  const intent = runtime.intent?.kind;
+  if (intent !== 'to_info_desk') return false;
+  // If already adjacent to destination (≤1 tile), stop running —
+  // they're queuing, not en route.
+  const dest = runtime.currentDestination;
+  if (dest && Number.isFinite(dest.x)) {
+    const dx = Math.abs(dest.x - runtime.x);
+    const dy = Math.abs(dest.y - runtime.y);
+    if (dx + dy <= 1) return false;
+  }
+  return true;
 }
 
 function chooseMove(rng = Math.random) {
@@ -1341,6 +1366,17 @@ export function advanceAvatarRuntimeEntries(
     if (runtime.chatPauseUntil && timestamp < runtime.chatPauseUntil) {
       return;
     }
+    // Urgency flag — Waiting sprites en route to info desk step
+    // roughly 2× faster and get a 💨 reactionEmote each tick so the
+    // hurry is visible from afar. Computed once per tick for the
+    // runtime so all nextMoveTime() calls in this body use the same.
+    const urgent = isUrgent(runtime);
+    if (urgent) {
+      // Yield to louder reactions already present (error, farewell).
+      if (!runtime.reactionEmote || runtime.reactionEmote.expiresAt < timestamp + 600) {
+        runtime.reactionEmote = { icon: '💨', expiresAt: timestamp + 800 };
+      }
+    }
 
     if (timestamp < runtime.nextMoveAt) {
       return;
@@ -1417,7 +1453,7 @@ export function advanceAvatarRuntimeEntries(
 
         runtime.path = null;
         runtime.pathIndex = 0;
-        runtime.nextMoveAt = nextMoveTime(timestamp, rng);
+        runtime.nextMoveAt = nextMoveTime(timestamp, rng, urgent);
         // Switch bubble text from "heading to" → at-station activity.
         if (dest.stationId) {
           runtime.bubbleText = formatStationBubble(dest, runtime.state, 'at');
@@ -1475,7 +1511,7 @@ export function advanceAvatarRuntimeEntries(
         runtime.x = nextStep.x;
         runtime.y = nextStep.y;
         runtime.pathIndex++;
-        runtime.nextMoveAt = nextMoveTime(timestamp, rng);
+        runtime.nextMoveAt = nextMoveTime(timestamp, rng, urgent);
         return;
       }
 
@@ -1492,7 +1528,7 @@ export function advanceAvatarRuntimeEntries(
       runtime.path = null;
       runtime.pathIndex = 0;
       runtime.bubbleText = formatStationBubble(fallbackDest, runtime.state, 'heading to');
-      runtime.nextMoveAt = nextMoveTime(timestamp, rng);
+      runtime.nextMoveAt = nextMoveTime(timestamp, rng, urgent);
       return;
     }
 
@@ -1503,7 +1539,7 @@ export function advanceAvatarRuntimeEntries(
 
     // Collision check against buildings, props, and water
     if (blockedTiles && blockedTiles.has(`${nextX},${nextY}`)) {
-      runtime.nextMoveAt = nextMoveTime(timestamp, rng);
+      runtime.nextMoveAt = nextMoveTime(timestamp, rng, urgent);
       return;
     }
 
@@ -1516,6 +1552,6 @@ export function advanceAvatarRuntimeEntries(
 
     runtime.x = nextX;
     runtime.y = nextY;
-    runtime.nextMoveAt = nextMoveTime(timestamp, rng);
+    runtime.nextMoveAt = nextMoveTime(timestamp, rng, urgent);
   });
 }
