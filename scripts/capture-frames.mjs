@@ -8,6 +8,7 @@
 //   node scripts/capture-frames.mjs minimal    [baseUrl]
 //   node scripts/capture-frames.mjs cost       [baseUrl]
 //   node scripts/capture-frames.mjs permission [baseUrl]
+//   node scripts/capture-frames.mjs social     [baseUrl]
 //
 // Each scenario writes PNG frames to /tmp/agent-world-frames and then
 // stitches them into demo/demo-{scenario}.gif via ffmpeg.
@@ -201,6 +202,23 @@ const SCENARIOS = {
         }
       }
     };
+  },
+
+  async social(page) {
+    // Showcase Phase 2-4 social features: poses + persistent emotes +
+    // reactions + group scenes. Forces drama to "lively" so chat /
+    // reaction / group triggers fire more reliably in a 30-second
+    // capture. Warms up 5 s so sprites find stations, then captures.
+    console.log('Settling world (5s) + setting drama=lively…');
+    await page.waitForTimeout(5000);
+    await page.evaluate(() => {
+      const wm = window.__agentWorldApp?.getWorldMap?.();
+      if (wm && typeof wm._cycleDrama === 'function') {
+        // Normal (default) → Lively
+        wm._cycleDrama(); wm._cycleDrama();
+      }
+    });
+    return { durationMs: 30_000 };
   },
 
   async permission(page, baseUrl) {

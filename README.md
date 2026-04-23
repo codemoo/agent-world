@@ -41,6 +41,48 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
   changes (Waiting→Working, entering/leaving Errored, Idle→Working, →Finished).
 - **Animated "thinking" dots** when the session is Working but has no
   tool active. Cycles `.` `..` `...` in the activity bubble — no extra layer.
+- **Social layer** (`demo/demo-social.gif`) — context-aware
+  ambient chat, station-kind poses, neighbor reactions, group
+  scenes. See the tables below for details.
+
+  ![Social layer](demo/demo-social.gif)
+
+- **Station-kind poses + persistent emotes** — sprites don't just sit
+  at furniture; they visibly *use* it. Mapping table (client-derived
+  from 19 `interactionKind` values covering every station type in the
+  world model):
+
+  | Station kind    | Pose              | Persistent emote |
+  |-----------------|-------------------|------------------|
+  | desk, archive   | typing (Working) / leaning (Idle) | — |
+  | tavern, cafe    | drinking (1.2 s raise-the-mug cycle) | 🍺 |
+  | monitor_wall    | watching          | 📺 |
+  | bed, nap_spot   | sleeping          | 💤 |
+  | break_area      | stretching squash on arrival (800 ms) | — |
+  | queue_slot      | impatient — facing flips left↔right every 4 s | — |
+  | exit            | waving_goodbye (1.5 s scale + bounce) — only plays when fadeOpacity > 0.85 at arrival so mostly-faded sprites don't pop back up | 👋 |
+  | plaza, lounge   | leaning           | — |
+  | work_outdoor    | typing (mining / foraging) | — |
+
+- **Agent ↔ agent reactions** — small emotes fire when neighbors see
+  something notable:
+
+  | Event | Nearby agents see | Radius | Cooldown |
+  |-------|-------------------|--------|----------|
+  | Neighbor enters Errored | 😦 + 1-tick head-turn toward source | 4 | 20 s |
+  | Neighbor starts productive burst | ✨ | 4 | 30 s |
+  | Self Waiting→Working (approval granted) | 🎉 | — | — |
+  | Neighbor begins farewell wave | 👋 | 3 | 60 s |
+
+  First-tick page-load transitions are suppressed so multiple
+  already-Errored sessions don't flood the view. Global cap: ≤3 active
+  emotes at once; earliest-expiring evicted first, agent-id
+  lexicographic for ties (deterministic).
+- **Group scenes at social spots** — ≥3 agents seated at the same
+  building (cafe) or outdoor plaza cluster → 90-second round-table
+  conversation; one speaker per turn, members visually lean toward
+  the centroid. Never forms at plain desks. 60 s reform cooldown
+  per location prevents instant re-gathering.
 - **Git branch → hat hue** — sessions on the same branch cluster visually.
 - **Day / Night / Live clock** — sky overlay interpolates across real
   time. At night, **warm window glow** spills from every building
@@ -106,6 +148,22 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
   recent assistant snippet > station > empty) with a 2.5 s minimum
   dwell on lower-priority downgrades. Higher-priority events preempt
   immediately. Fixes the "flickering text" from mixed event sources.
+- **Context-aware ambient dialog** — when two agents pass within
+  2 tiles they exchange a scripted 2-to-4-turn conversation. The pool
+  is selected by *situation*, with priority:
+
+  1. Shared `repoRoot` → `SAME_REPO` pool ("Working on {repo} too?")
+  2. Either side Errored → `ERROR_COMMISERATE` ("Red build again?")
+  3. Exactly one side Waiting → `WAITING_SUPPORT` ("Approval stuck?")
+  4. Met before → `RECONNECT` ("Back so soon?") — memory keyed on
+     each runtime's `chatLastMetAt`
+  5. Fallback → time-of-day greeting pool
+     (`MORNING_GREETINGS` / `LUNCH_GREETINGS` / `EVENING_GREETINGS` /
+     `NIGHT_GREETINGS`) picked from wall-clock hour
+- **Drama level toggle** (`🧘 Calm` / `🎭 Normal` / `🎉 Lively`) — top
+  bar button or `D` key. Scales reaction cap (1/3/5), chat start
+  chance (0.10/0.30/0.50), group formation chance (0.05/0.20/0.35).
+  Persisted to localStorage.
 - **Help overlay** (`?`) — bilingual (en + ko) shortcut legend. Button
   top-right, `?` or `Shift+/` toggles. ESC to close.
 
@@ -124,6 +182,7 @@ and by [**claude-control**](https://github.com/sverrirsig/claude-control)
 | `←` `→` | Scrub timeline ±1 s |
 | `Space` | Play / pause timeline |
 | `E` | Toggle world editor |
+| `D` | Cycle drama level (calm / normal / lively) |
 | `Ctrl-Z` / `Ctrl-S` / arrows / `F` | Editor undo / save / nudge / flip |
 
 ---
@@ -216,6 +275,9 @@ so you at least get the notification.
 | --- | --- |
 | `adapter/worldModel.js` | Pure world geometry (buildings, stations, tiles). Shared. |
 | `adapter/claudeAdapter.js` | Session snapshot → world-agent state + intent-tagged destination. |
+| `frontend/avatarNormalizer.mjs` | Pure `worldState → avatars` projection — 14-field §5A passthrough contract ensuring every field avatarRuntime reads survives normalization. |
+| `frontend/interactionKind.mjs` | `(intent, station.type, station.kind, locationId) → interactionKind` — 19 outputs covering every station.type in the world model + every adapter synthetic intent. |
+| `frontend/poseResolver.mjs` | `(interactionKind, status, timed flags) → (pose, emote)` — maps station state to body-language + Lane 0 persistent emote. |
 | `server/claudeSnapshotter.js` | 1 Hz poller: `ps` + `lsof` + hook events + session JSON. |
 | `server/sessionStatus.js` | Pure classifier (hook events + mtime + CPU → status). |
 | `server/repoRoot.js` | `git rev-parse --show-toplevel` cache, worktree-aware. |
@@ -281,11 +343,11 @@ derived from `window.location.origin`.
 ## Tests
 
 ```bash
-npm run test:unit          # 112 tests — no network
+npm run test:unit          # 206 tests — no network
 npm run test:request       # 16  — request-level HTTP/WS
 npm run test:integration   # 13  — server / snapshotter / PTY
 npm run test:e2e           # 5   — playwright smoke + browser assertions
-npm run test:smoke         # everything above (146 total)
+npm run test:smoke         # everything above (240 total)
 npm run test:legacy        # 27  — archived Paperclip tests (gated)
 ```
 
@@ -314,6 +376,10 @@ PLAYWRIGHT_BROWSERS_PATH=~/.cache/agent-world-playwright \
 PLAYWRIGHT_BROWSERS_PATH=~/.cache/agent-world-playwright \
   PORT=3199 AGENT_WORLD_API_TOKEN=smoke \
   node test/helpers/browser-probe-permission.mjs  # fake hook → toast → click Allow → hook response
+
+PLAYWRIGHT_BROWSERS_PATH=~/.cache/agent-world-playwright \
+  PORT=3199 AGENT_WORLD_API_TOKEN=smoke \
+  node test/helpers/browser-probe-head-lanes.mjs  # Phase 0 regression guard — 4-avatar scripted scene, asserts sprite + head-lane render regions
 ```
 
 ### Demo capture
@@ -334,6 +400,8 @@ AGENT_WORLD_API_TOKEN=<token> \
   node scripts/capture-frames.mjs cost       http://127.0.0.1:3102
 AGENT_WORLD_API_TOKEN=<token> \
   node scripts/capture-frames.mjs permission http://127.0.0.1:3102
+AGENT_WORLD_API_TOKEN=<token> \
+  node scripts/capture-frames.mjs social     http://127.0.0.1:3102
 ```
 
 ---
