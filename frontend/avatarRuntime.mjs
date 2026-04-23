@@ -1280,6 +1280,15 @@ export function advanceAvatarRuntimeEntries(
     runtime.pose = pose;
     runtime.persistentEmote = emote;
 
+    // IdleStale override — sprites whose session has been quiet long
+    // enough for the server to degrade them get a steady 💤 so the
+    // "napping" state is readable at a glance. Yielded to by any
+    // active reactionEmote / farewell / stretch via the hasTransient
+    // guard below.
+    if (runtime.serverStatus === 'IdleStale' && !runtime.reactionEmote) {
+      runtime.persistentEmote = '💤';
+    }
+
     // Phase D — seated activity beat. Overrides persistentEmote for
     // ~200ms per loop period on a dephased cadence. Skipped when a
     // higher-priority emote is active (arrival one-shot, farewell,
