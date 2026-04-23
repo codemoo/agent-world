@@ -2047,10 +2047,54 @@ export default class WorldMap {
     if (tileType === 'sand')  { this.drawSandTile(px, py, x, y);  return; }
     if (tileType === 'stone') { this.drawStoneTile(px, py, x, y); return; }
 
-    // Grass fallback keeps the checker pattern for now (asset path
-    // already serves grassA/grassB).
-    this.context.fillStyle = (x + y) % 2 === 0 ? COLORS.grassA : COLORS.grassB;
-    this.context.fillRect(px, py, this.tileSize, this.tileSize);
+    // Grass fallback — checker base + blade detail + occasional
+    // lighter patch so grass reads as "lush field" instead of flat
+    // green. Only runs when the PixyMoon grass sprite didn't load;
+    // when it does, the sprite path above is the visual.
+    this.drawGrassTile(px, py, x, y);
+  }
+
+  drawGrassTile(px, py, tx, ty) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    // Checker base — cooler/warmer green alternation for large-scale
+    // variation without a single flat sheet.
+    ctx.fillStyle = (tx + ty) % 2 === 0 ? COLORS.grassA : COLORS.grassB;
+    ctx.fillRect(px, py, ts, ts);
+    // Darker speckle layer — 3 tiny shade dots, deterministic per tile.
+    ctx.fillStyle = 'rgba(34, 80, 38, 0.35)';
+    for (let i = 0; i < 3; i++) {
+      const h = this._tileHash(tx, ty, i + 61);
+      const dx = (h % 100) / 100;
+      const dy = ((h >>> 9) % 100) / 100;
+      ctx.beginPath();
+      ctx.arc(px + ts * dx, py + ts * dy, Math.max(0.8, ts * 0.035), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Blade highlights — short vertical strokes where a "taller" grass
+    // blade catches light. 2 per tile, lighter green, 2px tall.
+    ctx.strokeStyle = 'rgba(164, 220, 130, 0.55)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 2; i++) {
+      const h = this._tileHash(tx, ty, i + 71);
+      const bx = px + ts * (0.15 + ((h & 63) / 80));
+      const by = py + ts * (0.4 + (((h >>> 6) & 63) / 120));
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx, by - ts * 0.12);
+      ctx.stroke();
+    }
+    // Occasional lighter patch (~1 in 8 tiles) — sun-dappled spot.
+    const hp = this._tileHash(tx, ty, 81);
+    if ((hp & 7) === 0) {
+      ctx.fillStyle = 'rgba(220, 245, 170, 0.22)';
+      ctx.beginPath();
+      ctx.ellipse(
+        px + ts * 0.5, py + ts * 0.5,
+        ts * 0.3, ts * 0.18, 0, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
   }
 
   // Shared deterministic hash for tile-local scatter positions. Keeps
@@ -2270,13 +2314,113 @@ export default class WorldMap {
       return;
     }
 
-    // Default tree fallback
-    this.context.fillStyle = '#2a6b2f';
-    this.context.beginPath();
-    this.context.arc(px + this.tileSize * 0.5, py + this.tileSize * 0.4, this.tileSize * 0.3, 0, Math.PI * 2);
-    this.context.fill();
-    this.context.fillStyle = '#7c4a20';
-    this.context.fillRect(px + this.tileSize * 0.44, py + this.tileSize * 0.5, this.tileSize * 0.12, this.tileSize * 0.4);
+    // Procedural tree fallback — layered canopy + trunk with shading.
+    // Picks a variant based on spriteKey so prop.tree.alt / conifer /
+    // big render visually distinct without needing the PixyMoon pack.
+    this._drawFallbackTree(px, py, prop.spriteKey, prop.x, prop.y);
+  }
+
+  // Pixel-art tree: trunk body + 2-3 canopy clusters with a highlight
+  // on the upper-left and a darker underside. Deterministic per-tile
+  // so canopies don't wobble frame-to-frame. `kind` controls shape:
+  //   prop.tree          → standard round canopy
+  //   prop.tree.alt      → taller oval canopy
+  //   prop.tree.alt2/3   → wider/fuller canopy
+  //   prop.tree.conifer  → pointed triangular stack
+  //   prop.tree.big(.alt)→ 2× canopy + thicker trunk
+  _drawFallbackTree(px, py, kind, tx = 0, ty = 0) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    const h = this._tileHash(tx, ty, 51);
+    const big = kind === 'prop.tree.big' || kind === 'prop.tree.big.alt';
+    const conifer = kind === 'prop.tree.conifer';
+
+    // Trunk.
+    const trunkW = ts * (big ? 0.18 : 0.14);
+    const trunkH = ts * (big ? 0.42 : 0.36);
+    const trunkX = px + ts * 0.5 - trunkW / 2;
+    const trunkY = py + ts * (big ? 0.55 : 0.52);
+    ctx.fillStyle = '#7a4a20';
+    ctx.fillRect(trunkX, trunkY, trunkW, trunkH);
+    // Trunk shadow on right edge
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(trunkX + trunkW - 1.2, trunkY, 1.2, trunkH);
+    // Trunk highlight on left edge
+    ctx.fillStyle = 'rgba(255,235,200,0.25)';
+    ctx.fillRect(trunkX, trunkY, 1.1, trunkH * 0.8);
+
+    if (conifer) {
+      // 3 stacked triangles (pine).
+      const peakX = px + ts * 0.5;
+      const baseY = py + ts * 0.55;
+      const darkBase = '#1f4826';
+      const lightBase = '#3a7c42';
+      for (let i = 0; i < 3; i++) {
+        const layerW = ts * (0.85 - i * 0.18);
+        const layerH = ts * 0.34;
+        const ty2 = py + ts * (0.15 + i * 0.16);
+        ctx.fillStyle = i === 0 ? darkBase : (i === 1 ? '#2a5f30' : lightBase);
+        ctx.beginPath();
+        ctx.moveTo(peakX, ty2);
+        ctx.lineTo(peakX - layerW / 2, ty2 + layerH);
+        ctx.lineTo(peakX + layerW / 2, ty2 + layerH);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Small highlight on upper-left
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.moveTo(peakX - ts * 0.12, py + ts * 0.38);
+      ctx.lineTo(peakX - ts * 0.04, py + ts * 0.22);
+      ctx.lineTo(peakX, py + ts * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+
+    // Deciduous canopy — 3 overlapping discs with per-tile jitter.
+    const canopyBase = {
+      'prop.tree':        { col: '#3a7c42', dark: '#1e4a25', light: '#7bc077', scale: 1.0 },
+      'prop.tree.alt':    { col: '#4d8f54', dark: '#275a30', light: '#8fd38a', scale: 1.05 },
+      'prop.tree.alt2':   { col: '#5a9b5e', dark: '#2f6035', light: '#9ad99c', scale: 1.0 },
+      'prop.tree.alt3':   { col: '#3f7c46', dark: '#20522a', light: '#7cc27e', scale: 1.0 }
+    }[kind] || { col: '#3a7c42', dark: '#1e4a25', light: '#7bc077', scale: 1.0 };
+
+    const cx = px + ts * 0.5;
+    const cy = py + ts * (big ? 0.38 : 0.42);
+    const canopyR = ts * (big ? 0.52 : 0.36) * canopyBase.scale;
+
+    // Undershadow blob (dark)
+    ctx.fillStyle = canopyBase.dark;
+    ctx.beginPath();
+    ctx.arc(cx - canopyR * 0.1, cy + canopyR * 0.15, canopyR * 1.05, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main canopy — two overlapping discs for an irregular outline.
+    ctx.fillStyle = canopyBase.col;
+    const jitter = ((h & 7) / 14) - 0.25;
+    ctx.beginPath();
+    ctx.arc(cx - canopyR * 0.25, cy - canopyR * 0.05 + jitter * 2, canopyR * 0.85, 0, Math.PI * 2);
+    ctx.arc(cx + canopyR * 0.30, cy + canopyR * 0.05 - jitter * 2, canopyR * 0.80, 0, Math.PI * 2);
+    ctx.arc(cx, cy - canopyR * 0.30, canopyR * 0.70, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Highlight patch upper-left.
+    ctx.fillStyle = canopyBase.light;
+    ctx.beginPath();
+    ctx.arc(cx - canopyR * 0.35, cy - canopyR * 0.35, canopyR * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle leaf texture — 4 tiny dark spots inside the canopy.
+    ctx.fillStyle = 'rgba(20, 48, 24, 0.45)';
+    for (let i = 0; i < 4; i++) {
+      const hi = this._tileHash(tx, ty, 52 + i);
+      const a = ((hi & 0xff) / 255) * Math.PI * 2;
+      const r = canopyR * (0.3 + ((hi >>> 8) & 7) / 20);
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   drawBuildingInterior(building) {
@@ -2399,31 +2543,154 @@ export default class WorldMap {
       return;
     }
 
-    // Fallback: colored rectangle with roof
-    const roofColors = {
-      'building.tower': '#6b7b8a',
-      'building.house.gray': '#6b7b8a',
-      'building.house.green': '#3a8c4f',
-      'building.house.green2': '#3a8c4f',
-      'building.shop': '#d4844a',
-      'building.large': '#d4844a'
-    };
-    const roofColor = roofColors[building.spriteKey] || '#c46030';
-
-    this.context.fillStyle = '#c5a67a';
-    this.context.fillRect(px, py + drawHeight * 0.3, drawWidth, drawHeight * 0.7);
-
-    this.context.fillStyle = roofColor;
-    this.context.fillRect(px - drawWidth * 0.05, py, drawWidth * 1.1, drawHeight * 0.4);
-
-    this.context.fillStyle = '#2f2a26';
-    this.context.fillRect(
-      px + drawWidth * 0.4,
-      py + drawHeight * 0.55,
-      drawWidth * 0.2,
-      drawHeight * 0.45
-    );
+    // Procedural cottage fallback — peaked roof with shingle bands,
+    // plank wall with window + door, chimney + stone base. Per-variant
+    // palette keyed off spriteKey so minimal-mode buildings retain
+    // their tower/shop/house distinction.
+    this._drawFallbackBuilding(px, py, drawWidth, drawHeight, building);
     this.context.globalAlpha = prevAlpha;
+  }
+
+  _drawFallbackBuilding(px, py, dw, dh, building) {
+    const ctx = this.context;
+    const h = this._tileHash(building.x || 0, building.y || 0, 91);
+    // Palette per spriteKey.
+    const palettes = {
+      'building.tower':       { roof: '#6b7b8a', roofDark: '#455263', wall: '#cbb38a', wallDark: '#9e8659' },
+      'building.house.gray':  { roof: '#707c8a', roofDark: '#4a5564', wall: '#d7c9b0', wallDark: '#a3947a' },
+      'building.house.green': { roof: '#3a8c4f', roofDark: '#226335', wall: '#e2d4b0', wallDark: '#b0a079' },
+      'building.house.green2':{ roof: '#4fa265', roofDark: '#2b6b3c', wall: '#e9d8b6', wallDark: '#b5a37d' },
+      'building.shop':        { roof: '#d4844a', roofDark: '#9c5525', wall: '#f3e2b8', wallDark: '#b9a47a' },
+      'building.large':       { roof: '#c46030', roofDark: '#8a3f1a', wall: '#ead3a4', wallDark: '#a88764' }
+    };
+    const p = palettes[building.spriteKey] || {
+      roof: '#c46030', roofDark: '#8a3f1a', wall: '#d8bc84', wallDark: '#9c855b'
+    };
+
+    // Heights: roof occupies top 42%, wall bottom 58%. Stone base strip
+    // (bottom 8%) adds depth.
+    const roofH = dh * 0.42;
+    const wallH = dh * 0.58;
+    const baseH = dh * 0.08;
+    const wallY = py + roofH;
+    const baseY = py + dh - baseH;
+
+    // Wall plank body.
+    ctx.fillStyle = p.wall;
+    ctx.fillRect(px, wallY, dw, wallH);
+    // Plank seams — horizontal lines at 2 positions.
+    ctx.strokeStyle = `rgba(120, 90, 55, 0.35)`;
+    ctx.lineWidth = 1;
+    for (const frac of [0.33, 0.66]) {
+      const ly = wallY + wallH * frac;
+      ctx.beginPath();
+      ctx.moveTo(px + 2, ly);
+      ctx.lineTo(px + dw - 2, ly);
+      ctx.stroke();
+    }
+    // Wall shadow band on right edge.
+    ctx.fillStyle = p.wallDark;
+    ctx.fillRect(px + dw - 3, wallY, 3, wallH);
+
+    // Stone base plinth.
+    ctx.fillStyle = '#8e7f6a';
+    ctx.fillRect(px, baseY, dw, baseH);
+    // Brick divisions in the base.
+    ctx.strokeStyle = 'rgba(40, 30, 18, 0.4)';
+    ctx.beginPath();
+    for (let bx = px + dw / 3; bx < px + dw; bx += dw / 3) {
+      ctx.moveTo(bx, baseY);
+      ctx.lineTo(bx, baseY + baseH);
+    }
+    ctx.moveTo(px, baseY);
+    ctx.lineTo(px + dw, baseY);
+    ctx.stroke();
+
+    // Peaked roof with overhang.
+    const peakX = px + dw * 0.5;
+    const peakY = py + roofH * 0.05;
+    const eaveLeft = px - dw * 0.05;
+    const eaveRight = px + dw * 1.05;
+    const eaveY = py + roofH;
+    // Roof body.
+    ctx.fillStyle = p.roof;
+    ctx.beginPath();
+    ctx.moveTo(peakX, peakY);
+    ctx.lineTo(eaveLeft, eaveY);
+    ctx.lineTo(eaveRight, eaveY);
+    ctx.closePath();
+    ctx.fill();
+    // Roof shingle bands — horizontal parallel lines along the slope.
+    ctx.strokeStyle = p.roofDark;
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 4; i++) {
+      const t = i / 5;
+      const lx1 = peakX + (eaveLeft - peakX) * t;
+      const lx2 = peakX + (eaveRight - peakX) * t;
+      const ly = peakY + (eaveY - peakY) * t;
+      ctx.beginPath();
+      ctx.moveTo(lx1, ly);
+      ctx.lineTo(lx2, ly);
+      ctx.stroke();
+    }
+    // Roof edge shadow.
+    ctx.strokeStyle = p.roofDark;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(peakX, peakY);
+    ctx.lineTo(eaveRight, eaveY);
+    ctx.stroke();
+
+    // Chimney — deterministic side (left or right by hash).
+    const chimSide = (h & 1) ? 1 : -1;
+    const chimX = peakX + chimSide * dw * 0.25;
+    const chimW = dw * 0.09;
+    const chimH = roofH * 0.55;
+    const chimY = peakY + roofH * 0.18 + Math.abs(chimSide) * 0; // just above roof
+    ctx.fillStyle = '#8a6a4a';
+    ctx.fillRect(chimX - chimW / 2, chimY - chimH, chimW, chimH);
+    ctx.fillStyle = '#5e4730';
+    ctx.fillRect(chimX - chimW / 2 - 1, chimY - chimH, chimW + 2, 2); // cap
+
+    // Door — bottom center, recessed dark, with a small knob.
+    const doorW = dw * 0.14;
+    const doorH = wallH * 0.62;
+    const doorX = px + dw * 0.5 - doorW / 2;
+    const doorY = baseY - doorH;
+    ctx.fillStyle = '#3a2614';
+    ctx.fillRect(doorX, doorY, doorW, doorH);
+    // Door panel highlight
+    ctx.fillStyle = 'rgba(255, 220, 160, 0.12)';
+    ctx.fillRect(doorX + 1, doorY + 1, doorW - 2, doorH * 0.5);
+    // Knob
+    ctx.fillStyle = '#f7d572';
+    ctx.beginPath();
+    ctx.arc(doorX + doorW * 0.82, doorY + doorH * 0.55, Math.max(1, dw * 0.012), 0, Math.PI * 2);
+    ctx.fill();
+
+    // Two windows flanking the door.
+    const winW = dw * 0.14;
+    const winH = wallH * 0.28;
+    const winY = wallY + wallH * 0.18;
+    ctx.fillStyle = 'rgba(155, 205, 230, 0.92)';
+    for (const off of [-dw * 0.28, dw * 0.28]) {
+      const wx = px + dw * 0.5 - winW / 2 + off;
+      ctx.fillRect(wx, winY, winW, winH);
+      // Window frame cross
+      ctx.strokeStyle = '#4a3a22';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(wx, winY, winW, winH);
+      ctx.beginPath();
+      ctx.moveTo(wx + winW / 2, winY);
+      ctx.lineTo(wx + winW / 2, winY + winH);
+      ctx.moveTo(wx, winY + winH / 2);
+      ctx.lineTo(wx + winW, winY + winH / 2);
+      ctx.stroke();
+      // Windowsill
+      ctx.fillStyle = '#7a5c38';
+      ctx.fillRect(wx - 1, winY + winH, winW + 2, 1.5);
+      ctx.fillStyle = 'rgba(155, 205, 230, 0.92)';
+    }
   }
 
   drawFallbackAvatar(centerX, centerY, radius, isWorking, walkPhase) {
