@@ -269,7 +269,11 @@ export function syncAvatarRuntimeEntries(
         // One-tick facing override for reactions (e.g. "look at neighbor
         // who just errored"). Renderer reads facingOverride || direction.
         // Cleared at the top of advanceAvatarRuntimeEntries every tick.
-        facingOverride: null
+        facingOverride: null,
+        // Phase 3 reaction channel — { icon, expiresAt } or null.
+        // Expired by updateReactions at the top of each tick.
+        reactionEmote: null,
+        reactionCooldowns: {}
       });
       return;
     }
@@ -491,6 +495,125 @@ function buildStationLookup(stations) {
   return lookup;
 }
 
+// Phase 3 reaction tuning.
+const REACTION_MAX_ACTIVE    = 3;        // global cap
+const REACTION_DUR_MS        = 1600;     // default emote dwell
+const REACTION_WAVE_MS       = 1200;     // wave-goodbye emote dwell
+const REACTION_CD_ERROR_MS   = 20_000;   // per-observer-per-source
+const REACTION_CD_BURST_MS   = 30_000;
+const REACTION_CD_FAREWELL_MS = 60_000;
+const REACTION_RADIUS_NORMAL = 4;        // chebyshev tiles
+const REACTION_RADIUS_WAVE   = 3;
+
+// Detect social events that just happened this tick and dispatch
+// observer emotes. Purely client-side: no server state is read.
+// Deterministic tie-break: event enumeration sorted by agent id
+// (lexicographic); observer enumeration also sorted.
+function updateReactions(avatarRuntime, timestamp) {
+  // 1. Expire stale reactions first so the global-cap check below
+  //    sees the current live set.
+  avatarRuntime.forEach(rt => {
+    if (rt.reactionEmote && rt.reactionEmote.expiresAt <= timestamp) {
+      rt.reactionEmote = null;
+    }
+  });
+
+  // 2. Enumerate runtimes once, id-sorted. Detect transitions.
+  const entries = Array.from(avatarRuntime.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  const events = [];
+  for (const [id, rt] of entries) {
+    const prevStatus = rt._prevSocialStatus;
+    const curStatus  = rt.serverStatus;
+
+    // Errored entry → broadcast concern.
+    if (prevStatus !== 'Errored' && curStatus === 'Errored') {
+      events.push({ kind: 'error', sourceId: id, source: rt });
+    }
+
+    // Waiting → Working → self-cheer (approval granted).
+    if (prevStatus === 'Waiting' && curStatus === 'Working') {
+      events.push({ kind: 'approval_self', sourceId: id, source: rt });
+    }
+
+    rt._prevSocialStatus = curStatus;
+
+    // Productive burst: productiveUntil crossed past → future.
+    const prevProd = rt._prevProductiveUntil || 0;
+    const prod = rt.productiveUntil || 0;
+    if (prod > prevProd && prod > timestamp + 1000) {
+      events.push({ kind: 'burst', sourceId: id, source: rt });
+    }
+    rt._prevProductiveUntil = prod;
+
+    // Farewell: farewellUntil freshly set → wave to neighbors.
+    const prevFare = rt._prevFarewellUntil || 0;
+    const fare = rt.farewellUntil || 0;
+    if (fare > prevFare && fare > timestamp) {
+      events.push({ kind: 'farewell', sourceId: id, source: rt });
+    }
+    rt._prevFarewellUntil = fare;
+  }
+
+  // 3. Dispatch each event.
+  for (const ev of events) {
+    if (ev.kind === 'approval_self') {
+      // Only self; no cooldown; overwrite any weaker active emote.
+      ev.source.reactionEmote = {
+        icon: '🎉',
+        expiresAt: timestamp + REACTION_DUR_MS
+      };
+      continue;
+    }
+
+    const { kind, sourceId, source } = ev;
+    const radius = kind === 'farewell' ? REACTION_RADIUS_WAVE : REACTION_RADIUS_NORMAL;
+    const icon = kind === 'error' ? '😦'
+               : kind === 'burst' ? '✨'
+               : '👋';
+    const durMs = kind === 'farewell' ? REACTION_WAVE_MS : REACTION_DUR_MS;
+    const cooldownMs = kind === 'error'    ? REACTION_CD_ERROR_MS
+                     : kind === 'burst'    ? REACTION_CD_BURST_MS
+                                           : REACTION_CD_FAREWELL_MS;
+    const cooldownKey = `${sourceId}:${kind}`;
+
+    for (const [obsId, obs] of entries) {
+      if (obsId === sourceId) continue;
+      const dx = Math.abs(obs.x - source.x);
+      const dy = Math.abs(obs.y - source.y);
+      if (dx > radius || dy > radius) continue;
+
+      if (!obs.reactionCooldowns) obs.reactionCooldowns = {};
+      const until = obs.reactionCooldowns[cooldownKey] || 0;
+      if (timestamp < until) continue;
+      obs.reactionCooldowns[cooldownKey] = timestamp + cooldownMs;
+
+      obs.reactionEmote = { icon, expiresAt: timestamp + durMs };
+
+      // Neighbor-error: head turns toward the errored agent (1-tick
+      // facing override; cleared at the next tick's clearing pass).
+      if (kind === 'error') {
+        obs.facingOverride = faceDirection(source.x - obs.x, source.y - obs.y);
+      }
+    }
+  }
+
+  // 4. Global cap: evict earliest-expiring first, lex id tie-break.
+  const active = entries.filter(([, rt]) => rt.reactionEmote);
+  if (active.length > REACTION_MAX_ACTIVE) {
+    active.sort(([aId, aRt], [bId, bRt]) => {
+      const d = aRt.reactionEmote.expiresAt - bRt.reactionEmote.expiresAt;
+      if (d !== 0) return d;
+      return aId.localeCompare(bId);
+    });
+    const evictCount = active.length - REACTION_MAX_ACTIVE;
+    for (let i = 0; i < evictCount; i++) {
+      active[i][1].reactionEmote = null;
+    }
+  }
+}
+
 function faceDirection(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
   if (dy === 0 && dx === 0) return 'down';
@@ -675,6 +798,12 @@ export function advanceAvatarRuntimeEntries(
       runtime.facingOverride = phase === 0 ? 'left' : 'right';
     }
   });
+
+  // Phase 3: dispatch reaction emotes from this tick's social events
+  // (error / burst / farewell / approval). Must run AFTER pose
+  // resolution (farewellUntil has just been set for exits) but
+  // BEFORE movement so facingOverride survives to the render frame.
+  updateReactions(avatarRuntime, timestamp);
 
   // Collect which stations are currently claimed (targeted or occupied) so
   // routing picks different ones for each agent.

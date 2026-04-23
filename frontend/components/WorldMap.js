@@ -1550,7 +1550,12 @@ export default class WorldMap {
         // Scrub silences all live-only social channels (v5 plan §5g).
         // Explicit nulls so future phases don't accidentally animate
         // reactions/emotes against historical frames.
-        facingOverride: null
+        facingOverride: null,
+        reactionEmote: null,
+        persistentEmote: null,
+        pose: null,
+        farewellUntil: 0,
+        stretchUntil: 0
       };
     }
   }
@@ -2699,7 +2704,31 @@ export default class WorldMap {
       this.drawChatLabel(centerX, chatBubbleY, chatText);
     }
 
-    // --- Lane 0: steady tool icon / persistent emote + tool-pop overlay ---
+    // --- Lane 0: reaction emote > tool pop > steady icon / persistent ---
+    //
+    // Phase 3: a live reaction (😦 on neighbor error, ✨ on burst, 🎉
+    // on approval, 👋 on session-end nearby) preempts everything else
+    // in Lane 0. Renders as a bright emote at the same anchor as the
+    // steady tool icon. When it expires, Lane 0 reverts to the
+    // tool-pop-on-steady logic.
+    const reaction = avatar.reactionEmote;
+    const reactionActive = reaction && reaction.expiresAt > timestamp;
+    if (reactionActive) {
+      const iconSize = Math.max(14, Math.floor(this.tileSize * 0.56));
+      const iconY = centerY - this.tileSize * 0.95;
+      this.context.save();
+      this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      this.context.shadowColor = 'rgba(0,0,0,0.35)';
+      this.context.shadowBlur = 5;
+      this.context.globalAlpha = prevGlobalAlpha * sessionFade;
+      this.context.fillText(reaction.icon, centerX, iconY);
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
+      return;   // Skip the rest of Lane 0 so we don't stack icons.
+    }
+
     const popMs = VISUAL.TOOL_POP_MS || 1100;
     const popAge = timestamp - (avatar.toolPopAt || 0);
     const popActive = avatar.toolPopIcon && popAge >= 0 && popAge < popMs;
