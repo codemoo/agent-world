@@ -2755,6 +2755,11 @@ export default class WorldMap {
     // as one shared queue instead of N random amber halos.
     this.drawInfoDeskQueue(timestamp);
 
+    // Layer 2.85: Building-level tool echoes — rising icons over the
+    // roofline so a busy repo reads as a pulse even when you're not
+    // watching the desk sprite. Aggregates recent toolPop* per building.
+    this.drawBuildingToolEchoes(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3659,6 +3664,78 @@ export default class WorldMap {
   // "this building has people actively working" at a glance.
   // Complements the night-only ambient window-glow (both composite
   // with 'lighter' so they stack cleanly).
+  // Building-level tool echoes. Aggregates recent per-agent toolPop
+  // invocations by building and renders up to 3 rising icons above
+  // the roofline so a busy repo pulses visibly even if you're not
+  // watching the specific desk. Throttled at the agent level already
+  // (TOOL_POP_MIN_GAP_MS), so this just harvests those pops.
+  drawBuildingToolEchoes(timestamp) {
+    const layout = this.sceneLayout;
+    if (!layout || !Array.isArray(layout.buildings)) return;
+    const ECHO_MS = 1800;
+    const MAX_PER_BUILDING = 3;
+
+    // First pass: per-building, collect recent pops (from distinct
+    // agents). Dedupe within the same ~400ms so Bash-spam doesn't
+    // render as 5 stacked icons from one agent.
+    const byBuilding = new Map(); // buildingKey → [{icon, t, agentId}]
+    this.avatarRuntime.forEach(r => {
+      const popAt = r.toolPopAt || 0;
+      const age = timestamp - popAt;
+      if (!popAt || age < 0 || age > ECHO_MS) return;
+      // Find the building this agent stands in. Cheap AABB scan
+      // (small buildings count), exits at first hit.
+      for (const b of layout.buildings) {
+        const x1 = b.x, y1 = b.y, x2 = b.x + (b.w || 5), y2 = b.y + (b.h || 4);
+        if (r.x < x1 || r.x >= x2 || r.y < y1 || r.y >= y2) continue;
+        const key = b.id || `${b.x},${b.y}`;
+        let arr = byBuilding.get(key);
+        if (!arr) {
+          arr = [];
+          byBuilding.set(key, arr);
+        }
+        arr.push({ icon: r.toolPopIcon || '⚙', t: popAt, agentId: r.id, b });
+        break;
+      }
+    });
+    if (byBuilding.size === 0) return;
+
+    const ctx = this.context;
+    const ts = this.tileSize;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (const arr of byBuilding.values()) {
+      // Newest first, cap MAX_PER_BUILDING. We already have at-most
+      // one pop per agent per ECHO_MS because the agent-level throttle
+      // clamps repeats, so "cap" here bounds per-building concurrency.
+      arr.sort((a, b) => b.t - a.t);
+      const head = arr.slice(0, MAX_PER_BUILDING);
+      const b = head[0].b;
+      const cx = this.offsetX + (b.x + (b.w || 5) / 2) * ts;
+      const roofY = this.offsetY + b.y * ts;
+
+      head.forEach((p, i) => {
+        const t = (timestamp - p.t) / ECHO_MS;
+        const rise = ts * (0.8 + 1.3 * t);
+        // Alpha: fade-in first 12%, linear fade-out after.
+        const a = t < 0.12 ? (t / 0.12) : Math.max(0, 1 - (t - 0.12) / 0.88);
+        // Horizontal spread for simultaneous echoes (i: 0,1,2 → center, -.55, +.55)
+        const offset = i === 0 ? 0 : (i === 1 ? -ts * 0.55 : ts * 0.55);
+        const size = Math.max(13, ts * 0.52) * (1 - t * 0.18);
+        ctx.globalAlpha = a;
+        ctx.font = `${size}px "Segoe UI Emoji", sans-serif`;
+        // Soft shadow for readability on pale sky.
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+        ctx.fillText(p.icon, cx + offset + 1, roofY - rise + 1);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(p.icon, cx + offset, roofY - rise);
+      });
+    }
+    ctx.restore();
+  }
+
   drawBuildingActivityGlow(timestamp) {
     const layout = this.sceneLayout;
     if (!layout || !Array.isArray(layout.buildings)) return;
