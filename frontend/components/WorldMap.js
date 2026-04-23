@@ -2970,6 +2970,21 @@ export default class WorldMap {
     context.fillText(displayText, centerX, top + bubbleH - padY - 1);
   }
 
+  // Count avatarRuntime entries whose tile (x,y) lies inside the
+  // building's footprint. Returns {total, working}. Used by
+  // drawLocationSigns to paint occupancy pips and building activity glow.
+  _countOccupants(loc) {
+    const x1 = loc.x, y1 = loc.y, x2 = loc.x + (loc.w || 5), y2 = loc.y + (loc.h || 4);
+    let total = 0, working = 0;
+    this.avatarRuntime.forEach(r => {
+      if (r.x >= x1 && r.x < x2 && r.y >= y1 && r.y < y2) {
+        total++;
+        if (r.state === 'working' || r.serverStatus === 'Working') working++;
+      }
+    });
+    return { total, working };
+  }
+
   drawLocationSigns(layout, timestamp) {
     if (!layout.locations || layout.locations.length === 0) return;
 
@@ -3031,6 +3046,50 @@ export default class WorldMap {
       context.fillText(loc.name, px + 1, textY + 1);
       context.fillStyle = COLORS.signText;
       context.fillText(loc.name, px, textY);
+
+      // Item B — occupancy pips (right of the plank).
+      // One pip per current inhabitant. Working = filled amber,
+      // Idle = outlined. Shows 1–4; then a numeric "+N" for overflow.
+      const occ = this._countOccupants(loc);
+      if (occ.total > 0) {
+        const pipR = Math.max(2.0, this.tileSize * 0.07);
+        const pipGap = pipR * 2.6;
+        const maxPips = 4;
+        const shown = Math.min(occ.total, maxPips);
+        const startX = signX + signW + 6 + pipR;
+        const pipY = signY + signH / 2;
+        for (let i = 0; i < shown; i++) {
+          // The first `working` pips fill solid; the rest are outlined.
+          const isWorking = i < occ.working;
+          context.beginPath();
+          context.arc(startX + i * pipGap, pipY, pipR, 0, Math.PI * 2);
+          if (isWorking) {
+            context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+            context.fill();
+            context.strokeStyle = 'rgba(120, 53, 15, 0.9)';
+            context.lineWidth = 1;
+            context.stroke();
+          } else {
+            context.fillStyle = 'rgba(30, 20, 10, 0.4)';
+            context.fill();
+            context.strokeStyle = 'rgba(251, 191, 36, 0.7)';
+            context.lineWidth = 1.1;
+            context.stroke();
+          }
+        }
+        if (occ.total > maxPips) {
+          const plusFont = Math.max(8, Math.floor(this.tileSize * 0.26));
+          context.font = `700 ${plusFont}px "Segoe UI", sans-serif`;
+          context.textAlign = 'left';
+          context.textBaseline = 'middle';
+          context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+          context.fillText(`+${occ.total - maxPips}`,
+            startX + shown * pipGap, pipY);
+          // Restore baseline for any later drawing paths.
+          context.textBaseline = 'alphabetic';
+          context.textAlign = 'center';
+        }
+      }
     }
   }
 
