@@ -73016,6 +73016,15 @@
           "y": 720,
           "width": 48,
           "height": 48
+        },
+        {
+          "id": "69de07a98a41",
+          "name": "prop_116",
+          "description": "",
+          "x": 21,
+          "y": 296,
+          "width": 131,
+          "height": 113
         }
       ],
       "groups": []
