@@ -17,7 +17,14 @@ const fs = require('fs');
 const path = require('path');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
+// Disk-relative path — used for existence checks against the filesystem.
 const ASSET_ROOT_REL = 'assets/pixymoon/Cute RPG World';
+// URL-space path — written into the manifest as `assetRoot`. MUST start
+// with a leading slash so the runtime's `resolveUrl` short-circuits on
+// already-absolute URLs instead of re-concatenating the store's
+// assetRoot on top (which would produce `/assets/.../assets/.../...`
+// garbage and silently 404 every manifest-loaded sprite).
+const ASSET_ROOT_URL = '/' + ASSET_ROOT_REL;
 const MANIFEST_REL = path.join(ASSET_ROOT_REL, 'asset-manifest.json');
 
 async function main() {
@@ -51,7 +58,7 @@ async function main() {
     version: 1,
     generatedAt: new Date().toISOString(),
     generator: 'scripts/build-asset-manifest.js',
-    assetRoot: ASSET_ROOT_REL,
+    assetRoot: ASSET_ROOT_URL,
     sprites: verified
   };
 

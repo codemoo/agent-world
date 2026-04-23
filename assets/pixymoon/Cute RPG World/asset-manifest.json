@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generatedAt": "2026-04-23T16:43:00.859Z",
+  "generatedAt": "2026-04-23T17:05:42.600Z",
   "generator": "scripts/build-asset-manifest.js",
-  "assetRoot": "assets/pixymoon/Cute RPG World",
+  "assetRoot": "/assets/pixymoon/Cute RPG World",
   "sprites": [
     {
       "key": "terrain.grassA",

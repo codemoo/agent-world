@@ -1131,6 +1131,22 @@ async function loadManifestDefinitions(assetRoot, fetchImpl) {
               }))
             : [];
 
+    // If the manifest declares its own `assetRoot`, normalize it to an
+    // absolute URL path (leading `/`) before pre-resolving. A relative
+    // `assetRoot` triggers double-concatenation downstream —
+    // loadDefinition re-runs resolveUrl and, because the pre-resolved
+    // candidate URL lacks a leading slash, glues this.assetRoot ONTO
+    // the already-rooted path and produces `/assets/.../assets/...`
+    // garbage that silently 404s. Scripts/build-asset-manifest.js
+    // now writes the slash, but defend in depth in case a user hand-
+    // edits the manifest.
+    const manifestRoot = typeof payload?.assetRoot === 'string'
+      ? (/^https?:\/\//i.test(payload.assetRoot) || payload.assetRoot.startsWith('/')
+          ? payload.assetRoot
+          : '/' + payload.assetRoot.replace(/^\/+/, ''))
+      : null;
+    const effectiveRoot = manifestRoot || assetRoot;
+
     return source
       .map(item => normalizeManifestEntry(item))
       .filter(Boolean)
@@ -1138,7 +1154,7 @@ async function loadManifestDefinitions(assetRoot, fetchImpl) {
         key: item.key,
         candidates: item.candidates.map(candidate => ({
           ...candidate,
-          url: resolveUrl(payload?.assetRoot || assetRoot, candidate.url)
+          url: resolveUrl(effectiveRoot, candidate.url)
         }))
       }));
   } catch (_error) {
