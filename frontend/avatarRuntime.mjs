@@ -476,8 +476,35 @@ export function syncAvatarRuntimeEntries(
   });
 }
 
+// Plaza-detour constants. When an Idle sprite rolls a new client
+// destination, ~18% of the time swap it out for a plaza visit instead
+// of a random location. Creates organic "gather at the fountain"
+// feel — distant sprites passing through the same tile triggers the
+// pass-by greeting + ambient chat systems automatically.
+const PLAZA_DETOUR_CHANCE  = 0.18;
+const PLAZA_CENTER_X       = 14;
+const PLAZA_CENTER_Y       = 14;
+
 function pickClientDestination(runtime, locations, rng) {
   if (!locations || locations.length === 0) return null;
+
+  // Plaza detour — skip if we're already there. Also skip if the
+  // sprite was JUST sent to plaza last pick (stored on runtime so
+  // back-to-back plaza picks don't stick an idle sprite at 14,14
+  // forever).
+  const atPlaza = runtime.x === PLAZA_CENTER_X && runtime.y === PLAZA_CENTER_Y;
+  const justWentPlaza = runtime._lastPickWasPlaza === true;
+  if (!atPlaza && !justWentPlaza && rng() < PLAZA_DETOUR_CHANCE) {
+    runtime._lastPickWasPlaza = true;
+    return {
+      locationId: null,
+      locationName: 'plaza',
+      x: PLAZA_CENTER_X,
+      y: PLAZA_CENTER_Y
+    };
+  }
+  runtime._lastPickWasPlaza = false;
+
   // Pick a location different from where we currently are
   const candidates = locations.filter(loc => {
     const cx = loc.x + Math.floor((loc.w || 5) / 2);
