@@ -251,6 +251,10 @@ export function syncAvatarRuntimeEntries(
   rng = Math.random
 ) {
   const aliveIds = new Set();
+  // First sync after connect: the runtime is empty, so every avatar
+  // looks "new." Suppress hello bursts in that batch — only sessions
+  // that spawn AFTER we've already observed others are genuine arrivals.
+  const isInitialHydration = avatarRuntime.size === 0;
 
   Object.entries(avatars).forEach(([avatarId, avatar]) => {
     aliveIds.add(avatarId);
@@ -301,6 +305,13 @@ export function syncAvatarRuntimeEntries(
         // still captures real subsequent transitions.
         prevServerStatus: initialStatus,
         poofAt: 0,
+        // Stagecraft — first-seen stamp for a hello burst, and a
+        // farewell flag set when the server pushes intent.to_exit_fade
+        // so the renderer can draw a goodbye wave. `isInitialHydration`
+        // suppresses the hello on the first post-connect batch so
+        // reconnects don't storm-pop every existing sprite.
+        arrivalAt: isInitialHydration ? 0 : now,
+        farewellAt: 0,
         // One-tick facing override for reactions (e.g. "look at neighbor
         // who just errored"). Renderer reads facingOverride || direction.
         // Cleared at the top of advanceAvatarRuntimeEntries every tick.
@@ -382,6 +393,9 @@ export function syncAvatarRuntimeEntries(
     // conversations, repoLabel renders the {repo} placeholder.
     if (typeof avatar.repoRoot === 'string')  runtime.repoRoot = avatar.repoRoot;
     if (typeof avatar.repoLabel === 'string') runtime.repoLabel = avatar.repoLabel;
+    if (typeof avatar.gitBranch === 'string' || avatar.gitBranch === null) {
+      runtime.gitBranch = avatar.gitBranch;
+    }
 
     // Tool-pop emote: detect a *new* tool invocation by hashing the
     // (name, inputPreview) tuple. The server rewrites avatar.tool to null
@@ -433,8 +447,13 @@ export function syncAvatarRuntimeEntries(
       const expiresAt = runtime.intent.expiresAt || now + 30_000;
       const remaining = Math.max(0, expiresAt - now);
       runtime.fadeOpacity = Math.max(0.05, Math.min(1, remaining / 30_000));
+      // Stamp farewell on first observation of the exit intent so the
+      // renderer can play a one-shot goodbye wave (~1200ms) at the
+      // transition point, not every frame while fading.
+      if (!runtime.farewellAt) runtime.farewellAt = now;
     } else {
       runtime.fadeOpacity = 1;
+      runtime.farewellAt = 0;
     }
 
     if (authoritativePosition && (prevX !== avatar.x || prevY !== avatar.y)) {
@@ -543,6 +562,8 @@ const REACTION_WAVE_MS       = 1200;     // wave-goodbye emote dwell
 const REACTION_CD_ERROR_MS   = 20_000;   // per-observer-per-source
 const REACTION_CD_BURST_MS   = 30_000;
 const REACTION_CD_FAREWELL_MS = 60_000;
+const REACTION_CD_COURIER_MS = 15_000;   // per (source,observer) ack cooldown
+const REACTION_COURIER_DUR_MS = 1200;    // ack emote dwell (shorter than default)
 const REACTION_RADIUS_NORMAL = 4;        // chebyshev tiles
 const REACTION_RADIUS_WAVE   = 3;
 
@@ -607,6 +628,18 @@ function updateReactions(avatarRuntime, timestamp) {
       events.push({ kind: 'farewell', sourceId: id, source: rt });
     }
     rt._prevFarewellUntil = fare;
+
+    // Courier: courierPulseAt freshly set → same-repo/branch peers
+    // nod back. Repo-scoped, not proximity-scoped, so distant buildings
+    // still feel the handshake. First observation of the field is
+    // suppressed like other events.
+    const firstCourierObs = rt._prevCourierPulseAt === undefined;
+    const prevCourier = rt._prevCourierPulseAt || 0;
+    const cur = rt.courierPulseAt || 0;
+    if (!firstCourierObs && cur > prevCourier && timestamp - cur < 1500) {
+      events.push({ kind: 'courier', sourceId: id, source: rt });
+    }
+    rt._prevCourierPulseAt = cur;
   }
 
   // 3. Dispatch each event.
@@ -617,6 +650,30 @@ function updateReactions(avatarRuntime, timestamp) {
         icon: '🎉',
         expiresAt: timestamp + REACTION_DUR_MS
       };
+      continue;
+    }
+
+    // Courier ack: repo-scoped, proximity-agnostic. Recipients must
+    // share (repoRoot, gitBranch) with the sender. Facing override
+    // points toward the sender's current tile for one tick.
+    if (ev.kind === 'courier') {
+      const { sourceId, source } = ev;
+      if (!source.repoRoot) continue;
+      const srcBranch = source.gitBranch || null;
+      for (const [obsId, obs] of entries) {
+        if (obsId === sourceId) continue;
+        if (obs.repoRoot !== source.repoRoot) continue;
+        if (srcBranch && obs.gitBranch && obs.gitBranch !== srcBranch) continue;
+        if (!obs.reactionCooldowns) obs.reactionCooldowns = {};
+        const cdKey = `${sourceId}:courier`;
+        if (timestamp < (obs.reactionCooldowns[cdKey] || 0)) continue;
+        obs.reactionCooldowns[cdKey] = timestamp + REACTION_CD_COURIER_MS;
+        // Soft-merge: don't clobber a stronger reaction (error/farewell)
+        // that's still live. Courier is chatty; yield to louder events.
+        if (obs.reactionEmote && obs.reactionEmote.expiresAt > timestamp + 800) continue;
+        obs.reactionEmote = { icon: '👀', expiresAt: timestamp + REACTION_COURIER_DUR_MS };
+        obs.facingOverride = faceDirection(source.x - obs.x, source.y - obs.y);
+      }
       continue;
     }
 

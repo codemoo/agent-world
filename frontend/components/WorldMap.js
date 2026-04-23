@@ -2573,6 +2573,76 @@ export default class WorldMap {
       this.context.globalAlpha = prevGlobalAlpha;
     }
 
+    // Stagecraft — hello burst on arrival: sparkle ring + "hi!" bubble
+    // for 1400ms so a new session reads as a welcome, not bookkeeping.
+    const helloMs = 1400;
+    const helloAge = timestamp - (avatar.arrivalAt || 0);
+    if (avatar.arrivalAt && helloAge >= 0 && helloAge < helloMs) {
+      const t = helloAge / helloMs;
+      // Concentric sparkle ring, eased out.
+      const r = this.tileSize * (0.2 + 0.85 * (1 - Math.pow(1 - t, 3)));
+      const a = Math.max(0, 1 - t) * sessionFade;
+      this.context.save();
+      this.context.globalAlpha = a * 0.9;
+      this.context.strokeStyle = '#a7f3d0';
+      this.context.lineWidth = Math.max(1.2, 2.6 * (1 - t));
+      this.context.beginPath();
+      this.context.arc(centerX, centerY, r, 0, Math.PI * 2);
+      this.context.stroke();
+      // Three scatter sparkles on the ring (deterministic offsets).
+      this.context.globalAlpha = a;
+      const sparkleChar = '✦';
+      this.context.font = `${Math.max(10, this.tileSize * 0.30)}px "Segoe UI Emoji", sans-serif`;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      for (let i = 0; i < 3; i++) {
+        const ang = (i / 3) * Math.PI * 2 + t * Math.PI * 0.6;
+        const sx = centerX + Math.cos(ang) * r;
+        const sy = centerY + Math.sin(ang) * r * 0.55;
+        this.context.fillStyle = i === 0 ? '#bbf7d0' : (i === 1 ? '#fde68a' : '#bae6fd');
+        this.context.fillText(sparkleChar, sx, sy);
+      }
+      // "hi!" label rising above head, fades in first 200ms then out.
+      const labelA = t < 0.15 ? (t / 0.15) : Math.max(0, 1 - (t - 0.15) / 0.85);
+      this.context.globalAlpha = labelA * sessionFade;
+      const rise = this.tileSize * (0.7 + 0.35 * t);
+      this.context.font = `700 ${Math.max(11, this.tileSize * 0.34)}px "Segoe UI", Arial, sans-serif`;
+      this.context.fillStyle = '#065f46';
+      this.context.fillText('hi!', centerX + 1, centerY - rise + 1);
+      this.context.fillStyle = '#bbf7d0';
+      this.context.fillText('hi!', centerX, centerY - rise);
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
+    // Stagecraft — farewell wave on to_exit_fade. Short one-shot (~1200ms)
+    // pinned to the transition stamp, NOT the full fade window, so the
+    // gesture is punchy instead of dragging across 30s.
+    const byeMs = 1200;
+    const byeAge = timestamp - (avatar.farewellAt || 0);
+    if (avatar.farewellAt && byeAge >= 0 && byeAge < byeMs) {
+      const t = byeAge / byeMs;
+      const a = Math.max(0, 1 - t) * sessionFade;
+      const rise = this.tileSize * (0.75 + 0.45 * t);
+      // Waving hand with small left-right bob.
+      const wob = Math.sin(t * Math.PI * 4) * (this.tileSize * 0.08);
+      this.context.save();
+      this.context.globalAlpha = a;
+      this.context.textAlign = 'center';
+      this.context.textBaseline = 'middle';
+      this.context.font = `${Math.max(14, this.tileSize * 0.52)}px "Segoe UI Emoji", sans-serif`;
+      this.context.fillText('👋', centerX + wob, centerY - rise);
+      // "bye" caption.
+      this.context.font = `700 ${Math.max(10, this.tileSize * 0.30)}px "Segoe UI", Arial, sans-serif`;
+      this.context.globalAlpha = a * 0.85;
+      this.context.fillStyle = '#1e293b';
+      this.context.fillText('bye', centerX + 1, centerY - rise + this.tileSize * 0.42 + 1);
+      this.context.fillStyle = '#fde68a';
+      this.context.fillText('bye', centerX, centerY - rise + this.tileSize * 0.42);
+      this.context.restore();
+      this.context.globalAlpha = prevGlobalAlpha;
+    }
+
     // Hover highlight — drawn BEFORE selection so the selected agent's
     // cyan ring wins on z-order. Subtle gold ring + slight lift.
     if (this.hoveredAgentId && this.hoveredAgentId === avatar.id
@@ -3307,6 +3377,27 @@ export default class WorldMap {
         ctx.textBaseline = 'middle';
         ctx.fillText('📨', ex, ey);
         ctx.restore();
+
+        // Endpoint glow — brightens once the rider is near the peer
+        // so the ack reads as "landed" instead of fading mid-flight.
+        // Ramps from 0 at t=0.6 to peak at t=0.9, then fades with alpha.
+        if (t > 0.55) {
+          const landT = Math.min(1, (t - 0.55) / 0.35);
+          const landA = landT * (1 - Math.max(0, (t - 0.9) / 0.1)) * 0.65 * alpha * 2;
+          const landR = this.tileSize * (0.32 + 0.22 * landT);
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.max(0, Math.min(1, landA));
+          const g = ctx.createRadialGradient(px, py, 0, px, py, landR);
+          g.addColorStop(0, 'rgba(254, 240, 138, 0.85)');
+          g.addColorStop(0.7, 'rgba(186, 230, 253, 0.25)');
+          g.addColorStop(1, 'rgba(186, 230, 253, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(px, py, landR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
     }
 

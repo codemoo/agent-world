@@ -480,6 +480,11 @@ function applySnapshotToWorld({
     avatar.state = agent.activity === 'working' ? 'working' : 'idle';
     avatar.moving = true;
     avatar.hatHue = hatHueFromBranch(agent.gitBranch);
+    // Also expose the raw branch on the avatar so client-side code
+    // (courier pulse peer matching, reaction repo scoping) doesn't
+    // have to reach into state.agents by id. The adapter is the only
+    // writer; runtime mirrors it on sync.
+    avatar.gitBranch = agent.gitBranch || null;
     avatar.status = session.status;
     avatar.toolIcon = agent.tool?.icon || null;
     avatar.model = agent.model;
