@@ -1609,21 +1609,17 @@ export default class WorldMap {
 
   // Shared hit-test for click + hover. Uses the same radius so the
   // hovered sprite is always clickable (no "hover highlight but click
-  // misses" divergence). Walks avatarRuntime by logical tile position,
-  // not the interpolated one, so a sprite mid-step is still a valid
-  // target at its *next* tile center for the whole step window.
-  _hitTestAgent(canvasX, canvasY) {
+  // misses" divergence). Uses the INTERPOLATED render position — a
+  // walking sprite is a target where it visually is right now, not at
+  // its logical tile center.
+  _hitTestAgent(canvasX, canvasY, timestamp = performance.now()) {
     let closest = null;
     let closestDist = Infinity;
     const hitRadius = this.tileSize * 0.8;
     this.avatarRuntime.forEach(avatar => {
-      // Use interpolated position so the hover highlight tracks the
-      // visible sprite, not the logical tile. Click uses the same.
-      const rx = typeof avatar.prevX === 'number'
-        ? avatar.x  // logical tile always a valid target
-        : avatar.x;
+      const { rx, ry } = renderTilePos(avatar, timestamp);
       const ax = this.offsetX + rx * this.tileSize + this.tileSize / 2;
-      const ay = this.offsetY + avatar.y * this.tileSize + this.tileSize / 2;
+      const ay = this.offsetY + ry * this.tileSize + this.tileSize / 2;
       const dist = Math.sqrt((canvasX - ax) ** 2 + (canvasY - ay) ** 2);
       if (dist < hitRadius && dist < closestDist) {
         closestDist = dist;
@@ -1631,6 +1627,17 @@ export default class WorldMap {
       }
     });
     return closest;
+  }
+
+  // Compute the current screen-space center of a sprite. Used by the
+  // hover tooltip so it tracks the walking agent instead of pinning
+  // to where the cursor first landed.
+  _spriteScreenCenter(avatar, timestamp = performance.now()) {
+    const { rx, ry } = renderTilePos(avatar, timestamp);
+    return {
+      x: this.offsetX + rx * this.tileSize + this.tileSize / 2,
+      y: this.offsetY + ry * this.tileSize + this.tileSize / 2
+    };
   }
 
   // Building hit-test — simple tile bbox check.
@@ -1671,22 +1678,23 @@ export default class WorldMap {
     const rect = this.canvas.getBoundingClientRect();
     this._pointerX = event.clientX - rect.left;
     this._pointerY = event.clientY - rect.top;
-    const agent = this._hitTestAgent(this._pointerX, this._pointerY);
+    // Remember the canvas rect so the render-tick tooltip-chase can
+    // translate canvas coords back to client (viewport) coords without
+    // re-querying on each render.
+    this._canvasRect = rect;
+    const now = performance.now();
+    const agent = this._hitTestAgent(this._pointerX, this._pointerY, now);
     const building = agent ? null : this._hitTestBuilding(this._pointerX, this._pointerY);
     const prevAgent = this.hoveredAgentId;
     const prevBuilding = this.hoveredBuildingId;
     this.hoveredAgentId = agent ? (agent.id || agent.sessionId) : null;
     this.hoveredBuildingId = building ? building.id : null;
-    // Cursor reflects the hit: pointer over agents, help over buildings
-    // (they don't navigate anywhere, just show info), default otherwise.
     if (agent) this.canvas.style.cursor = 'pointer';
     else if (building) this.canvas.style.cursor = 'help';
     else this.canvas.style.cursor = 'default';
     this._updateHoverTooltip(event.clientX, event.clientY, agent, building);
     if (prevAgent !== this.hoveredAgentId || prevBuilding !== this.hoveredBuildingId) {
-      // Force a re-render now so the highlight ring appears on hover,
-      // even if the render loop is temporarily paused.
-      this.render(performance.now());
+      this.render(now);
     }
   }
 
@@ -1721,6 +1729,19 @@ export default class WorldMap {
       lines.push(`<b style="color:#fbbf24">${escapeHtml(name)}</b> <span style="color:#94a3b8">· ${escapeHtml(status)}</span>`);
       if (toolLine) lines.push(`<span style="color:#38bdf8">${escapeHtml(toolLine)}</span>`);
       if (short) lines.push(`<span style="color:#94a3b8">📁 ${escapeHtml(short)}${branch ? ' · ' + escapeHtml(branch) : ''}</span>`);
+      // Token flow — replaces the old dollar-cost field per user's
+      // badge redesign. Read from the per-agent cost record that the
+      // snapshotter already includes in worldState.agents[id].cost.
+      const cost = serverAgent?.cost;
+      if (cost && cost.messageCount > 0) {
+        const fmt = (n) => {
+          if (!Number.isFinite(n) || n <= 0) return '0';
+          if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+          if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+          return String(Math.round(n));
+        };
+        lines.push(`<span style="color:#bae6fd">⇅ ↓${fmt(cost.input)} ↑${fmt(cost.output)} <span style="color:#64748b">· 📨 ${cost.messageCount}</span></span>`);
+      }
       lines.push(`<span style="color:#64748b; font-size: 10px">click · open details</span>`);
     } else if (building) {
       const label = building.label || building.name || building.id;
@@ -1740,9 +1761,21 @@ export default class WorldMap {
       }
     }
     tt.innerHTML = lines.join('<br>');
-    // Position tooltip near cursor, staying on-screen.
-    const pad = 12;
     tt.style.display = 'block';
+    // For agents, anchor the tooltip to the sprite's screen position
+    // (it chases the walking sprite). For buildings, pin near cursor
+    // because buildings don't move.
+    if (agent) {
+      this._repositionHoverTooltipToSprite(agent);
+    } else {
+      this._repositionHoverTooltipToCursor(clientX, clientY);
+    }
+  }
+
+  _repositionHoverTooltipToCursor(clientX, clientY) {
+    const tt = this._hoverTooltip;
+    if (!tt) return;
+    const pad = 12;
     const w = tt.offsetWidth;
     const h = tt.offsetHeight;
     const vw = window.innerWidth;
@@ -1751,6 +1784,29 @@ export default class WorldMap {
     let y = clientY + pad;
     if (x + w + 4 > vw) x = clientX - w - pad;
     if (y + h + 4 > vh) y = clientY - h - pad;
+    tt.style.left = `${Math.max(4, x)}px`;
+    tt.style.top = `${Math.max(4, y)}px`;
+  }
+
+  _repositionHoverTooltipToSprite(avatar, timestamp = performance.now()) {
+    const tt = this._hoverTooltip;
+    if (!tt || !avatar) return;
+    const rect = this._canvasRect || this.canvas.getBoundingClientRect();
+    const { x: cx, y: cy } = this._spriteScreenCenter(avatar, timestamp);
+    // Convert canvas-relative to viewport (clientX/Y) coords.
+    const clientCx = rect.left + cx;
+    const clientCy = rect.top + cy;
+    // Prefer above-right of sprite; flip to above-left if it would
+    // clip the right edge.
+    const pad = 10;
+    const w = tt.offsetWidth;
+    const h = tt.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = clientCx + this.tileSize * 0.6;
+    let y = clientCy - h - pad;
+    if (x + w + 4 > vw) x = clientCx - w - this.tileSize * 0.6;
+    if (y < 4) y = clientCy + this.tileSize * 0.6;
     tt.style.left = `${Math.max(4, x)}px`;
     tt.style.top = `${Math.max(4, y)}px`;
   }
@@ -2613,6 +2669,16 @@ export default class WorldMap {
 
     // Layer 6.5: Day/night sky tint over the world
     this.drawSkyOverlay();
+
+    // Hover tooltip chase — if an agent is currently hovered, reposition
+    // the DOM tooltip to the sprite's interpolated screen position each
+    // frame so it tracks the walking sprite instead of pinning to the
+    // original cursor location.
+    if (this.hoveredAgentId && this._hoverTooltip &&
+        this._hoverTooltip.style.display !== 'none') {
+      const hovered = this.avatarRuntime.get(this.hoveredAgentId);
+      if (hovered) this._repositionHoverTooltipToSprite(hovered, timestamp);
+    }
 
     // Layer 7: UI overlays — time display only.
     // Roster moved to DOM (frontend/components/AgentRoster.js) for
