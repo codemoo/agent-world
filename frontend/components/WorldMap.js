@@ -1280,6 +1280,11 @@ export default class WorldMap {
     this._fountainStartMs = 0;
     this._flockStartMs = -1;      // -1 = no active flock; schedule picks next
     this._flockNextAt = 0;         // wall-clock ms when the next flyover begins
+    // Shooting-star state mirrors the flock scheduler: -1 means idle,
+    // _starNextAt is the next at-earliest wake. Only active when
+    // skyNightFactor >= 0.35; daytime calls short-circuit.
+    this._starStartMs = -1;
+    this._starNextAt = 0;
     this.frameId = null;
     this.tileSize = 24;
     this.offsetX = 0;
@@ -2779,6 +2784,12 @@ export default class WorldMap {
     // the map. Ambient wildlife, no interaction.
     this.drawBirdFlock(timestamp);
 
+    // Layer 2.96: Shooting star — rare diagonal streak at night.
+    this.drawShootingStar(timestamp);
+
+    // Layer 2.97: Coffee steam above idle sprites inside the café.
+    this.drawCafeSteam(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3898,6 +3909,131 @@ export default class WorldMap {
       ctx.globalAlpha = 0.95;
       ctx.fillStyle = '#ffffff';
       ctx.fillText('🕊️', px, py);
+    }
+    ctx.restore();
+  }
+
+  // Shooting-star flyover. Only fires at night (skyNightFactor ≥0.35).
+  // A single streak lasts 1100ms, crossing a random diagonal in the
+  // upper 35% of the map. Scheduled 40–120s apart when it's dark; the
+  // next-at timer is cleared when the sky brightens so we don't queue
+  // a star that'd land in daylight.
+  drawShootingStar(timestamp) {
+    const night = this.skyNightFactor();
+    if (night < 0.35) {
+      // Reset schedule during daylight so we don't immediately fire
+      // one when the user manually switches to "night" mode.
+      this._starStartMs = -1;
+      this._starNextAt = 0;
+      return;
+    }
+    const layout = this.sceneLayout;
+    if (!layout) return;
+
+    if (this._starNextAt === 0) {
+      this._starNextAt = timestamp + 8000 + Math.random() * 15000;
+    }
+    if (this._starStartMs < 0) {
+      if (timestamp < this._starNextAt) return;
+      this._starStartMs = timestamp;
+      // Random diagonal within the upper band. Direction: right (1) or left (-1).
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const yStart = 0.5 + Math.random() * (layout.height * 0.25);
+      const yEnd   = yStart + 2 + Math.random() * 4;
+      this._starParams = {
+        xStart: dir > 0 ? -2 : layout.width + 2,
+        xEnd:   dir > 0 ? layout.width + 2 : -2,
+        yStart, yEnd,
+        durationMs: 1100
+      };
+    }
+
+    const p = this._starParams;
+    const elapsed = timestamp - this._starStartMs;
+    if (elapsed > p.durationMs) {
+      this._starStartMs = -1;
+      this._starNextAt = timestamp + 40_000 + Math.random() * 80_000;
+      return;
+    }
+    const t = elapsed / p.durationMs;
+    const ts = this.tileSize;
+    const nx = p.xStart + (p.xEnd - p.xStart) * t;
+    const ny = p.yStart + (p.yEnd - p.yStart) * t;
+    const headX = this.offsetX + nx * ts;
+    const headY = this.offsetY + ny * ts;
+    // Tail extends backward ~3 tiles.
+    const tailLenTiles = 3;
+    const tailX = this.offsetX + (nx - (p.xEnd - p.xStart) * 0.04 * tailLenTiles) * ts;
+    const tailY = this.offsetY + (ny - (p.yEnd - p.yStart) * 0.04 * tailLenTiles) * ts;
+
+    const ctx = this.context;
+    ctx.save();
+    // Fade in fast, out slow.
+    const a = t < 0.15 ? (t / 0.15) : Math.max(0, 1 - (t - 0.15) / 0.85);
+    // Gradient streak: bright head → transparent tail.
+    const grad = ctx.createLinearGradient(tailX, tailY, headX, headY);
+    grad.addColorStop(0,   'rgba(186, 230, 253, 0)');
+    grad.addColorStop(0.7, `rgba(254, 240, 138, ${a * 0.55})`);
+    grad.addColorStop(1,   `rgba(255, 255, 255, ${a})`);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tailX, tailY);
+    ctx.lineTo(headX, headY);
+    ctx.stroke();
+    // Bright head spark.
+    ctx.fillStyle = `rgba(255, 255, 255, ${a})`;
+    ctx.beginPath();
+    ctx.arc(headX, headY, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Coffee steam — ☕ wisps rising from Idle sprites currently inside
+  // the café location. Slow 2s loop, one wisp per sprite, subtle alpha.
+  // Visible sign that the lounge is actually being lounged in.
+  drawCafeSteam(timestamp) {
+    const layout = this.sceneLayout;
+    if (!layout || !Array.isArray(layout.locations)) return;
+    const cafe = layout.locations.find(l => l.id === 'cafe');
+    if (!cafe) return;
+
+    const x1 = cafe.x, y1 = cafe.y;
+    const x2 = cafe.x + (cafe.w || 5), y2 = cafe.y + (cafe.h || 4);
+    // Collect Idle sprites standing inside the café bbox.
+    const mugs = [];
+    this.avatarRuntime.forEach(r => {
+      if (r.x < x1 || r.x >= x2 || r.y < y1 || r.y >= y2) return;
+      const s = r.serverStatus;
+      if (s !== 'Idle' && s !== 'IdleStale') return;
+      if (r.moving) return;
+      mugs.push(r);
+    });
+    if (mugs.length === 0) return;
+
+    const ctx = this.context;
+    const ts = this.tileSize;
+    const LOOP_MS = 2400;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const r of mugs) {
+      // Phase per-sprite so multiple cafe sitters don't steam in sync.
+      const phase = (hashString(r.id || 'x') & 0xffff) / 0xffff;
+      const t = ((timestamp / LOOP_MS) + phase) % 1;
+      const { rx, ry } = renderTilePos(r, timestamp);
+      const cx = this.offsetX + rx * ts + ts / 2;
+      const cy = this.offsetY + ry * ts + ts / 2;
+      // Rise from just above the head, drifting slightly sideways.
+      const rise = ts * (0.85 + t * 0.9);
+      const drift = Math.sin(t * Math.PI * 2 + phase * 6.28) * ts * 0.12;
+      // Fade in then out; peak around t=0.3.
+      const a = t < 0.2 ? (t / 0.2) * 0.65 : Math.max(0, (1 - (t - 0.2) / 0.8) * 0.65);
+      if (a <= 0.02) continue;
+      ctx.globalAlpha = a;
+      ctx.font = `${Math.max(10, ts * 0.38)}px "Segoe UI Emoji", sans-serif`;
+      ctx.fillText('☕', cx + drift, cy - rise);
     }
     ctx.restore();
   }
