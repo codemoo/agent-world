@@ -2036,17 +2036,133 @@ export default class WorldMap {
       return;
     }
 
-    const fallbackColorByType = {
-      dirt: COLORS.dirt,
-      path: COLORS.path,
-      sand: COLORS.sand,
-      stone: '#8d97a0'
-    };
+    // Procedural terrain fallback. `DEFAULT_SPRITE_DEFINITIONS` leaves
+    // dirt/path/sand/stone with empty candidate arrays (B-type autotile
+    // cell extraction is fragile — see README) so these always land in
+    // the fallback path, loaded pack or not. Upgrading the fallback
+    // from a flat fillRect to a per-type texture brings minimal-mode
+    // visual parity closer to the grass sprite tiles.
+    if (tileType === 'dirt')  { this.drawDirtTile(px, py, x, y);  return; }
+    if (tileType === 'path')  { this.drawPathTile(px, py, x, y);  return; }
+    if (tileType === 'sand')  { this.drawSandTile(px, py, x, y);  return; }
+    if (tileType === 'stone') { this.drawStoneTile(px, py, x, y); return; }
 
-    this.context.fillStyle =
-      fallbackColorByType[tileType] ||
-      ((x + y) % 2 === 0 ? COLORS.grassA : COLORS.grassB);
+    // Grass fallback keeps the checker pattern for now (asset path
+    // already serves grassA/grassB).
+    this.context.fillStyle = (x + y) % 2 === 0 ? COLORS.grassA : COLORS.grassB;
     this.context.fillRect(px, py, this.tileSize, this.tileSize);
+  }
+
+  // Shared deterministic hash for tile-local scatter positions. Keeps
+  // the per-tile procedural texture stable across frames so dirt dots
+  // don't shimmer every render.
+  _tileHash(x, y, salt) {
+    let h = (x * 73856093) ^ (y * 19349663) ^ (salt * 83492791);
+    h = (h ^ (h >>> 13)) * 2246822507;
+    h = (h ^ (h >>> 16)) >>> 0;
+    return h;
+  }
+
+  drawDirtTile(px, py, tx, ty) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    // Base fill — warm brown with slight per-tile variation so large
+    // dirt plots don't read as one continuous sheet.
+    const v = (this._tileHash(tx, ty, 1) % 12) - 6;
+    const r = 196 + v, g = 164 + v * 0.7, b = 108 + v * 0.5;
+    ctx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+    ctx.fillRect(px, py, ts, ts);
+    // Scatter 3 tiny darker dots for pebble/clod texture.
+    ctx.fillStyle = 'rgba(90, 60, 32, 0.45)';
+    for (let i = 0; i < 3; i++) {
+      const h = this._tileHash(tx, ty, i + 2);
+      const dx = (h % 100) / 100;
+      const dy = ((h >>> 7) % 100) / 100;
+      const radius = Math.max(0.6, ts * (0.03 + ((h >>> 14) & 7) / 280));
+      ctx.beginPath();
+      ctx.arc(px + ts * (0.15 + 0.7 * dx), py + ts * (0.15 + 0.7 * dy), radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawPathTile(px, py, tx, ty) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    // Pale stone-path — uniform base with subtle joint lines between
+    // tiles so adjacent paths read as a walkway rather than a blob.
+    ctx.fillStyle = COLORS.path;
+    ctx.fillRect(px, py, ts, ts);
+    // Brick-pattern joints: a single horizontal + vertical line at
+    // deterministic positions per tile, thin grey.
+    ctx.strokeStyle = 'rgba(110, 95, 72, 0.35)';
+    ctx.lineWidth = 1;
+    const h = this._tileHash(tx, ty, 11);
+    const horizY = py + ts * (0.35 + ((h & 7) / 40));
+    const vertX  = px + ts * (0.45 + (((h >>> 5) & 7) / 40));
+    ctx.beginPath();
+    ctx.moveTo(px, horizY); ctx.lineTo(px + ts, horizY);
+    ctx.moveTo(vertX, py);  ctx.lineTo(vertX, py + ts);
+    ctx.stroke();
+    // Occasional light speckle for weathered look.
+    if ((h & 0x3) === 0) {
+      ctx.fillStyle = 'rgba(248, 240, 220, 0.5)';
+      ctx.beginPath();
+      ctx.arc(px + ts * 0.3, py + ts * 0.7, Math.max(0.8, ts * 0.045), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawSandTile(px, py, tx, ty) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    const v = (this._tileHash(tx, ty, 21) % 10) - 4;
+    const r = 224 + v, g = 211 + v, b = 168 + v;
+    ctx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+    ctx.fillRect(px, py, ts, ts);
+    // Fine grain — 5 tiny pale dots scattered, very low alpha, for
+    // "sandy surface" impression. Uses a pale warm tint instead of
+    // pure white so it doesn't read as snow.
+    ctx.fillStyle = 'rgba(170, 135, 90, 0.35)';
+    for (let i = 0; i < 5; i++) {
+      const h = this._tileHash(tx, ty, i + 22);
+      const dx = (h % 100) / 100;
+      const dy = ((h >>> 9) % 100) / 100;
+      ctx.beginPath();
+      ctx.arc(px + ts * dx, py + ts * dy, Math.max(0.5, ts * 0.02), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawStoneTile(px, py, tx, ty) {
+    const ts = this.tileSize;
+    const ctx = this.context;
+    const v = (this._tileHash(tx, ty, 31) % 14) - 7;
+    const r = 141 + v * 0.6, g = 151 + v * 0.6, b = 160 + v * 0.6;
+    ctx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+    ctx.fillRect(px, py, ts, ts);
+    // Rough patches — 2 irregular darker blobs so stone reads as a
+    // rough slab, not a painted square. Deterministic per-tile.
+    ctx.fillStyle = 'rgba(60, 68, 78, 0.32)';
+    for (let i = 0; i < 2; i++) {
+      const h = this._tileHash(tx, ty, i + 32);
+      const cx = px + ts * (0.2 + ((h & 63) / 127));
+      const cy = py + ts * (0.2 + (((h >>> 6) & 63) / 127));
+      const rx = ts * (0.14 + ((h >>> 12) & 7) / 80);
+      const ry = ts * (0.10 + ((h >>> 18) & 7) / 80);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Highlight a single light patch for depth.
+    const hL = this._tileHash(tx, ty, 40);
+    ctx.fillStyle = 'rgba(220, 225, 230, 0.30)';
+    ctx.beginPath();
+    ctx.ellipse(
+      px + ts * (0.3 + ((hL & 15) / 50)),
+      py + ts * (0.25 + (((hL >>> 4) & 15) / 60)),
+      ts * 0.10, ts * 0.06, 0, 0, Math.PI * 2
+    );
+    ctx.fill();
   }
 
   drawWaterTile(px, py, tileX, tileY, timestamp) {
