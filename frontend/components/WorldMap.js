@@ -2659,6 +2659,10 @@ export default class WorldMap {
     // but under agents so seated sprites aren't washed out.
     this.drawNightWindowGlow(timestamp);
 
+    // Layer 2.6: Activity glow — always-on warm overlay scaled by the
+    // count of Working occupants per building. Stacks with night glow.
+    this.drawBuildingActivityGlow(timestamp);
+
     // Layer 3: Props (trees, rocks, etc.)
     layout.props.forEach(prop => {
       this.drawProp(prop);
@@ -3220,6 +3224,51 @@ export default class WorldMap {
   // Warm window-light spill inside each building interior. Only paints
   // once the sky is dark enough to notice (skyNightFactor > 0.28). ~30%
   // of buildings flicker (hash-seeded); the rest are steady for ambience.
+  // Item H — activity glow per building. Always on (not night-gated),
+  // strength = min(1, working / 3) with gentle pulse. Reads as
+  // "this building has people actively working" at a glance.
+  // Complements the night-only ambient window-glow (both composite
+  // with 'lighter' so they stack cleanly).
+  drawBuildingActivityGlow(timestamp) {
+    const layout = this.sceneLayout;
+    if (!layout || !Array.isArray(layout.buildings)) return;
+
+    const ctx = this.context;
+    const prevComp = ctx.globalCompositeOperation;
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (const b of layout.buildings) {
+      const occ = this._countOccupants(b);
+      if (occ.working <= 0) continue;
+      // 1 worker → 0.5, 2 → 0.83, 3+ → 1.0. Max output alpha 0.32.
+      const strength = Math.min(1, (0.5 + occ.working * 0.27)) * 0.32;
+
+      // Gentle pulse — different phase per building so they don't
+      // breathe in sync. 4s period, ±12% amplitude.
+      const phase = (hashString(b.id || `${b.x},${b.y}`) & 0xffff) / 0xffff * Math.PI * 2;
+      const pulse = 0.88 + 0.12 * Math.sin(timestamp / 640 + phase);
+
+      const px = this.offsetX + b.x * this.tileSize;
+      const py = this.offsetY + b.y * this.tileSize;
+      const w = this.tileSize * (b.w || 5);
+      const h = this.tileSize * (b.h || 4);
+      const cx = px + w / 2;
+      const cy = py + h / 2;
+      const rad = Math.max(w, h) * 0.5;
+
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0, `rgba(254, 240, 138, ${strength * pulse})`);
+      grad.addColorStop(0.55, `rgba(251, 191, 36, ${strength * 0.5 * pulse})`);
+      grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(px - 4, py - 4, w + 8, h + 8);
+    }
+
+    ctx.globalCompositeOperation = prevComp;
+    ctx.globalAlpha = prevAlpha;
+  }
+
   drawNightWindowGlow(timestamp) {
     const alpha = this.skyNightFactor();
     if (alpha < 0.28) return;
