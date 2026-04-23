@@ -96,7 +96,7 @@ test('Waiting → Working fires self 🎉 (no cooldown, no radius)', async () =>
   assert.equal(rt.reactionEmote?.icon, '🎉');
 });
 
-test('productive burst newly opened → neighbors get ✨', async () => {
+test('productive burst newly opened → source ✨ + neighbors 👏 (applause cascade)', async () => {
   const { advanceAvatarRuntimeEntries } = await load();
   const source = mkRt({ id: 'source', x: 10, y: 10,
     productiveUntil: 5000, _prevProductiveUntil: 0 });
@@ -110,7 +110,8 @@ test('productive burst newly opened → neighbors get ✨', async () => {
   advanceAvatarRuntimeEntries(
     runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
   );
-  assert.equal(neighbor.reactionEmote?.icon, '✨');
+  assert.equal(source.reactionEmote?.icon, '✨', 'source sparkles');
+  assert.equal(neighbor.reactionEmote?.icon, '👏', 'neighbor applauds');
   assert.equal(far.reactionEmote, null, 'out-of-radius = no reaction');
 });
 

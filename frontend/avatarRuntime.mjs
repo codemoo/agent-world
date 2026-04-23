@@ -585,6 +585,14 @@ const PASSBY_CHANCE        = 0.45;       // per-eligible-tick fire chance
 const GLANCE_PROB_PER_MS   = 0.00018;    // ≈ 0.01/frame at 60fps, 1 per ~5.5s
 const GLANCE_DUR_MS        = 250;
 
+// Nightly yawn — during late-hours (≥20:00 or <06:00 local), Idle
+// sprites occasionally emit 💤. Self-only (no proximity fan-out),
+// long per-sprite cooldown so it reads as ambient texture, not
+// cartoonish spam. Yields to any reactionEmote already active.
+const YAWN_COOLDOWN_MS     = 180_000;    // 3 minutes per sprite
+const YAWN_PROB_PER_MS     = 0.00003;    // ≈ once per ~33s of eligible time
+const YAWN_DUR_MS          = 1600;
+
 // Detect social events that just happened this tick and dispatch
 // observer emotes. Purely client-side: no server state is read.
 // Deterministic tie-break: event enumeration sorted by agent id
@@ -697,9 +705,21 @@ function updateReactions(avatarRuntime, timestamp) {
 
     const { kind, sourceId, source } = ev;
     const radius = kind === 'farewell' ? REACTION_RADIUS_WAVE : REACTION_RADIUS_NORMAL;
-    const icon = kind === 'error' ? '😦'
-               : kind === 'burst' ? '✨'
-               : '👋';
+    // Observer icon per event kind. For burst, observers clap (👏)
+    // while the source keeps the ✨ pop — creates "applause cascade"
+    // feel when one sprite's productivity burst lights up neighbors.
+    const icon = kind === 'error'    ? '😦'
+               : kind === 'burst'    ? '👏'
+               : /* farewell */        '👋';
+    // Light up the SOURCE too on burst so you can see who's being
+    // applauded, not just the crowd. Skip for error (source already
+    // has the errored-status visual) and farewell (source is fading).
+    if (kind === 'burst') {
+      source.reactionEmote = {
+        icon: '✨',
+        expiresAt: timestamp + REACTION_DUR_MS
+      };
+    }
     const durMs = kind === 'farewell' ? REACTION_WAVE_MS : REACTION_DUR_MS;
     const cooldownMs = kind === 'error'    ? REACTION_CD_ERROR_MS
                      : kind === 'burst'    ? REACTION_CD_BURST_MS
@@ -740,6 +760,28 @@ function updateReactions(avatarRuntime, timestamp) {
       active[i][1].reactionEmote = null;
     }
   }
+}
+
+// Nightly yawn pass. Idle sprites during late hours (20:00–06:00)
+// occasionally emit 💤. Self-only, long cooldown; yields to any
+// active reactionEmote so real social signals still win.
+function tryNightYawn(avatarRuntime, timestamp, rng, nowClock = new Date()) {
+  const h = nowClock.getHours();
+  const isNightHour = h >= 20 || h < 6;
+  if (!isNightHour) return;
+  avatarRuntime.forEach(rt => {
+    const status = rt.serverStatus;
+    if (status && status !== 'Idle' && status !== 'IdleStale') return;
+    if (rt.reactionEmote && rt.reactionEmote.expiresAt > timestamp) return;
+    if (rt.chatPauseUntil && timestamp < rt.chatPauseUntil) return;
+    if (timestamp < (rt._yawnUntil || 0)) return;
+    const dt = Math.max(0, Math.min(100, timestamp - (rt._yawnLastCheckAt || timestamp)));
+    rt._yawnLastCheckAt = timestamp;
+    if (dt === 0) return;
+    if (rng() > dt * YAWN_PROB_PER_MS) return;
+    rt.reactionEmote = { icon: '💤', expiresAt: timestamp + YAWN_DUR_MS };
+    rt._yawnUntil = timestamp + YAWN_COOLDOWN_MS;
+  });
 }
 
 // Pass-by greeting pass. Runs per tick before movement so the emote +
@@ -1234,6 +1276,7 @@ export function advanceAvatarRuntimeEntries(
   // facingOverride writes survive to the render pass.
   tryPassByGreet(avatarRuntime, timestamp, rng);
   tryGlanceAround(avatarRuntime, timestamp, rng);
+  tryNightYawn(avatarRuntime, timestamp, rng);
 
   // Collect which stations are currently claimed (targeted or occupied) so
   // routing picks different ones for each agent.
