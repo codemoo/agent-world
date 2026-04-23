@@ -1,4 +1,4 @@
-import { buildConversation } from './agentDialogues.mjs';
+import { buildConversation, GROUP_LINES } from './agentDialogues.mjs';
 import { interactionKindFor } from './interactionKind.mjs';
 import { resolvePose, POSES } from './poseResolver.mjs';
 
@@ -620,6 +620,114 @@ function faceDirection(dx, dy) {
   return dy > 0 ? 'down' : 'up';
 }
 
+// Phase 4 group-scene tuning.
+const GROUP_SOCIAL_KINDS = new Set([
+  'tavern', 'tavern_seat', 'plaza', 'lounge', 'break_area'
+]);
+const GROUP_MIN_MEMBERS = 3;
+const GROUP_DUR_MS = 90_000;
+const GROUP_START_CHANCE = 0.20;        // per eligible tick
+const GROUP_REFORM_COOLDOWN_MS = 60_000; // per-location
+
+// Form a group scene: N members at the same social location start a
+// 90-second scripted round-table. One random member speaks per
+// CHAT_TURN_MS turn; others listen. Members pause movement and face
+// the centroid. Uses the existing chatQueue channel so rendering
+// stays unchanged.
+function startGroupScene(members, timestamp, locationId, rng) {
+  const endAt = timestamp + GROUP_DUR_MS;
+  const turns = Math.floor(GROUP_DUR_MS / CHAT_TURN_MS);
+  const groupId = `grp_${locationId}_${timestamp}`;
+
+  // Centroid to face toward.
+  const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
+  const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
+
+  for (const m of members) {
+    m.chatPauseUntil = endAt;
+    m.chatPartnerId = null;                 // group, not 1:1
+    m.chatQueue = [];
+    m.chat = null;
+    m.groupId = groupId;
+    m.inGroupUntil = endAt;
+    m._groupLocationId = locationId;
+    m._groupMemberIds = members.map(x => x.id || '').filter(Boolean);
+
+    // Turn to face the centroid; collapse any in-flight movement.
+    m.direction = faceDirection(cx - m.x, cy - m.y);
+    m.path = null;
+    m.pathIndex = 0;
+    m.prevX = m.x;
+    m.prevY = m.y;
+    m.stepStartedAt = timestamp - 1000;
+  }
+
+  // Schedule turns. Every turn picks one member as speaker.
+  // Deterministic from rng (seeded externally) but not predictable
+  // across ticks — OK because this only runs once at formation.
+  for (let t = 0; t < turns; t++) {
+    const speaker = members[Math.floor(rng() * members.length)];
+    const line = GROUP_LINES[Math.floor(rng() * GROUP_LINES.length)];
+    speaker.chatQueue.push({
+      text: line,
+      showAt: timestamp + t * CHAT_TURN_MS,
+      expireAt: timestamp + (t + 1) * CHAT_TURN_MS
+    });
+  }
+}
+
+// Detect + form groups. Runs BEFORE the 1:1 pair loop so in-group
+// members have chatPauseUntil set, which makes the pair loop skip
+// them naturally.
+function tryStartGroupScenes(avatarRuntime, timestamp, rng) {
+  const bucket = new Map(); // locationId → [runtime]
+  avatarRuntime.forEach(rt => {
+    if (rt.chatPauseUntil && timestamp < rt.chatPauseUntil) return;
+    if (rt.chatCooldownUntil && timestamp < rt.chatCooldownUntil) return;
+    if (!rt.seated) return;
+    if (!GROUP_SOCIAL_KINDS.has(rt.interactionKind)) return;
+    const locId = rt.currentDestination?.locationId;
+    if (!locId) return;
+    // Reform suppressor — per-observer-per-location (stored on
+    // runtime so each member carries its own recent-dispersal
+    // timestamp after being in a prior group at this location).
+    const reformUntil = rt.chatRecentGroups?.[locId] || 0;
+    if (timestamp < reformUntil) return;
+    if (!bucket.has(locId)) bucket.set(locId, []);
+    bucket.get(locId).push(rt);
+  });
+
+  for (const [locId, members] of bucket) {
+    if (members.length < GROUP_MIN_MEMBERS) continue;
+    if (rng() > GROUP_START_CHANCE) continue;
+    startGroupScene(members, timestamp, locId, rng);
+  }
+}
+
+// Called when a runtime's chatPauseUntil expires — if the runtime
+// was in a group, apply pair cooldown to every other member + set
+// group-reform suppressor on the location for each member.
+function onGroupDisband(runtime, avatarRuntime, timestamp) {
+  if (!runtime.groupId) return;
+  const locId = runtime._groupLocationId;
+  const memberIds = runtime._groupMemberIds || [];
+  for (const otherId of memberIds) {
+    if (otherId === runtime.id) continue;
+    if (!runtime.chatRecentPartners) runtime.chatRecentPartners = {};
+    runtime.chatRecentPartners[otherId] = timestamp + CHAT_PAIR_COOLDOWN_MS;
+  }
+  if (locId) {
+    if (!runtime.chatRecentGroups) runtime.chatRecentGroups = {};
+    runtime.chatRecentGroups[locId] = timestamp + GROUP_REFORM_COOLDOWN_MS;
+  }
+  // Clear group bookkeeping so the runtime can re-enter ambient
+  // social flow after the individual cooldown.
+  runtime.groupId = null;
+  runtime._groupLocationId = null;
+  runtime._groupMemberIds = null;
+  runtime.inGroupUntil = 0;
+}
+
 // Pair two agents into a scripted conversation: alternating lines, both
 // paused + facing each other for the full duration.
 function startConversation(a, b, timestamp, rng) {
@@ -666,12 +774,15 @@ function startConversation(a, b, timestamp, rng) {
   if (a.id) b.chatRecentPartners[a.id] = until;
 }
 
-// Step 1: expire finished conversations + surface the currently-active
-// line for each agent. Step 2: try to pair up any eligible agents.
-function updateAgentChats(avatarRuntime, timestamp, rng) {
+// Expire finished conversations + surface the currently-active line
+// for each agent. Runs before pose resolution so disbanded members
+// are already free to re-pick destinations.
+function updateAgentChatsExpire(avatarRuntime, timestamp) {
   avatarRuntime.forEach(runtime => {
     if (runtime.chatPauseUntil && runtime.chatPauseUntil <= timestamp) {
-      // conversation ended → free up state + apply a cooldown
+      // conversation ended → apply group disband hook first (it reads
+      // runtime.groupId before we clear it), then free up state.
+      onGroupDisband(runtime, avatarRuntime, timestamp);
       runtime.chatPauseUntil = 0;
       runtime.chatPartnerId = null;
       runtime.chatQueue = null;
@@ -691,6 +802,14 @@ function updateAgentChats(avatarRuntime, timestamp, rng) {
         : null;
     }
   });
+}
+
+// Try to start new conversations (group first, then 1:1 pairs). Runs
+// AFTER pose resolution so interactionKind + seated are fresh.
+function updateAgentChatsStart(avatarRuntime, timestamp, rng) {
+  // Phase 4: group scenes first so members are already paused and
+  // invisible to pair matching.
+  tryStartGroupScenes(avatarRuntime, timestamp, rng);
 
   // Try to start new conversations for nearby pairs.
   const agents = Array.from(avatarRuntime.values());
@@ -736,10 +855,10 @@ export function advanceAvatarRuntimeEntries(
     runtime.facingOverride = null;
   });
 
-  // Ambient chat: expire stale lines + let nearby agents greet each
-  // other. Runs before movement so the current-tick chat state is
-  // rendered alongside the resulting positions.
-  updateAgentChats(avatarRuntime, timestamp, rng);
+  // Ambient chat — expire step. Split from the start step because
+  // group detection needs up-to-date seated/interactionKind, which
+  // aren't resolved until the pose pass below.
+  updateAgentChatsExpire(avatarRuntime, timestamp);
 
   // Per-tick visual flags:
   //   seated  — paused at a station → idle frame + small down-shift
@@ -798,6 +917,10 @@ export function advanceAvatarRuntimeEntries(
       runtime.facingOverride = phase === 0 ? 'left' : 'right';
     }
   });
+
+  // Phase 4: group detection + 1:1 pair matching. Runs AFTER pose
+  // resolution so seated + interactionKind are current.
+  updateAgentChatsStart(avatarRuntime, timestamp, rng);
 
   // Phase 3: dispatch reaction emotes from this tick's social events
   // (error / burst / farewell / approval). Must run AFTER pose

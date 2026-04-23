@@ -126,6 +126,27 @@ export const WAITING_SUPPORT_REPLIES = [
   'Clicking now.'
 ];
 
+// Group scenes — 3+ agents at a tavern / lounge / plaza / break_area.
+// No strict turn order; lines work as standalone observations so
+// listeners don't need to reply-match.
+export const GROUP_LINES = [
+  "Anyone else's CI red this morning?",
+  'Nice to see the whole crew here.',
+  "I needed this break.",
+  'Someone got the coffee going?',
+  'Deploy window closes in an hour.',
+  'Pretty quiet village today.',
+  "I'll pair on whatever after this.",
+  'PRs are stacking up.',
+  'Pipeline finally green.',
+  'We really should document this somewhere.',
+  'The new model is fast, huh?',
+  "Weekend is close — hang in there.",
+  "Who's on call tonight?",
+  'Nice afternoon.',
+  "Anyone tried that new linter yet?"
+];
+
 // FNV-1a-ish quick hash for deterministic picks.
 function hashToInt(str) {
   let h = 2166136261;
