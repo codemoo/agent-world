@@ -103,6 +103,47 @@ const OUTDOOR_ICONS = {
   'outdoor.mining': '⛏', 'outdoor.foraging': '🍓', 'outdoor.napping': '😴'
 };
 
+// Emoji / symbol fallback for thumbnail rendering when the PixyMoon
+// pack isn't loaded. Covers every `kind/type` combination the editor
+// lists so a minimal-mode user sees recognizable previews instead of
+// a row of '?' placeholders. Matched against `type` first, then a
+// kind-level default.
+const THUMB_FALLBACK_ICONS = {
+  // Indoor furniture — matched as substrings on the type string.
+  indoor: {
+    'bed': '🛏',      'table': '🪑',    'chair': '💺',     'sofa': '🛋',
+    'nightstand': '🗄', 'dresser': '🗄', 'wardrobe': '🗄',  'cabinet': '🗄',
+    'bookshelf': '📚',  'desk': '🖥',   'counter': '🪟',   'shelf': '📦',
+    'stove': '🔥',     'fridge': '🧊', 'plant': '🪴',     'curtain': '🪟',
+    'display': '🖼',   'safe': '🔒'
+  },
+  // Building type → an icon suggesting its category.
+  building: {
+    'house':  '🏠', 'house2': '🏡', 'house.green':  '🏡', 'house.green2': '🏡',
+    'house.gray': '🏚', 'tower': '🗼', 'large':  '🏢', 'shop': '🏪'
+  },
+  // Tree/prop type: outdoor objects the catalog lists as placeable.
+  tree: {
+    'conifer': '🌲', 'big': '🌳', 'big.alt': '🌳', 'alt': '🌳',
+    'alt2': '🌳',    'alt3': '🌳', 'rock': '🪨',    'rock.small': '🪨'
+  }
+};
+
+function pickThumbFallbackIcon(kind, type) {
+  if (kind === 'outdoor') return OUTDOOR_ICONS[type] || '◉';
+  const bucket = THUMB_FALLBACK_ICONS[kind];
+  if (!bucket || typeof type !== 'string') {
+    return kind === 'tree' ? '🌳' : kind === 'building' ? '🏠' : '◇';
+  }
+  // Try exact match, then substring match on longest key first.
+  if (bucket[type]) return bucket[type];
+  const stripped = type.replace(/^(indoor|building|prop)\./, '');
+  if (bucket[stripped]) return bucket[stripped];
+  const keys = Object.keys(bucket).sort((a, b) => b.length - a.length);
+  for (const k of keys) if (type.includes(k)) return bucket[k];
+  return kind === 'tree' ? '🌳' : kind === 'building' ? '🏠' : '◇';
+}
+
 export default class WorldEditor {
   constructor({ worldMap, apiBaseUrl, authToken, fetchImpl }) {
     this.worldMap = worldMap;
@@ -974,10 +1015,16 @@ export default class WorldEditor {
     const spriteKey = resolveSpriteKey(kind, type);
     const sprite = this.worldMap?.spriteStore?.getSprite(spriteKey);
     if (!sprite || !sprite.image) {
-      ctx.fillStyle = '#475569';
-      ctx.font = '9px monospace';
+      // Minimal-mode fallback — draw a recognizable emoji centered in
+      // the thumbnail cell so the placement list is usable without
+      // the PixyMoon pack installed. Matches the world's procedural
+      // visual vocabulary (🌳 for trees, 🏠 for buildings, etc.).
+      const icon = pickThumbFallbackIcon(kind, type);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `${Math.floor(size * 0.62)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText('?', size / 2, size / 2 + 3);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(icon, size / 2, size / 2 + 1);
       return canvas;
     }
     // Fit sprite into the square, preserving aspect ratio.
