@@ -1,21 +1,25 @@
-// Small bottom-corner badge showing the running $ total across all
-// live sessions in the village. Polls `/api/cost` every 5 s while
-// visible. Click expands into a per-session breakdown tooltip.
+// Top-left token-flow badge showing aggregate Claude session activity
+// across the village. Polls `/api/cost` every 5s. Click expands into a
+// per-session breakdown popover.
+//
+// Reading order (Codex-reviewed): tokens primary ("what's flowing
+// right now"), message count secondary, cache moved into the popover
+// so the top-level line stays scannable even when cache hits tens of
+// millions.
 
-const BUDGET_VERSION = 1;
-
-function fmtUSD(n) {
-  if (!Number.isFinite(n)) return '$0.00';
-  if (n >= 100) return '$' + n.toFixed(0);
-  if (n >= 1)   return '$' + n.toFixed(2);
-  return '$' + n.toFixed(3);
-}
+const BUDGET_VERSION = 2;
 
 function fmtTokens(n) {
   if (!Number.isFinite(n) || n <= 0) return '0';
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
   if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
+  return String(Math.round(n));
+}
+
+function fmtCount(n) {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  if (n >= 10_000) return (n / 1_000).toFixed(1) + 'k';
+  return String(Math.round(n));
 }
 
 const STYLES = `
@@ -23,9 +27,9 @@ const STYLES = `
     position: fixed;
     top: 48px; left: 12px;
     background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(251, 191, 36, 0.35);
+    border: 1px solid rgba(125, 211, 252, 0.35);
     border-radius: 8px;
-    color: #fde68a;
+    color: #bae6fd;
     font: 600 12px/1.2 Menlo, Monaco, monospace;
     padding: 6px 10px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.35);
@@ -37,14 +41,14 @@ const STYLES = `
   }
   #world-budget:hover { background: rgba(30, 41, 59, 0.95); transform: translateY(-1px); }
   #world-budget[data-empty="1"] { display: none; }
-  #world-budget .wb-icon { color: #fbbf24; }
+  #world-budget .wb-icon { color: #38bdf8; }
   #world-budget .wb-sub {
     font-weight: 400; color: #94a3b8; font-size: 10px;
   }
   #world-budget-popover {
     position: fixed;
     top: 84px; left: 12px;
-    min-width: 280px; max-width: 380px;
+    min-width: 300px; max-width: 420px;
     background: rgba(15, 23, 42, 0.95);
     border: 1px solid rgba(148, 163, 184, 0.3);
     border-radius: 9px;
@@ -59,17 +63,17 @@ const STYLES = `
   #world-budget-popover h4 {
     margin: 0 0 8px;
     font-size: 11px;
-    color: #fbbf24;
+    color: #38bdf8;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+    border-bottom: 1px solid rgba(125, 211, 252, 0.2);
     padding-bottom: 4px;
   }
   #world-budget-popover .wb-row {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 8px;
-    padding: 2px 0;
+    padding: 3px 0;
     align-items: baseline;
   }
   #world-budget-popover .wb-row .wb-name {
@@ -78,9 +82,13 @@ const STYLES = `
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  #world-budget-popover .wb-row .wb-cost {
-    color: #fde68a;
+  #world-budget-popover .wb-row .wb-nums {
+    color: #bae6fd;
     font-variant-numeric: tabular-nums;
+    font-size: 10px;
+  }
+  #world-budget-popover .wb-row .wb-nums .wb-dim {
+    color: #64748b;
   }
   #world-budget-popover .wb-model {
     color: #64748b;
@@ -94,7 +102,8 @@ const STYLES = `
     display: grid;
     grid-template-columns: 1fr auto;
     font-weight: 600;
-    color: #fbbf24;
+    color: #38bdf8;
+    font-variant-numeric: tabular-nums;
   }
   #world-budget-popover .wb-hint {
     color: #475569;
@@ -123,7 +132,7 @@ export default class WorldBudgetBadge {
     this.window = win;
     this.pollHandle = null;
     this.popoverOpen = false;
-    console.log(`[WorldBudgetBadge v${BUDGET_VERSION}] init`);
+    console.log(`[WorldTokenBadge v${BUDGET_VERSION}] init`);
 
     injectStyles(doc);
     this._build();
@@ -139,9 +148,9 @@ export default class WorldBudgetBadge {
     this.root.dataset.empty = '1';
     this.root.setAttribute('role', 'button');
     this.root.setAttribute('tabindex', '0');
-    this.root.setAttribute('title', 'Village spend so far · click for breakdown');
-    const icon = doc.createElement('span'); icon.className = 'wb-icon'; icon.textContent = '💰';
-    this.amountEl = doc.createElement('span'); this.amountEl.textContent = '$0';
+    this.root.setAttribute('title', 'Token flow across all live sessions · click for breakdown');
+    const icon = doc.createElement('span'); icon.className = 'wb-icon'; icon.textContent = '⇅';
+    this.amountEl = doc.createElement('span'); this.amountEl.textContent = '0 tok';
     this.subEl = doc.createElement('span'); this.subEl.className = 'wb-sub'; this.subEl.textContent = '0 msg';
     this.root.appendChild(icon);
     this.root.appendChild(this.amountEl);
@@ -163,7 +172,6 @@ export default class WorldBudgetBadge {
     this.root.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); onClick(); }
     });
-    // Click outside popover → close.
     this._onDocClick = (ev) => {
       if (!this.popoverOpen) return;
       if (this.popover.contains(ev.target) || this.root.contains(ev.target)) return;
@@ -198,8 +206,12 @@ export default class WorldBudgetBadge {
       return;
     }
     this.root.dataset.empty = '0';
-    this.amountEl.textContent = fmtUSD(totals.cost || 0);
-    this.subEl.textContent = `${totals.messageCount} msg · ${fmtTokens((totals.input || 0) + (totals.output || 0))}`;
+
+    // Top-level: tokens primary (what's actively flowing).
+    // input+output is "real" work; cache is relegated to popover.
+    const flow = (totals.input || 0) + (totals.output || 0);
+    this.amountEl.textContent = `${fmtTokens(flow)} tok`;
+    this.subEl.textContent = `📨 ${fmtCount(totals.messageCount)} msg`;
 
     if (this.popoverOpen) this._renderPopover(totals, bySession);
   }
@@ -208,14 +220,14 @@ export default class WorldBudgetBadge {
     const doc = this.document;
     this.popover.textContent = '';
     const h = doc.createElement('h4');
-    h.textContent = 'Per-session spend';
+    h.textContent = 'Per-session tokens';
     this.popover.appendChild(h);
 
-    // Pair session-id → display name from WorldMap's live state when
-    // possible, otherwise show the first slice of the id.
     const agents = this.worldMap?.state?.agents || {};
     const entries = Object.entries(bySession || {});
-    entries.sort((a, b) => (b[1].cost || 0) - (a[1].cost || 0));
+    // Sort by output desc — output = what the agent generated, a better
+    // "work done" signal than cost or input.
+    entries.sort((a, b) => (b[1].output || 0) - (a[1].output || 0));
     for (const [id, t] of entries.slice(0, 12)) {
       if (!t.messageCount) continue;
       const name = agents[id]?.name || id.slice(0, 10);
@@ -230,24 +242,35 @@ export default class WorldBudgetBadge {
         model.textContent = `(${String(t.model).replace(/^claude-/, '').split('-').slice(0, 2).join(' ')})`;
         nameEl.appendChild(model);
       }
-      const costEl = doc.createElement('span');
-      costEl.className = 'wb-cost';
-      costEl.textContent = fmtUSD(t.cost || 0);
+      const nums = doc.createElement('span');
+      nums.className = 'wb-nums';
+      // Shape: ↓in ↑out · cache R/W · N msg. Dim the cache segment
+      // since it dominates numerically but matters less per-glance.
+      const inTok = fmtTokens(t.input || 0);
+      const outTok = fmtTokens(t.output || 0);
+      const cacheR = fmtTokens(t.cacheRead || 0);
+      const cacheW = fmtTokens(t.cacheWrite || 0);
+      nums.innerHTML =
+        `↓${inTok} ↑${outTok} ` +
+        `<span class="wb-dim">· cache R${cacheR} W${cacheW}</span> ` +
+        `<span class="wb-dim">· ${t.messageCount} msg</span>`;
       row.appendChild(nameEl);
-      row.appendChild(costEl);
+      row.appendChild(nums);
       this.popover.appendChild(row);
     }
 
     const tot = doc.createElement('div');
     tot.className = 'wb-total';
-    const label = doc.createElement('span'); label.textContent = 'Total';
-    const val = doc.createElement('span'); val.textContent = fmtUSD(totals.cost || 0);
+    const label = doc.createElement('span'); label.textContent = 'Total flow';
+    const flow = (totals.input || 0) + (totals.output || 0);
+    const val = doc.createElement('span');
+    val.textContent = `${fmtTokens(flow)} tok · ${fmtCount(totals.messageCount)} msg`;
     tot.appendChild(label); tot.appendChild(val);
     this.popover.appendChild(tot);
 
     const hint = doc.createElement('div');
     hint.className = 'wb-hint';
-    hint.textContent = 'estimate — rates may drift';
+    hint.textContent = 'in ↓ / out ↑ / cache from transcript tails';
     this.popover.appendChild(hint);
   }
 
