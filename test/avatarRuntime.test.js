@@ -328,6 +328,126 @@ test('syncAvatarRuntimeEntries seeds facingOverride=null on new runtime (v5 P0c)
   assert.equal(rt.facingOverride, null);
 });
 
+test('Phase 2: farewell fires once on exit arrival when fadeOpacity > 0.85', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: true, state: 'idle', bubbleText: '',
+    direction: 'down', nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 5000,   // already "arrived"
+    authoritativePosition: false,
+    currentDestination: { x: 0, y: 0, intent: { kind: 'to_exit_fade' } },
+    intent: { kind: 'to_exit_fade' },
+    fadeOpacity: 0.95,          // high enough to wave
+    agentSeed: 1,
+    farewellConsumed: false
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.farewellUntil, 2500, 'wave window = now + 1500');
+  assert.equal(rt.farewellConsumed, true);
+});
+
+test('Phase 2: farewell SKIPPED when fadeOpacity already <= 0.85 (Codex v2 fix)', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: true, state: 'idle', bubbleText: '',
+    direction: 'down', nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 5000,
+    authoritativePosition: false,
+    currentDestination: { x: 0, y: 0, intent: { kind: 'to_exit_fade' } },
+    intent: { kind: 'to_exit_fade' },
+    fadeOpacity: 0.7,           // already faded — no pop-back
+    agentSeed: 1,
+    farewellConsumed: false
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.farewellUntil, undefined);
+  assert.equal(rt.farewellConsumed, false);
+});
+
+test('Phase 2: stretch fires once on break_area arrival', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const stations = [
+    { id: 's1', kind: 'rest', type: 'plant.pink', x: 10, y: 10,
+      locationId: 'home_nw', label: 'plant' }
+  ];
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: true, state: 'idle', bubbleText: '',
+    direction: 'down', nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 5000,
+    authoritativePosition: false,
+    currentDestination: { x: 10, y: 10, stationId: 's1', locationId: 'home_nw' },
+    intent: null,
+    agentSeed: 1,
+    stretchConsumed: false
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], stations
+  );
+  assert.equal(rt.stretchUntil, 1800, 'stretch window = now + 800');
+  assert.equal(rt.stretchConsumed, true);
+});
+
+test('Phase 2: impatient pose flips facingOverride on Waiting at queue_slot', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: false, state: 'idle', bubbleText: '',
+    direction: 'down', nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 99999,
+    authoritativePosition: false,
+    currentDestination: { x: 0, y: 0, intent: { kind: 'to_info_desk' } },
+    intent: { kind: 'to_info_desk' },
+    serverStatus: 'Waiting',
+    agentSeed: 1
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  // timestamp=1000 → phase=0 → facingOverride='left'
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.interactionKind, 'queue_slot');
+  assert.equal(rt.pose, 'impatient');
+  assert.equal(rt.facingOverride, 'left');
+  // Next phase window (timestamp=5000) → phase=1 → 'right'
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 5000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.facingOverride, 'right');
+});
+
+test('Phase 2: destination change resets consumed flags', async () => {
+  const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
+  const rt = {
+    id: 'a', x: 0, y: 0, moving: false, state: 'idle', bubbleText: '',
+    direction: 'down', nextMoveAt: 0, path: null, pathIndex: 0,
+    arrivalPauseUntil: 99999,
+    authoritativePosition: false,
+    currentDestination: { x: 10, y: 10, intent: { kind: 'to_exit_fade' } },
+    intent: { kind: 'to_exit_fade' },
+    fadeOpacity: 0.95,
+    agentSeed: 1,
+    farewellConsumed: false
+  };
+  const runtimeMap = new Map([['a', rt]]);
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 1000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.farewellConsumed, true);
+  // Server issues a new destination → re-enter exit → wave again.
+  rt.currentDestination = { x: 20, y: 20, intent: { kind: 'to_exit_fade' } };
+  advanceAvatarRuntimeEntries(
+    runtimeMap, { width: 30, height: 30 }, 2000, () => 0.5, null, [], []
+  );
+  assert.equal(rt.farewellUntil, 3500,
+    'new destination resets consumed flag + fires again');
+});
+
 test('advanceAvatarRuntimeEntries clears facingOverride at tick start', async () => {
   const { advanceAvatarRuntimeEntries } = await loadAvatarRuntime();
   const rt = {

@@ -1,4 +1,6 @@
 import { buildConversation } from './agentDialogues.mjs';
+import { interactionKindFor } from './interactionKind.mjs';
+import { resolvePose, POSES } from './poseResolver.mjs';
 
 const BASE_MOVE_INTERVAL_MS = 380;
 
@@ -477,6 +479,18 @@ function pickStationForState(runtime, stations, rng, claimedStationIds, lastStat
   };
 }
 
+// Build { [stationId]: station } for O(1) lookup during pose
+// resolution. Stations may appear multiple times across ticks so we
+// dedupe by id.
+function buildStationLookup(stations) {
+  const lookup = {};
+  if (!Array.isArray(stations)) return lookup;
+  for (const st of stations) {
+    if (st && typeof st.id === 'string') lookup[st.id] = st;
+  }
+  return lookup;
+}
+
 function faceDirection(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
   if (dy === 0 && dx === 0) return 'down';
@@ -616,6 +630,50 @@ export function advanceAvatarRuntimeEntries(
     runtime.talking = Boolean(
       runtime.chatPauseUntil && timestamp < runtime.chatPauseUntil
     );
+  });
+
+  // Phase 2: resolve interactionKind + pose per tick. Reset one-shot
+  // triggers (farewell, stretch) when the destination changes so the
+  // next arrival fires them again.
+  const stationLookup = buildStationLookup(stations);
+  avatarRuntime.forEach(runtime => {
+    const dest = runtime.currentDestination;
+    const destKey = dest
+      ? `${dest.locationId || ''}:${dest.stationId || ''}:${dest.x},${dest.y}`
+      : '';
+    if (runtime._prevDestKey !== destKey) {
+      runtime.farewellConsumed = false;
+      runtime.stretchConsumed = false;
+      runtime._prevDestKey = destKey;
+    }
+
+    runtime.interactionKind = interactionKindFor(runtime, stationLookup);
+
+    // One-shot pose triggers on arrival.
+    const arrived = runtime.arrivalPauseUntil && timestamp < runtime.arrivalPauseUntil;
+    if (arrived && runtime.interactionKind === 'exit' &&
+        (runtime.fadeOpacity == null || runtime.fadeOpacity > 0.85) &&
+        !runtime.farewellConsumed) {
+      runtime.farewellUntil = timestamp + 1500;
+      runtime.farewellConsumed = true;
+    }
+    if (arrived && runtime.interactionKind === 'break_area' &&
+        !runtime.stretchConsumed) {
+      runtime.stretchUntil = timestamp + 800;
+      runtime.stretchConsumed = true;
+    }
+
+    const { pose, emote } = resolvePose(runtime, timestamp);
+    runtime.pose = pose;
+    runtime.persistentEmote = emote;
+
+    // Impatient pose: flip facingOverride left↔right every ~4s so the
+    // sprite visibly "looks around" while queueing. Purely visual,
+    // cleared next tick by the clear-step above.
+    if (pose === POSES.IMPATIENT) {
+      const phase = Math.floor(timestamp / 4000) % 2;
+      runtime.facingOverride = phase === 0 ? 'left' : 'right';
+    }
   });
 
   // Collect which stations are currently claimed (targeted or occupied) so

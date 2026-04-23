@@ -2259,16 +2259,45 @@ export default class WorldMap {
       const phase = (hashString((avatar.id || '') + 't') & 0xffff) / 0xffff * Math.PI * 2;
       talkShift = Math.sin(timestamp / 600 + phase) * 0.6;
     }
-    const seatShiftY = baseSeatShift + breathShift + talkShift;
+
+    // Phase 2 pose micro-animations. Additive on top of seat/talk
+    // shifts; scales multiply seatScale. Each pose conveys what the
+    // agent is doing at its station without needing new sprite frames.
+    let poseShiftY = 0;
+    let poseScale = 1;
+    const pose = avatar.pose;
+    if (pose === 'typing') {
+      // Keyboard bob — 4 Hz, small amplitude. Visible only when
+      // looking directly at the sprite; fine to be subtle.
+      poseShiftY += Math.sin(timestamp / 125) * 0.5;
+    } else if (pose === 'drinking') {
+      // Every 1.2 s a small "raise the mug" lift.
+      const cycle = timestamp % 1200;
+      if (cycle < 400) {
+        poseShiftY += -2 * Math.sin((cycle / 400) * Math.PI);
+      }
+    } else if (pose === 'stretching' &&
+               avatar.stretchUntil && timestamp < avatar.stretchUntil) {
+      // 800 ms: 1.0 → 1.10 at midpoint → 1.0 at end.
+      const elapsed = 800 - (avatar.stretchUntil - timestamp);
+      poseScale *= 1 + 0.10 * Math.sin((elapsed / 800) * Math.PI);
+    } else if (pose === 'waving_goodbye' &&
+               avatar.farewellUntil && timestamp < avatar.farewellUntil) {
+      // Slight upscale + 4 Hz wave bounce during the 1.5 s farewell.
+      poseScale *= 1.05 + 0.02 * Math.sin(timestamp / 125);
+    }
+
+    const seatShiftY = baseSeatShift + breathShift + talkShift + poseShiftY;
+    const drawScale = seatScale * poseScale;
 
     this.context.imageSmoothingEnabled = false;
     this.context.drawImage(
       sheet,
       sx, sy, cellW, cellH,
-      Math.floor(centerX - this.tileSize * 0.48 * seatScale),
-      Math.floor(centerY - this.tileSize * 0.62 * seatScale + seatShiftY),
-      Math.ceil(this.tileSize * 0.96 * seatScale),
-      Math.ceil(this.tileSize * 1.24 * seatScale)
+      Math.floor(centerX - this.tileSize * 0.48 * drawScale),
+      Math.floor(centerY - this.tileSize * 0.62 * drawScale + seatShiftY),
+      Math.ceil(this.tileSize * 0.96 * drawScale),
+      Math.ceil(this.tileSize * 1.24 * drawScale)
     );
 
     return true;
@@ -2670,15 +2699,19 @@ export default class WorldMap {
       this.drawChatLabel(centerX, chatBubbleY, chatText);
     }
 
-    // --- Lane 0: steady tool icon + tool-pop overlay ---
+    // --- Lane 0: steady tool icon / persistent emote + tool-pop overlay ---
     const popMs = VISUAL.TOOL_POP_MS || 1100;
     const popAge = timestamp - (avatar.toolPopAt || 0);
     const popActive = avatar.toolPopIcon && popAge >= 0 && popAge < popMs;
     const popT = popActive ? popAge / popMs : 1;
     const popFade = popActive ? Math.max(0, 1 - popT) : 0;
 
-    // Steady tool icon — drawn unless a pop is dominating the head area.
-    if (avatar.toolIcon && popFade < 0.5) {
+    // Steady icon: live tool wins over ambient persistent emote — a Bash
+    // tool-pop at the tavern is more interesting than the 🍺. When no
+    // tool is active, the station's persistent emote (🍺/📺/💤/👋)
+    // fills the slot.
+    const steadyIcon = avatar.toolIcon || avatar.persistentEmote || null;
+    if (steadyIcon && popFade < 0.5) {
       const iconSize = Math.max(12, Math.floor(this.tileSize * 0.5));
       const iconY = centerY - this.tileSize * 0.95;
       this.context.font = `${iconSize}px "Segoe UI Emoji", system-ui, sans-serif`;
@@ -2690,7 +2723,7 @@ export default class WorldMap {
         ? prevGlobalAlpha * sessionFade * Math.max(0, 1 - popFade * 2)
         : prevGlobalAlpha * sessionFade;
       this.context.globalAlpha = steadyAlpha;
-      this.context.fillText(avatar.toolIcon, centerX, iconY);
+      this.context.fillText(steadyIcon, centerX, iconY);
       this.context.globalAlpha = prevGlobalAlpha;
     }
 
