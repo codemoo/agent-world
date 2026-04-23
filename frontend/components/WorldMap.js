@@ -1266,6 +1266,13 @@ export default class WorldMap {
     this.state = null;
     this.sceneLayout = null;
     this.avatarRuntime = new Map();
+    // Footpath heatmap — sparse per-tile {v, t} accumulator. Sampled
+    // from interpolated avatar positions each render tick, decayed
+    // exponentially (60s half-life), rendered as a faint earth-tone
+    // underlay. Bounded in entry count; entries below threshold are
+    // evicted on each frame's sweep so memory stays flat.
+    this._footHeat = new Map();        // key "x,y" → {v:number, t:number}
+    this._footHeatLastUpdate = 0;
     this.frameId = null;
     this.tileSize = 24;
     this.offsetX = 0;
@@ -2706,6 +2713,11 @@ export default class WorldMap {
       }
     }
 
+    // Layer 0.5: Footpath heatmap — decayed per-tile step weight from
+    // live avatarRuntime. Drawn over terrain but under decorations so
+    // bushes/flowers/path-props aren't dimmed by the overlay.
+    this._updateAndDrawFootpathHeatmap(timestamp);
+
     // Layer 1: Ground decorations (flowers, bushes, pebbles - non-blocking)
     if (layout.decorations) {
       layout.decorations.forEach(deco => {
@@ -3403,6 +3415,92 @@ export default class WorldMap {
 
     ctx.globalCompositeOperation = prevComp;
     ctx.globalAlpha = prevAlpha;
+  }
+
+  // Footpath heatmap — accumulate per-tile step weight from the live
+  // avatarRuntime each tick, decay exponentially, render as a faint
+  // earth-tone underlay so repeated routes wear visible paths into the
+  // ground. Skipped entirely during scrub (the snapshot is a frozen
+  // moment, not a lived-in world).
+  _updateAndDrawFootpathHeatmap(timestamp) {
+    if (this._scrubSnapshot) return;
+    const layout = this.sceneLayout;
+    if (!layout) return;
+
+    const last = this._footHeatLastUpdate || timestamp;
+    const dt = Math.max(0, Math.min(500, timestamp - last));
+    this._footHeatLastUpdate = timestamp;
+
+    // Exponential decay with 60s half-life. Skipping decay when dt==0
+    // avoids a pow(0.5, 0)=1 no-op on the first frame.
+    const decay = dt > 0 ? Math.pow(0.5, dt / 60_000) : 1;
+
+    // 1) Decay pass + cheap eviction of dust.
+    if (dt > 0 && this._footHeat.size > 0) {
+      const DUST = 0.015;
+      for (const [k, entry] of this._footHeat) {
+        entry.v *= decay;
+        if (entry.v < DUST) this._footHeat.delete(k);
+      }
+    }
+
+    // 2) Sample pass: each runtime contributes weight at its
+    // interpolated tile. Working sprites are stationary so they'd peg
+    // their desk tile — cap per-tile below to absorb that.
+    const STEP_W = 0.045;
+    const CAP = 0.9;
+    this.avatarRuntime.forEach(r => {
+      const { rx, ry } = renderTilePos(r, timestamp);
+      const tx = Math.round(rx);
+      const ty = Math.round(ry);
+      if (tx < 0 || ty < 0 || tx >= layout.width || ty >= layout.height) return;
+      const key = `${tx},${ty}`;
+      const existing = this._footHeat.get(key);
+      if (existing) {
+        existing.v = Math.min(CAP, existing.v + STEP_W);
+        existing.t = timestamp;
+      } else {
+        this._footHeat.set(key, { v: STEP_W, t: timestamp });
+      }
+    });
+
+    // Hard cap on memory: if map somehow exceeds world area, drop the
+    // oldest-touched entries. Normally never triggers (bounded by
+    // world size + eviction), this is defensive.
+    const MAX_TILES = layout.width * layout.height * 2;
+    if (this._footHeat.size > MAX_TILES) {
+      const sorted = [...this._footHeat.entries()].sort((a, b) => a[1].t - b[1].t);
+      const drop = sorted.slice(0, sorted.length - MAX_TILES);
+      for (const [k] of drop) this._footHeat.delete(k);
+    }
+
+    // 3) Draw pass. Ellipse per tile with alpha scaled by v. Keep
+    // max alpha low (0.22) so heavy traffic still reads as "worn
+    // path" not "mud pit". Earthy brown, slightly cool when stacked
+    // on grass, barely visible on stone/path (intentional — those
+    // tiles are already path-coloured).
+    const ctx = this.context;
+    if (this._footHeat.size === 0) return;
+    const ts = this.tileSize;
+    ctx.save();
+    for (const [key, entry] of this._footHeat) {
+      const v = entry.v;
+      if (v < 0.05) continue;
+      const [sx, sy] = key.split(',');
+      const tx = Number(sx), ty = Number(sy);
+      const cx = this.offsetX + tx * ts + ts / 2;
+      const cy = this.offsetY + ty * ts + ts / 2;
+      const a = Math.min(0.22, v * 0.32);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, ts * 0.55);
+      g.addColorStop(0,    `rgba(87, 63, 40, ${a})`);
+      g.addColorStop(0.75, `rgba(87, 63, 40, ${a * 0.35})`);
+      g.addColorStop(1,    'rgba(87, 63, 40, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ts * 0.48, ts * 0.30, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Item H — activity glow per building. Always on (not night-gated),
