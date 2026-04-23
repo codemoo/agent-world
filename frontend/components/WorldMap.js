@@ -3176,10 +3176,34 @@ export default class WorldMap {
     return { total, working };
   }
 
+  // Repo identity hue for a building — the branch-derived hatHue of the
+  // first Working occupant, else any occupant. Null when empty so the
+  // caller can fall back to a neutral plank. Memo'd per frame via
+  // `hueCache` to avoid repeating the scan across sign + courier + pip
+  // tint calls within a single render pass.
+  _buildingRepoHue(loc, hueCache) {
+    const key = loc.id || `${loc.x},${loc.y}`;
+    if (hueCache && hueCache.has(key)) return hueCache.get(key);
+    const x1 = loc.x, y1 = loc.y, x2 = loc.x + (loc.w || 5), y2 = loc.y + (loc.h || 4);
+    let hue = null, workingHue = null;
+    this.avatarRuntime.forEach(r => {
+      if (r.x < x1 || r.x >= x2 || r.y < y1 || r.y >= y2) return;
+      if (typeof r.hatHue !== 'number') return;
+      if (hue === null) hue = r.hatHue;
+      if (workingHue === null && (r.state === 'working' || r.serverStatus === 'Working')) {
+        workingHue = r.hatHue;
+      }
+    });
+    const out = workingHue ?? hue;
+    if (hueCache) hueCache.set(key, out);
+    return out;
+  }
+
   drawLocationSigns(layout, timestamp) {
     if (!layout.locations || layout.locations.length === 0) return;
 
     const context = this.context;
+    const hueCache = new Map();
     for (const loc of layout.locations) {
       const bw = loc.w || 5;
       const px = this.offsetX + (loc.x + bw / 2) * this.tileSize;
@@ -3223,6 +3247,20 @@ export default class WorldMap {
       drawRoundedRect(context, signX, signY, signW, signH, radius);
       context.stroke();
 
+      // Repo identity hue stripe — 4px left edge tinted with the
+      // dominant branch hue for this building's Working occupant. Only
+      // paints when the building actually has residents, so unoccupied
+      // planks stay neutral wood.
+      const repoHue = this._buildingRepoHue(loc, hueCache);
+      if (repoHue != null) {
+        const stripeW = 4;
+        context.fillStyle = `hsl(${repoHue}, 70%, 52%)`;
+        context.fillRect(signX + 0.5, signY + 1, stripeW, signH - 2);
+        // Subtle bevel line on the stripe's right edge for depth.
+        context.fillStyle = `hsla(${repoHue}, 60%, 28%, 0.55)`;
+        context.fillRect(signX + stripeW + 0.5, signY + 1, 1, signH - 2);
+      }
+
       // Rivets at top corners for nailed-plank look
       const rivetR = 1.4;
       context.fillStyle = COLORS.signRivet;
@@ -3249,15 +3287,25 @@ export default class WorldMap {
         const shown = Math.min(occ.total, maxPips);
         const startX = signX + signW + 6 + pipR;
         const pipY = signY + signH / 2;
+        // Tint Working pips with the repo hue when one exists. Keeps
+        // idle pips neutral amber outline so the mixed-state contrast
+        // stays legible (filled = hue-tinted, outlined = amber).
+        const pipHue = repoHue;
+        const workingFill = pipHue != null
+          ? `hsl(${pipHue}, 75%, 56%)`
+          : 'rgba(251, 191, 36, 0.95)';
+        const workingStroke = pipHue != null
+          ? `hsla(${pipHue}, 55%, 22%, 0.9)`
+          : 'rgba(120, 53, 15, 0.9)';
         for (let i = 0; i < shown; i++) {
           // The first `working` pips fill solid; the rest are outlined.
           const isWorking = i < occ.working;
           context.beginPath();
           context.arc(startX + i * pipGap, pipY, pipR, 0, Math.PI * 2);
           if (isWorking) {
-            context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+            context.fillStyle = workingFill;
             context.fill();
-            context.strokeStyle = 'rgba(120, 53, 15, 0.9)';
+            context.strokeStyle = workingStroke;
             context.lineWidth = 1;
             context.stroke();
           } else {
@@ -3373,10 +3421,19 @@ export default class WorldMap {
       // Fade: fast ramp-in, slow fade-out. 0 → 1 by 0.15, then linear to 0 at 1.0.
       const alpha = t < 0.15 ? (t / 0.15) * 0.85 : 0.85 * (1 - (t - 0.15) / 0.85);
 
+      // Repo identity — tint the line with the source's hatHue so
+      // multiple simultaneous couriers from different repos are
+      // distinguishable. Falls back to the old sky-blue when hatHue
+      // is unset (e.g. hydrating frame).
+      const hue = typeof src.hatHue === 'number' ? src.hatHue : null;
+      const lineColor = hue != null
+        ? `hsl(${hue}, 75%, 70%)`
+        : 'rgba(186, 230, 253, 0.95)';
+
       for (const { px, py } of top) {
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = 'rgba(186, 230, 253, 0.95)';
+        ctx.strokeStyle = lineColor;
         ctx.lineWidth = 1.2;
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
