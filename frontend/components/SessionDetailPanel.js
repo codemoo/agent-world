@@ -3,7 +3,11 @@
 // Pulls `/api/sessions/:sessionId` for extra detail (git branch, last msg,
 // current tool, PR etc.) when the panel opens.
 
-const PANEL_VERSION = 1;
+const PANEL_VERSION = 2;
+// Sparkline (Item F) — rolling window of cumulative tokens,
+// rendered as tokens-per-second bar chart over the last minute.
+const SPARKLINE_WINDOW_MS = 60_000;
+const SPARKLINE_MAX_SAMPLES = 60;
 
 function h(tag, attrs = {}, children = []) {
   const el = document.createElement(tag);
@@ -45,6 +49,10 @@ export default class SessionDetailPanel {
     this.currentSessionId = null;
     this.latestState = null;
     this.detailsBySession = new Map();
+    // Item F — per-session token velocity samples. Map<sessionId, Array<{t,in,out,msg}>>.
+    // Appended on handleStateUpdate when cumulative totals change. Trimmed to
+    // last SPARKLINE_WINDOW_MS.
+    this.tokenSamples = new Map();
 
     console.log(`[SessionDetailPanel v${PANEL_VERSION}] init`);
 
@@ -171,7 +179,93 @@ export default class SessionDetailPanel {
   // Called by appBootstrap on every state/patch update.
   handleStateUpdate(state) {
     this.latestState = state;
+    this._sampleTokens(state);
     if (this.currentSessionId) this._render();
+  }
+
+  // Append cumulative-token samples (Item F). One sample per sessionId per
+  // state update IFF input+output grew since the last sample. Cheap O(N)
+  // over active sessions.
+  _sampleTokens(state) {
+    const agents = state?.agents;
+    if (!agents) return;
+    const now = Date.now();
+    for (const id of Object.keys(agents)) {
+      const cost = agents[id]?.cost;
+      if (!cost || !cost.messageCount) continue;
+      const cumulative = (cost.input || 0) + (cost.output || 0);
+      let samples = this.tokenSamples.get(id);
+      if (!samples) { samples = []; this.tokenSamples.set(id, samples); }
+      const last = samples[samples.length - 1];
+      if (last && last.cum === cumulative) continue; // no change, skip
+      samples.push({ t: now, cum: cumulative, msg: cost.messageCount });
+      // Trim by window + cap.
+      const cutoff = now - SPARKLINE_WINDOW_MS;
+      while (samples.length > 1 && samples[0].t < cutoff) samples.shift();
+      if (samples.length > SPARKLINE_MAX_SAMPLES) samples.splice(0, samples.length - SPARKLINE_MAX_SAMPLES);
+    }
+  }
+
+  // Build an SVG sparkline showing tokens/sec delta between consecutive
+  // samples, over SPARKLINE_WINDOW_MS. Returns null when we don't have
+  // enough samples to draw.
+  _buildSparkline(sessionId) {
+    const samples = this.tokenSamples.get(sessionId);
+    if (!samples || samples.length < 2) return null;
+
+    // Convert to per-segment velocity points (tokens/sec).
+    const velocities = [];
+    for (let i = 1; i < samples.length; i++) {
+      const dt = Math.max(50, samples[i].t - samples[i - 1].t);  // ms
+      const dtok = Math.max(0, samples[i].cum - samples[i - 1].cum);
+      velocities.push({ t: samples[i].t, v: dtok / (dt / 1000) });
+    }
+    if (velocities.length === 0) return null;
+
+    const now = Date.now();
+    const vmax = Math.max(1, ...velocities.map(p => p.v));
+
+    const W = 300, H = 36;
+    const toX = (t) => ((t - (now - SPARKLINE_WINDOW_MS)) / SPARKLINE_WINDOW_MS) * W;
+    const toY = (v) => H - 2 - Math.min(H - 4, (v / vmax) * (H - 4));
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', String(W));
+    svg.setAttribute('height', String(H));
+    svg.style.display = 'block';
+
+    // Baseline.
+    const axis = document.createElementNS(svgNs, 'line');
+    axis.setAttribute('x1', '0'); axis.setAttribute('y1', String(H - 1));
+    axis.setAttribute('x2', String(W)); axis.setAttribute('y2', String(H - 1));
+    axis.setAttribute('stroke', 'rgba(148,163,184,0.25)');
+    axis.setAttribute('stroke-width', '1');
+    svg.appendChild(axis);
+
+    // Polyline.
+    const pts = velocities
+      .map(p => `${toX(p.t).toFixed(1)},${toY(p.v).toFixed(1)}`)
+      .join(' ');
+    const line = document.createElementNS(svgNs, 'polyline');
+    line.setAttribute('points', pts);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', '#38bdf8');
+    line.setAttribute('stroke-width', '1.6');
+    line.setAttribute('stroke-linejoin', 'round');
+    line.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(line);
+
+    // Fill under curve for mass.
+    const areaPts = `${toX(velocities[0].t).toFixed(1)},${H - 1} ` + pts + ` ${toX(velocities[velocities.length - 1].t).toFixed(1)},${H - 1}`;
+    const area = document.createElementNS(svgNs, 'polyline');
+    area.setAttribute('points', areaPts);
+    area.setAttribute('fill', 'rgba(56, 189, 248, 0.18)');
+    area.setAttribute('stroke', 'none');
+    svg.insertBefore(area, line);
+
+    return { svg, vmax };
   }
 
   // Called by appBootstrap (external) to pre-select a session via keyboard.
@@ -292,6 +386,31 @@ export default class SessionDetailPanel {
         h('div', { style: { color: '#94a3b8', fontSize: '10px' } },
           `in ${kfmt(cost.input)} · out ${kfmt(cost.output)} · cache W ${kfmt(cost.cacheWrite)} R ${kfmt(cost.cacheRead)} · ${cost.messageCount} msg`)
       ]));
+
+      // Item F — token-flow sparkline: tokens/sec delta over last 60s.
+      const sparkMeta = this._buildSparkline(this.currentSessionId);
+      if (sparkMeta) {
+        const peak = sparkMeta.vmax >= 1_000
+          ? (sparkMeta.vmax / 1_000).toFixed(1) + 'k/s'
+          : sparkMeta.vmax.toFixed(0) + '/s';
+        const card = h('div', {
+          style: {
+            marginTop: '6px',
+            padding: '6px 8px 4px',
+            borderRadius: '6px',
+            background: 'rgba(56, 189, 248, 0.06)',
+            border: '1px solid rgba(56, 189, 248, 0.22)',
+            fontSize: '10px'
+          }
+        }, [
+          h('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '2px' } }, [
+            h('span', { style: { color: '#38bdf8', fontWeight: '600' } }, '⇅ flow / 60s'),
+            h('span', { style: { color: '#bae6fd', fontVariantNumeric: 'tabular-nums' } }, `peak ${peak}`)
+          ])
+        ]);
+        card.appendChild(sparkMeta.svg);
+        this.body.appendChild(card);
+      }
     }
 
     if (detail?.lastAssistantMessage?.message?.content) {
