@@ -486,6 +486,11 @@ export function createFrontendApp({
     destroy,
     getWorldState() {
       return worldMap.state || null;
+    },
+    // Surfaced for headless probes that need to drive the renderer
+    // directly with synthesized state (see browser-probe-head-lanes.mjs).
+    getWorldMap() {
+      return worldMap;
     }
   };
 }
